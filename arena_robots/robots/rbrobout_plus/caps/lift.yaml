@@ -1,0 +1,3 @@
+lift:
+  joint: robot_lift_ewellix_lift_top_joint
+  controller: lift_controller
