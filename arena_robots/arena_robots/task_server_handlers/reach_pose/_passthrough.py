@@ -4,11 +4,13 @@ from typing import TYPE_CHECKING
 
 from arena_robots_msgs.action import ReachPose
 
+from arena_robots.task_server_handlers import TaskHandler
+
 if TYPE_CHECKING:
     from arena_robots.bringup.arm.none import NoneArmBringup
 
 
-class ReachPoseHandlerNone:
+class ReachPoseHandlerNone(TaskHandler[ReachPose.Goal, ReachPose.Feedback, ReachPose.Result]):
     """Immediately succeeds without motion planning. Used by the arm/none bringup."""
 
     def __init__(self, bringup: NoneArmBringup, *, tf_buffer: object, node: object) -> None:

@@ -1,35 +1,26 @@
-"""TaskHandler protocol and shared utilities for task_server handler implementations.
+"""TaskHandler ABC and shared utilities for task_server handler implementations.
 
 Handler registration is owned by the Bringup subclass via its ``task_handlers``
 ClassVar (see ``arena_robots.bringup.Bringup``); this module only exposes the
-shared protocol type and the ``_executor_sleep`` helper.
+shared base class and the ``_executor_sleep`` helper.
 """
 
 from __future__ import annotations
 
-from typing import (
-    TYPE_CHECKING,
-    Protocol,
-    TypeVar,
-)
+from abc import ABC, abstractmethod
 
+from rclpy.action import CancelResponse
 from rclpy.action.server import ServerGoalHandle
 from rclpy.clock import Clock
 from rclpy.task import Future
 
-if TYPE_CHECKING:
-    from arena_robots.bringup import Bringup
 
-
-GoalT = TypeVar("GoalT")
-FeedbackT = TypeVar("FeedbackT")
-ResultT = TypeVar("ResultT")
-
-
-class TaskHandler(Protocol[GoalT, FeedbackT, ResultT]):
-    def __init__(self, bringup: Bringup, *, tf_buffer: object, node: object) -> None: ...
-
+class TaskHandler[GoalT, FeedbackT, ResultT](ABC):
+    @abstractmethod
     async def execute(self, goal_handle: ServerGoalHandle) -> ResultT: ...
+
+    def on_cancel(self, goal_handle: ServerGoalHandle) -> CancelResponse:
+        return CancelResponse.ACCEPT
 
 
 async def _executor_sleep(node: object, seconds: float, *, wall: bool = False) -> None:

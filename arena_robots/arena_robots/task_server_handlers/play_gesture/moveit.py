@@ -12,7 +12,7 @@ from moveit_msgs.msg import Constraints, JointConstraint, MotionPlanRequest, Mov
 from rclpy.action import ActionClient
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
-from arena_robots.task_server_handlers import _executor_sleep
+from arena_robots.task_server_handlers import TaskHandler, _executor_sleep
 
 if TYPE_CHECKING:
     from arena_robots.bringup.arm.moveit import MoveItArmBringup
@@ -96,7 +96,7 @@ def _build_trajectory(gesture: GestureSpec, arm: object) -> JointTrajectory:
     return traj
 
 
-class PlayGestureHandlerMoveIt:
+class PlayGestureHandlerMoveIt(TaskHandler[PlayGesture.Goal, PlayGesture.Feedback, PlayGesture.Result]):
     def __init__(self, bringup: MoveItArmBringup, *, tf_buffer: object, node: object) -> None:
         del tf_buffer
         self._bringup = bringup

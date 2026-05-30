@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 from arena_robots_msgs.action import GotoPose
 from geometry_msgs.msg import PoseStamped
 
+from arena_robots.task_server_handlers import TaskHandler
+
 if TYPE_CHECKING:
     from arena_robots.bringup.mobile.drl import DrlBringup
     from arena_robots.bringup.mobile.external import ExternalBringup
@@ -12,7 +14,7 @@ if TYPE_CHECKING:
     from arena_robots.bringup.mobile.rosnav_rl import RosnavRlBringup
 
 
-class _PassthroughHandler:
+class _PassthroughHandler(TaskHandler[GotoPose.Goal, GotoPose.Feedback, GotoPose.Result]):
     """Publishes the goal to a topic and immediately succeeds.
 
     Shared body of the ``none``, ``external``, ``rosnav_rl``, and ``drl`` bringups, all

@@ -14,14 +14,13 @@ from arena_robots.nav2 import (
     Nav2SubBlockYAML,
     SensorsDerivedYAML,
 )
+from launch import LaunchDescription
 from launch.actions import GroupAction, OpaqueFunction
 from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node, SetRemap
 from launch_ros.descriptions import ParameterFile
 from launch_ros.substitutions import FindPackageShare
 from nav2_common.launch import RewrittenYaml
-
-from launch import LaunchDescription
 
 
 def generate_launch_description():
@@ -32,6 +31,7 @@ def generate_launch_description():
 
     robot = LaunchArgument('robot')
     task_generator_node = LaunchArgument('task_generator_node', default_value='')
+    env_namespace = LaunchArgument('env_namespace', default_value='')
     namespace = LaunchArgument('namespace')
     frame = LaunchArgument('frame')
     use_sim_time = LaunchArgument('use_sim_time')
@@ -62,7 +62,7 @@ def generate_launch_description():
         Nav2SubBlockYAML(mobile_path),
         Nav2CollisionDerivedYAML(mobile_path),
         Nav2KinematicsDerivedYAML(mobile_path),
-        SensorsDerivedYAML(model_params_path),
+        SensorsDerivedYAML(model_params_path, mobile_path),
         YAMLFileSubstitution(nav2_cfg('defaults', 'controller_config.yaml')),
         YAMLFileSubstitution(nav2_cfg('controllers', local_planner.substitution, 'controller_config.yaml')),
         YAMLFileSubstitution(nav2_cfg('defaults', 'planner_config.yaml')),
@@ -74,6 +74,7 @@ def generate_launch_description():
                 'frame': frame.substitution,
                 'base_frame': YAMLRetrieveSubstitution(YAMLFileSubstitution(model_params_path), 'base_frame'),
                 **task_generator_node.dict,
+                **env_namespace.dict,
                 'namespace': namespace.substitution,
                 # In train_mode the RL environment publishes cmd_vel directly.
                 # Redirect the collision_monitor output to a dead topic so it

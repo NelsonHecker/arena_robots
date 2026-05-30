@@ -13,7 +13,7 @@ that `(TaskKind, bringup_kind)` pair.
 | File | Role |
 |---|---|
 | [`task_kinds.py`](../task_kinds.py) | `TaskKind` enum, `PUBLIC_SUFFIX`, `action_type()`, `endpoint()` — the only place these are defined |
-| `task_server_handlers/__init__.py` | `TaskHandler` protocol + `_executor_sleep` helper. No registry: handler ownership lives on the Bringup subclass. |
+| `task_server_handlers/__init__.py` | `TaskHandler` ABC + `_executor_sleep` helper. No registry: handler ownership lives on the Bringup subclass. |
 | `task_server_handlers/<kind>/__init__.py` | exports the per-`TaskKind` handler type alias (e.g. `GotoPoseHandler`) for handler implementations |
 | `task_server_handlers/<kind>/<bringup>.py` | the `TaskHandler` implementation for that `(kind, bringup)` pair |
 | `bringup/<cap>/<kind>.py` | declares `task_handlers: ClassVar[dict[TaskKind, Callable[[], type]]]` mapping each supported `TaskKind` to a zero-arg loader for the handler class (lazy msgs imports) |
@@ -25,7 +25,7 @@ that `(TaskKind, bringup_kind)` pair.
 ### 1. Define the action IDL
 
 Add `arena_robots_msgs/action/<Kind>.action`. Keep the goal/feedback/result
-fields minimal and framework-neutral — every bringup has to implement it, so
+fields minimal and framework-neutral; every bringup has to implement it, so
 nothing bringup-specific belongs here.
 
 ### 2. Register the enum and suffix
@@ -75,15 +75,15 @@ from arena_robots.task_server_handlers import TaskHandler
 FollowPathHandler = TaskHandler[FollowPath.Goal, FollowPath.Feedback, FollowPath.Result]
 ```
 
-A `TaskHandler` is a `Protocol` (see the base registry module) — implementing
-it means accepting `(bringup, *, tf_buffer, node)` in `__init__` and exposing
-an `async def execute(goal_handle) -> Result`. There is no abstract base class
-to subclass; duck-typing is sufficient.
+A `TaskHandler` is an `ABC` (see the base registry module): subclass it,
+accept `(bringup, *, tf_buffer, node)` in `__init__`, and implement
+`async def execute(goal_handle) -> Result`. Override `on_cancel` if you need
+custom cancel handling; the base returns `CancelResponse.ACCEPT`.
 
 ### 4. (Optional) Ship a Python client
 
 Mirror `clients/goto_pose.py` as `clients/follow_path.py`. Clients are not
-required — any consumer can talk to the raw action endpoint — but `task_generator`
+required (any consumer can talk to the raw action endpoint), but `task_generator`
 and [DRIVING.md](../../../DRIVING.md) examples use them.
 
 ### 5. Wire into a `Bringup`

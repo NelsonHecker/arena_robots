@@ -8,7 +8,7 @@ from geometry_msgs.msg import PoseStamped
 from nav2_msgs.action import NavigateToPose
 from rclpy.action import ActionClient
 
-from arena_robots.task_server_handlers import _executor_sleep
+from arena_robots.task_server_handlers import TaskHandler, _executor_sleep
 
 if TYPE_CHECKING:
     from arena_robots.bringup.mobile.nav2 import Nav2Bringup
@@ -24,7 +24,7 @@ def _translate_nav2_status(nav2_status: int) -> tuple[int, str]:
     return GotoPose.Result.STATUS_ABORTED, "Nav2: planning or controller aborted"
 
 
-class GotoPoseHandlerNav2:
+class GotoPoseHandlerNav2(TaskHandler[GotoPose.Goal, GotoPose.Feedback, GotoPose.Result]):
     def __init__(self, bringup: Nav2Bringup, *, tf_buffer: object, node: object) -> None:
         self._bringup = bringup
         self._tf_buffer = tf_buffer
@@ -75,8 +75,8 @@ class GotoPoseHandlerNav2:
                 continue
 
             wrapped = await nav2_goal_handle.get_result_async()
+
             arena_status, arena_reason = _translate_nav2_status(wrapped.status)
-            nav2_result = wrapped.result
             if not goal_handle.is_active:
                 result.status = GotoPose.Result.STATUS_CANCELED
                 result.reason = "goal preempted by new submit_task"

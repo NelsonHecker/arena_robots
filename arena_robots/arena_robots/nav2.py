@@ -17,28 +17,56 @@ _TYPE_TO_NAV2: dict[str, str] = {
     SensorType.POINTCLOUD.value: "PointCloud2",
 }
 
+# Fallback raytrace/obstacle range when caps/mobile.yaml carries no `laser:` block.
+_DEFAULT_LIDAR_RANGE = 10.0
+
 
 def compile_sensors_to_nav2(
     sensors: list[SensorSpec],
     *,
+    max_range: float,
+    obstacle_range_margin: float = 1.0,
     max_obstacle_height: float = 2.0,
+    pointcloud_min_obstacle_height: float = 0.1,
     clearing: bool = True,
     marking: bool = True,
+    inf_is_valid: bool = True,
+    extra_per_source: dict[str, typing.Any] | None = None,
 ) -> dict[str, dict[str, typing.Any]]:
-    """Compile SensorSpec entries with a nav2 costmap data_type into nav2's observation_sources_dict shape."""
+    """Compile SensorSpec entries with a nav2 costmap data_type into nav2's observation_sources_dict shape.
+
+    `max_range` drives `raytrace_max_range` (clearing) so the costmap tracks the full
+    sensor range rather than nav2's 3.0 m default. `obstacle_max_range` sits a margin
+    below it: Isaac's 3D lidar emits phantom max-range points for missed rays, and a
+    margin keeps those from leaking into the costmap as concentric arcs that no later
+    raytrace ever clears. `inf_is_valid` lets no-return beams clear out to `max_range`.
+    `pointcloud_min_obstacle_height` is a height floor applied to 3D cloud sources only,
+    so their ground returns are dropped instead of marked (a flat LaserScan needs none).
+    `extra_per_source` is merged onto every emitted source last, letting callers layer
+    layer-specific tunables (e.g. `observation_persistence` for the global costmap).
+    """
+    obstacle_max_range = max(0.0, max_range - obstacle_range_margin)
     out: dict[str, dict[str, typing.Any]] = {}
     for spec in sensors:
         type_str = spec.type.value if isinstance(spec.type, SensorType) else str(spec.type)
         data_type = _TYPE_TO_NAV2.get(type_str)
         if data_type is None:
             continue
-        out[spec.name] = {
+        source: dict[str, typing.Any] = {
             "topic": spec.topic,
             "data_type": data_type,
             "max_obstacle_height": max_obstacle_height,
             "clearing": clearing,
             "marking": marking,
+            "obstacle_max_range": obstacle_max_range,
+            "raytrace_max_range": max_range,
+            "inf_is_valid": inf_is_valid,
         }
+        if data_type == "PointCloud2":
+            source["min_obstacle_height"] = pointcloud_min_obstacle_height
+        if extra_per_source:
+            source.update(extra_per_source)
+        out[spec.name] = source
     return out
 
 
@@ -51,22 +79,51 @@ def _load_mobile(path_str: str) -> MobileSpec:
 
 
 class SensorsDerivedYAML(YAMLFileSubstitution):
-    """Emit a temp YAML file with `observation_sources{,_string,_dict}` derived
-    from the `sensors:` block of model_params.yaml. Keeps the three nav2 costmap
-    forms in sync from one source."""
+    """Emit `observation_sources{,_string,_dict,_dict_global}` from sensors+laser range.
 
-    def __init__(self, model_params_path: launch.SomeSubstitutionsType):
+    Local uses the full lidar range; global uses shorter capped ranges and pulls per-source
+    overrides (`raytrace_max_range`, `obstacle_max_range`, `observation_persistence`) from
+    the optional `nav2.global_observation` block in caps/mobile.yaml.
+    """
+
+    _GLOBAL_DEFAULT_RAYTRACE = 6.0
+    _GLOBAL_DEFAULT_OBSTACLE = 5.0
+    _GLOBAL_DEFAULT_PERSISTENCE = 0.0
+
+    def __init__(
+        self,
+        model_params_path: launch.SomeSubstitutionsType,
+        mobile_path: launch.SomeSubstitutionsType,
+    ):
         super().__init__(path=[], default={}, substitute=False)
         self._path = launch.utilities.normalize_to_list_of_substitutions(model_params_path)
+        self._mobile_path = launch.utilities.normalize_to_list_of_substitutions(mobile_path)
 
     def perform(self, context: launch.LaunchContext) -> str:
         path_str = launch.utilities.perform_substitutions(context, self._path)
+        mobile_str = launch.utilities.perform_substitutions(context, self._mobile_path)
         sensors = ModelParams.from_yaml(path_str).sensors
-        sources = compile_sensors_to_nav2(sensors)
+        mobile = _load_mobile(mobile_str)
+        max_range = mobile.laser.range if mobile.laser is not None else _DEFAULT_LIDAR_RANGE
+
+        local_sources = compile_sensors_to_nav2(sensors, max_range=max_range)
+
+        overrides = mobile.raw.get('nav2', {}).get('global_observation', {}) or {}
+        g_raytrace = float(overrides.get('raytrace_max_range', min(max_range, self._GLOBAL_DEFAULT_RAYTRACE)))
+        g_obstacle = float(overrides.get('obstacle_max_range', min(g_raytrace, self._GLOBAL_DEFAULT_OBSTACLE)))
+        g_persistence = float(overrides.get('observation_persistence', self._GLOBAL_DEFAULT_PERSISTENCE))
+        global_sources = compile_sensors_to_nav2(
+            sensors,
+            max_range=g_raytrace,
+            obstacle_range_margin=max(0.0, g_raytrace - g_obstacle),
+            extra_per_source={'observation_persistence': g_persistence},
+        )
+
         derived = {
-            'observation_sources_string': ' '.join(sources.keys()),
-            'observation_sources': list(sources.keys()),
-            'observation_sources_dict': sources,
+            'observation_sources_string': ' '.join(local_sources.keys()),
+            'observation_sources': list(local_sources.keys()),
+            'observation_sources_dict': local_sources,
+            'observation_sources_dict_global': global_sources,
         }
         tmp = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.yaml')
         yaml.dump(derived, tmp)

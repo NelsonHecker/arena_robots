@@ -38,9 +38,10 @@ class Nav2Bringup(Bringup):
         frame: str = "",
         global_planner: str = "navfn",
         local_planner: str = "regulated_pure_pursuit",
-        inter_planner: str = "navigate_w_replanning_time",
+        inter_planner: str = "default",
         train_mode: bool = False,
         task_generator_node: str = "",
+        env_namespace: str = "",
         **_: object,
     ) -> list[Action]:
         launch_file = PathJoinSubstitution(
@@ -65,6 +66,7 @@ class Nav2Bringup(Bringup):
                     "inter_planner": inter_planner,
                     "train_mode": str(train_mode).lower(),
                     "task_generator_node": task_generator_node,
+                    "env_namespace": env_namespace,
                 }.items(),
             )
         ]

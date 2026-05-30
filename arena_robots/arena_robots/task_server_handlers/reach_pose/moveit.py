@@ -16,7 +16,7 @@ from moveit_msgs.msg import (
 from rclpy.action import ActionClient
 from shape_msgs.msg import SolidPrimitive
 
-from arena_robots.task_server_handlers import _executor_sleep
+from arena_robots.task_server_handlers import TaskHandler, _executor_sleep
 
 if TYPE_CHECKING:
     from arena_robots.bringup.arm.moveit import MoveItArmBringup
@@ -40,7 +40,7 @@ def _translate_moveit_status(code: int) -> tuple[int, str]:
     return ReachPose.Result.STATUS_ABORTED, f"MoveIt: error code {code}"
 
 
-class ReachPoseHandlerMoveIt:
+class ReachPoseHandlerMoveIt(TaskHandler[ReachPose.Goal, ReachPose.Feedback, ReachPose.Result]):
     def __init__(self, bringup: MoveItArmBringup, *, tf_buffer: object, node: object) -> None:
         self._bringup = bringup
         self._tf_buffer = tf_buffer

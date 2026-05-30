@@ -99,7 +99,7 @@ class TestNav2LaunchActions:
         args = dict(actions[0].launch_arguments)
         assert args["global_planner"] == "navfn"
         assert args["local_planner"] == "regulated_pure_pursuit"
-        assert args["inter_planner"] == "navigate_w_replanning_time"
+        assert args["inter_planner"] == "default"
 
     def test_extra_kwargs_ignored(self):
         b = self._make_bringup()
