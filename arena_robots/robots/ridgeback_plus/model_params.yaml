@@ -21,4 +21,5 @@ control:
     - joint_state_broadcaster
     - platform_velocity_controller
     - arm_controller
-  cmd_vel_topic: platform_velocity_controller/reference
+  cmd_vel_topic: platform_velocity_controller/cmd_vel
+  odom_topic: platform_velocity_controller/odom
