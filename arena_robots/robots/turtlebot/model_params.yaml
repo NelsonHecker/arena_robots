@@ -1,4 +1,5 @@
 robot_model: turtlebot
+priority: 1
 base_frame: base_link
 z_offset: 0.04
 sensors:

@@ -137,6 +137,10 @@ class ModelParams(dict[str, typing.Any]):
         return out
 
     @property
+    def priority(self) -> int:
+        return int(self.get('priority', 0))
+
+    @property
     def capabilities(self) -> list[dict[str, typing.Any]]:
         """Structured multi-adapter declaration as a list of dicts."""
         raw = self.get('capabilities', [])
