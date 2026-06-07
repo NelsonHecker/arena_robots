@@ -1,0 +1,29 @@
+robot_model: mpo700
+priority: 1
+base_frame: base_footprint
+z_offset: 0.10
+sensors:
+  - name: lidar
+    type: laserscan
+    topic: ${namespace}/scan
+    frame: front_laser_link
+  - name: lidar_points
+    type: pointcloud
+    topic: ${namespace}/scan/points
+    frame: front_laser_link
+  - name: lidar_rear
+    type: laserscan
+    topic: ${namespace}/scan/rear
+    frame: rear_laser_link
+  - name: lidar_rear_points
+    type: pointcloud
+    topic: ${namespace}/scan/rear/points
+    frame: rear_laser_link
+control:
+  mode: ros2_control
+  config: package://arena_robots/robots/mpo700/control.yaml
+  controllers:
+    - joint_state_broadcaster
+    - mpo700_base_controller
+  cmd_vel_topic: mpo700_base_controller/cmd_vel
+  odom_topic: mpo700_base_controller/odometry

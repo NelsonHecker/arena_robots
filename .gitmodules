@@ -104,3 +104,8 @@
 	branch = jazzy
 	update = none
 	robot = rskomnidirectional
+[submodule "arena_robots/robots/mpo700/meshes"]
+	path = arena_robots/robots/mpo700/meshes
+	url = https://github.com/arena-robots/mpo700.git
+	update = none
+	robot = mpo700
