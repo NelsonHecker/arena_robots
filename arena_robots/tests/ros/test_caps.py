@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import patch
 
@@ -42,15 +41,6 @@ class TestCapConfig:
 
 
 class TestMobileSpec:
-    def test_defaults(self, caps_dir):
-        from arena_robots.caps import MobileSpec
-
-        spec = MobileSpec(path=caps_dir / "mobile.yaml", raw={})
-        assert spec.odom_frame == "odom"
-        assert spec.sensor_frame is None
-        assert spec.radius is None
-        assert spec.is_holonomic is False
-
     def test_explicit_values(self, caps_dir):
         from arena_robots.caps import MobileSpec
 

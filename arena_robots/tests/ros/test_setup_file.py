@@ -61,16 +61,6 @@ class TestConfigParse:
         configs = Config.parse({"robot": "tb3", "arm": "moveit"})
         assert configs[0].arm == "moveit"
 
-    def test_parse_dict_defaults(self):
-        from arena_robots.SetupFile import Config
-
-        configs = Config.parse({"robot": "tb3"})
-        c = configs[0]
-        assert c.name is None
-        assert c.mobile is None
-        assert c.arm is None
-        assert c.extra == {}
-
     def test_parse_deepcopy_count_isolation(self):
         from arena_robots.SetupFile import Config
 

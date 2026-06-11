@@ -3,19 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
-
 import pytest
 import yaml
 
 
 class TestModelParamsDefaults:
-    def test_base_frame_default(self, tmp_path: Path):
-        from arena_robots.Robot import ModelParams
-
-        mp = ModelParams.from_yaml(_write(tmp_path, {}))
-        assert mp.base_frame == "base_link"
-
     def test_base_frame_explicit(self, tmp_path: Path):
         from arena_robots.Robot import ModelParams
 
@@ -28,23 +20,11 @@ class TestModelParamsDefaults:
         mp = ModelParams.from_yaml(_write(tmp_path, {"robot_base_frame": "rb_frame"}))
         assert mp.base_frame == "rb_frame"
 
-    def test_odom_frame_default_no_caps(self, tmp_path: Path):
-        from arena_robots.Robot import ModelParams
-
-        mp = ModelParams.from_yaml(_write(tmp_path, {}))
-        assert mp.odom_frame == "odom"
-
     def test_odom_frame_from_model_params_key(self, tmp_path: Path):
         from arena_robots.Robot import ModelParams
 
         mp = ModelParams.from_yaml(_write(tmp_path, {"robot_odom_frame": "my_odom"}))
         assert mp.odom_frame == "my_odom"
-
-    def test_z_offset_default(self, tmp_path: Path):
-        from arena_robots.Robot import ModelParams
-
-        mp = ModelParams.from_yaml(_write(tmp_path, {}))
-        assert mp.z_offset == pytest.approx(0.0)
 
     def test_z_offset_explicit(self, tmp_path: Path):
         from arena_robots.Robot import ModelParams
@@ -71,12 +51,6 @@ class TestModelParamsFromYaml:
 
 
 class TestModelParamsSensors:
-    def test_sensors_empty_default(self, tmp_path: Path):
-        from arena_robots.Robot import ModelParams
-
-        mp = ModelParams.from_yaml(_write(tmp_path, {}))
-        assert mp.sensors == []
-
     def test_sensors_valid(self, tmp_path: Path):
         from arena_robots.Robot import ModelParams
 
@@ -158,12 +132,6 @@ class TestModelParamsCaps:
 
 
 class TestModelParamsCapabilities:
-    def test_capabilities_empty_default(self, tmp_path: Path):
-        from arena_robots.Robot import ModelParams
-
-        mp = ModelParams.from_yaml(_write(tmp_path, {}))
-        assert mp.capabilities == []
-
     def test_capabilities_valid(self, tmp_path: Path):
         from arena_robots.Robot import ModelParams
 

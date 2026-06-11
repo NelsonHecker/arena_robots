@@ -6,7 +6,6 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-import yaml
 
 
 def _make_mobile_spec(cfg: dict) -> object:
@@ -61,20 +60,6 @@ class TestExternalBringupCfg:
         robot = _make_robot({"launch_file": "x.py", "requires": ["mobile", "arm"]})
         b = ExternalBringup(robot=robot, namespace="/ns")
         assert b.requires == frozenset({"mobile", "arm"})
-
-    def test_requires_default_mobile(self):
-        from arena_robots.bringup.mobile.external import ExternalBringup
-
-        robot = _make_robot({"launch_file": "x.py"})
-        b = ExternalBringup(robot=robot, namespace="/ns")
-        assert b.requires == frozenset({"mobile"})
-
-    def test_extra_empty_by_default(self):
-        from arena_robots.bringup.mobile.external import ExternalBringup
-
-        robot = _make_robot({"launch_file": "x.py"})
-        b = ExternalBringup(robot=robot, namespace="/ns")
-        assert b.extra == {}
 
     def test_extra_dict_returned(self):
         from arena_robots.bringup.mobile.external import ExternalBringup

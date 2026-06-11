@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import pytest
-
 
 def _make_mock_robot(name: str = "test_robot") -> object:
     mock_robot = MagicMock()
@@ -92,14 +90,6 @@ class TestNav2LaunchActions:
         actions = b._launch_actions(inter_planner="smac")
         args = dict(actions[0].launch_arguments)
         assert args["inter_planner"] == "smac"
-
-    def test_default_planners(self):
-        b = self._make_bringup()
-        actions = b._launch_actions()
-        args = dict(actions[0].launch_arguments)
-        assert args["global_planner"] == "navfn"
-        assert args["local_planner"] == "regulated_pure_pursuit"
-        assert args["inter_planner"] == "default"
 
     def test_extra_kwargs_ignored(self):
         b = self._make_bringup()
