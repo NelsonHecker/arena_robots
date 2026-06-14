@@ -1,5 +1,7 @@
 """Nav2 adapter launch."""
 
+import os
+
 from arena_bringup.future import PythonExpression
 from arena_bringup.substitutions import (
     LaunchArgument,
@@ -15,7 +17,8 @@ from arena_robots.nav2 import (
     SensorsDerivedYAML,
 )
 from launch import LaunchDescription
-from launch.actions import GroupAction, OpaqueFunction
+from launch.actions import GroupAction, IncludeLaunchDescription, OpaqueFunction
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node, SetRemap
 from launch_ros.descriptions import ParameterFile
@@ -189,6 +192,24 @@ def generate_launch_description():
                 ]
             ),
         ])
-        return [bringup_cmd_group]
+        result: list = [bringup_cmd_group]
+
+        controller_launch = nav2_cfg(
+            'controllers', local_planner.substitution, 'controller.launch.py'
+        ).perform(context)
+        if os.path.isfile(controller_launch):
+            result.append(
+                IncludeLaunchDescription(
+                    PythonLaunchDescriptionSource(controller_launch),
+                    launch_arguments={
+                        'namespace': namespace.substitution,
+                        'env_namespace': env_namespace.substitution,
+                        'frame': frame.substitution,
+                        'use_sim_time': use_sim_time.substitution,
+                    }.items(),
+                )
+            )
+
+        return result
 
     return LaunchDescription([*ld_items, OpaqueFunction(function=launch_setup)])
