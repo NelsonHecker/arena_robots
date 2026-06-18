@@ -41,7 +41,7 @@ def compile_sensors_to_nav2(
     margin keeps those from leaking into the costmap as concentric arcs that no later
     raytrace ever clears. `inf_is_valid` lets no-return beams clear out to `max_range`.
     `pointcloud_min_obstacle_height` is a height floor applied to 3D cloud sources only,
-    so their ground returns are dropped instead of marked (a flat LaserScan needs none).
+    so their ground returns are dropped instead of marked.
     `extra_per_source` is merged onto every emitted source last, letting callers layer
     layer-specific tunables (e.g. `observation_persistence` for the global costmap).
     """
@@ -89,6 +89,7 @@ class SensorsDerivedYAML(YAMLFileSubstitution):
     _GLOBAL_DEFAULT_RAYTRACE = 6.0
     _GLOBAL_DEFAULT_OBSTACLE = 5.0
     _GLOBAL_DEFAULT_PERSISTENCE = 0.0
+    _GLOBAL_DEFAULT_MIN_HEIGHT = 0.1
 
     def __init__(
         self,
@@ -112,10 +113,22 @@ class SensorsDerivedYAML(YAMLFileSubstitution):
         g_raytrace = float(overrides.get('raytrace_max_range', min(max_range, self._GLOBAL_DEFAULT_RAYTRACE)))
         g_obstacle = float(overrides.get('obstacle_max_range', min(g_raytrace, self._GLOBAL_DEFAULT_OBSTACLE)))
         g_persistence = float(overrides.get('observation_persistence', self._GLOBAL_DEFAULT_PERSISTENCE))
+        g_min_height = float(overrides.get('min_obstacle_height', self._GLOBAL_DEFAULT_MIN_HEIGHT))
+        g_include = overrides.get('include')
+        if g_include is not None:
+            include_names = set(g_include)
+            global_sensors = [s for s in sensors if s.name in include_names]
+        else:
+            g_exclude = {str(t) for t in overrides.get('exclude_types', ())}
+            global_sensors = [
+                s for s in sensors
+                if (s.type.value if isinstance(s.type, SensorType) else str(s.type)) not in g_exclude
+            ]
         global_sources = compile_sensors_to_nav2(
-            sensors,
+            global_sensors,
             max_range=g_raytrace,
             obstacle_range_margin=max(0.0, g_raytrace - g_obstacle),
+            pointcloud_min_obstacle_height=g_min_height,
             extra_per_source={'observation_persistence': g_persistence},
         )
 
@@ -217,6 +230,10 @@ class Nav2CollisionDerivedYAML(YAMLFileSubstitution):
         footprint_raw = raw.get('footprint')
         if isinstance(footprint_raw, list):
             out['footprint'] = stringify_float_matrix([[float(c) for c in pt] for pt in footprint_raw])
+
+        padding = mobile.footprint_padding
+        if padding is not None:
+            out['footprint_padding'] = padding
 
         polygons_raw = raw.get('polygons_dict')
         if isinstance(polygons_raw, dict) and polygons_raw:

@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- RS-LiDAR-16-style 16-beam gz gpu_lidar: emits scan (LaserScan) + scan/points
+       on the link's scoped gz topic. The cloud carries real per-beam height, so a
+       costmap min_obstacle_height separates floor returns from walls even as the base
+       pitches/rolls. Mount link/joint stay per-robot. -->
+  <xacro:macro name="gz_lidar" params="frame sensor_name:=gpu_lidar samples_h:=640 samples_v:=16 vmin:=-0.261799 vmax:=0.261799 range_min:=0.2 range_max:=12.0 update_rate:=10">
+    <gazebo reference="${frame}">
+      <sensor name="${sensor_name}" type="gpu_lidar">
+        <gz_frame_id>$(arg sim_path)/${frame}</gz_frame_id>
+        <update_rate>${update_rate}</update_rate>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>${samples_h}</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.14159</min_angle>
+              <max_angle>3.14159</max_angle>
+            </horizontal>
+            <vertical>
+              <samples>${samples_v}</samples>
+              <resolution>1</resolution>
+              <min_angle>${vmin}</min_angle>
+              <max_angle>${vmax}</max_angle>
+            </vertical>
+          </scan>
+          <range>
+            <min>${range_min}</min>
+            <max>${range_max}</max>
+            <resolution>0.01</resolution>
+          </range>
+        </lidar>
+        <always_on>1</always_on>
+        <visualize>false</visualize>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+</robot>
