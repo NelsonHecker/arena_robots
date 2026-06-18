@@ -1,0 +1,39 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 200  # Hz
+    use_sim_time: true
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    joint_group_position_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+joint_group_position_controller:
+  ros__parameters:
+    use_sim_time: true
+
+    joints:
+      - FL_hip_joint
+      - FL_thigh_joint
+      - FL_calf_joint
+      - FR_hip_joint
+      - FR_thigh_joint
+      - FR_calf_joint
+      - RL_hip_joint
+      - RL_thigh_joint
+      - RL_calf_joint
+      - RR_hip_joint
+      - RR_thigh_joint
+      - RR_calf_joint
+
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+
+    # CHAMP streams a fresh single-point JointTrajectory every gait tick, so accept
+    # partial goals and replace in-flight trajectories without an error.
+    allow_partial_joints_goal: true
+    open_loop_control: false

@@ -1,0 +1,35 @@
+robot_model: a1
+priority: 1
+base_frame: base
+z_offset: 0.32
+sensors:
+  - name: camera_face_image
+    type: image
+    topic: ${namespace}/camera_face/image
+    frame: camera_optical_face
+  - name: camera_face_info
+    type: camera_info
+    topic: ${namespace}/camera_face/camera_info
+    frame: camera_optical_face
+  - name: camera_face_points
+    type: pointcloud
+    topic: ${namespace}/camera_face/points
+    frame: camera_optical_face
+  - name: lidar
+    type: laserscan
+    topic: ${namespace}/lidar
+    frame: lidar
+  - name: lidar_points
+    type: pointcloud
+    topic: ${namespace}/lidar/points
+    frame: lidar
+control:
+  mode: ros2_control
+  config: package://arena_robots/robots/a1/control.yaml
+  controllers:
+    - joint_state_broadcaster
+    - joint_group_position_controller
+  # CHAMP consumes the raw cmd_vel (Twist) directly, so the stamped output is
+  # unused; the leg joints are driven by the locomotion sidecar, not cmd_vel.
+  cmd_vel_topic: cmd_vel_stamped
+  odom_topic: odom

@@ -113,10 +113,15 @@
 	path = deps/champ
 	url = https://github.com/arena-robots/champ
 	branch = ros2
-	robot = go1
+	robot = go1 a1
 	update = none
 [submodule "arena_robots/robots/go1/meshes"]
 	path = arena_robots/robots/go1/meshes
 	url = https://github.com/arena-robots/go1.git
 	robot = go1
+	update = none
+[submodule "arena_robots/robots/a1/meshes"]
+	path = arena_robots/robots/a1/meshes
+	url = https://github.com/arena-robots/a1.git
+	robot = a1
 	update = none
