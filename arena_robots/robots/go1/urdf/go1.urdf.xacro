@@ -1,0 +1,162 @@
+<?xml version="1.0"?>
+<robot name="go1" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:arg name="prefix" default="" />
+  <xacro:arg name="sim_path" default="" />
+  <xacro:arg name="namespace" default="" />
+  <xacro:arg name="gazebo_controllers" default="" />
+
+  <xacro:include filename="$(find arena_robots)/robots/go1/urdf/include/const.xacro" />
+  <xacro:include filename="$(find arena_robots)/robots/go1/urdf/include/materials.xacro" />
+  <xacro:include filename="$(find arena_robots)/robots/go1/urdf/include/leg.xacro" />
+  <xacro:include filename="$(find arena_robots)/robots/go1/urdf/include/depthcamera.xacro" />
+  <xacro:include filename="$(find arena_robots)/urdf/gz_lidar.xacro" />
+
+  <link name="base">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <joint name="floating_base" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="base"/>
+    <child link="trunk"/>
+  </joint>
+
+  <link name="trunk">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://arena_robots/robots/go1/meshes/trunk.dae" scale="1 1 1"/>
+      </geometry>
+      <material name="grey"/>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="${trunk_length} ${trunk_width} ${trunk_height}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="${trunk_com_x} ${trunk_com_y} ${trunk_com_z}"/>
+      <mass value="${trunk_mass}"/>
+      <inertia
+        ixx="${trunk_ixx}" ixy="${trunk_ixy}" ixz="${trunk_ixz}"
+        iyy="${trunk_iyy}" iyz="${trunk_iyz}"
+        izz="${trunk_izz}"/>
+    </inertial>
+  </link>
+
+  <joint name="imu_joint" type="fixed">
+    <parent link="trunk"/>
+    <child link="imu_link"/>
+    <origin rpy="0 0 0" xyz="-0.01592 -0.06659 -0.00617"/>
+  </joint>
+
+  <link name="imu_link">
+    <inertial>
+      <mass value="0.001"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+  </link>
+
+  <xacro:leg name="FR" mirror="-1" mirror_dae="False" front_hind="1" front_hind_dae="True">
+    <origin rpy="0 0 0" xyz="${leg_offset_x} ${-leg_offset_y} 0"/>
+  </xacro:leg>
+  <xacro:leg name="FL" mirror="1" mirror_dae="True" front_hind="1" front_hind_dae="True">
+    <origin rpy="0 0 0" xyz="${leg_offset_x} ${leg_offset_y} 0"/>
+  </xacro:leg>
+  <xacro:leg name="RR" mirror="-1" mirror_dae="False" front_hind="-1" front_hind_dae="False">
+    <origin rpy="0 0 0" xyz="${-leg_offset_x} ${-leg_offset_y} 0"/>
+  </xacro:leg>
+  <xacro:leg name="RL" mirror="1" mirror_dae="True" front_hind="-1" front_hind_dae="False">
+    <origin rpy="0 0 0" xyz="${-leg_offset_x} ${leg_offset_y} 0"/>
+  </xacro:leg>
+
+  <!-- Go1 ships 5 depth/AI cameras (face, chin, left, right, rearDown). Only the
+       front (face) camera is active for now; each rgbd pass is render-heavy, so the
+       other 4 are commented out until needed (re-enable alongside mappings.yaml +
+       model_params.yaml). Drop resolution in depthcamera.xacro if RTF suffers. -->
+  <xacro:go1_depth_camera camID="1" name="face">
+    <origin rpy="${PI} 0 0" xyz="0.2785 0.0125 0.0167"/>
+  </xacro:go1_depth_camera>
+  <!--
+  <xacro:go1_depth_camera camID="2" name="chin">
+    <origin rpy="${PI} ${PI/2} 0" xyz="0.2522 0.0125 -0.0436"/>
+  </xacro:go1_depth_camera>
+  <xacro:go1_depth_camera camID="3" name="left">
+    <origin rpy="${PI} 0.2618 ${PI/2}" xyz="-0.066 0.082 -0.0176"/>
+  </xacro:go1_depth_camera>
+  <xacro:go1_depth_camera camID="4" name="right">
+    <origin rpy="${PI} 0.2618 ${-PI/2}" xyz="-0.041 -0.082 -0.0176"/>
+  </xacro:go1_depth_camera>
+  <xacro:go1_depth_camera camID="5" name="rearDown">
+    <origin rpy="${PI} ${PI/2} 0" xyz="-0.0825 0.0125 -0.04365"/>
+  </xacro:go1_depth_camera>
+  -->
+
+  <joint name="lidar_joint" type="fixed">
+    <parent link="trunk" />
+    <child link="lidar" />
+    <origin xyz="0 0 0.10" rpy="0 0 0" />
+  </joint>
+  <link name="lidar">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <cylinder length="0.05" radius="0.04" />
+      </geometry>
+      <material name="grey" />
+    </visual>
+    <inertial>
+      <mass value="1e-5" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6" />
+    </inertial>
+  </link>
+  <xacro:gz_lidar frame="lidar" />
+
+  <xacro:include filename="$(find arena_robots)/robots/go1/urdf/base_hw/go1.ros2_control.urdf" />
+  <xacro:go1_base_hw_controller/>
+
+  <gazebo>
+    <plugin filename="libgz_ros2_control-system.so" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>$(arg gazebo_controllers)</parameters>
+      <ros>
+        <namespace>$(arg namespace)</namespace>
+      </ros>
+    </plugin>
+  </gazebo>
+
+  <gazebo>
+    <plugin filename="gz-sim-pose-publisher-system" name="gz::sim::systems::PosePublisher">
+      <publish_model_pose>true</publish_model_pose>
+      <publish_link_pose>false</publish_link_pose>
+      <publish_collision_pose>false</publish_collision_pose>
+      <publish_visual_pose>false</publish_visual_pose>
+      <publish_sensor_pose>false</publish_sensor_pose>
+      <publish_nested_model_pose>true</publish_nested_model_pose>
+      <use_pose_vector_msg>false</use_pose_vector_msg>
+    </plugin>
+  </gazebo>
+
+  <!-- Foot traction: legged stance needs high friction at the contact spheres. -->
+  <xacro:macro name="foot_friction" params="leg">
+    <gazebo reference="${leg}_foot">
+      <mu1>0.8</mu1>
+      <mu2>0.8</mu2>
+      <kp>1000000.0</kp>
+      <kd>100.0</kd>
+    </gazebo>
+  </xacro:macro>
+  <xacro:foot_friction leg="FL"/>
+  <xacro:foot_friction leg="FR"/>
+  <xacro:foot_friction leg="RL"/>
+  <xacro:foot_friction leg="RR"/>
+
+</robot>

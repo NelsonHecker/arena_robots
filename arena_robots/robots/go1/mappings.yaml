@@ -1,0 +1,93 @@
+- gz_topic: /model/{robot_name}/pose
+  ros_topic: pose
+  ros_type: geometry_msgs/msg/PoseStamped
+  gz_type: gz.msgs.Pose
+  direction: '['
+- gz_topic: '{world}/model/{robot_name}/link/base/sensor/camera_face/image'
+  ros_topic: camera_face/image
+  ros_type: sensor_msgs/msg/Image
+  gz_type: gz.msgs.Image
+  direction: '['
+- gz_topic: '{world}/model/{robot_name}/link/base/sensor/camera_face/camera_info'
+  ros_topic: camera_face/camera_info
+  ros_type: sensor_msgs/msg/CameraInfo
+  gz_type: gz.msgs.CameraInfo
+  direction: '['
+- gz_topic: '{world}/model/{robot_name}/link/base/sensor/camera_face/points'
+  ros_topic: camera_face/points
+  ros_type: sensor_msgs/msg/PointCloud2
+  gz_type: gz.msgs.PointCloudPacked
+  direction: '['
+# Only the front (face) camera is active for now. The chin/left/right/rearDown
+# bridges are commented out to save render cost; re-enable alongside the xacro
+# instantiations + model_params.yaml sensors.
+# - gz_topic: '{world}/model/{robot_name}/link/base/sensor/camera_chin/image'
+#   ros_topic: camera_chin/image
+#   ros_type: sensor_msgs/msg/Image
+#   gz_type: gz.msgs.Image
+#   direction: '['
+# - gz_topic: '{world}/model/{robot_name}/link/base/sensor/camera_chin/camera_info'
+#   ros_topic: camera_chin/camera_info
+#   ros_type: sensor_msgs/msg/CameraInfo
+#   gz_type: gz.msgs.CameraInfo
+#   direction: '['
+# - gz_topic: '{world}/model/{robot_name}/link/base/sensor/camera_chin/points'
+#   ros_topic: camera_chin/points
+#   ros_type: sensor_msgs/msg/PointCloud2
+#   gz_type: gz.msgs.PointCloudPacked
+#   direction: '['
+# - gz_topic: '{world}/model/{robot_name}/link/base/sensor/camera_left/image'
+#   ros_topic: camera_left/image
+#   ros_type: sensor_msgs/msg/Image
+#   gz_type: gz.msgs.Image
+#   direction: '['
+# - gz_topic: '{world}/model/{robot_name}/link/base/sensor/camera_left/camera_info'
+#   ros_topic: camera_left/camera_info
+#   ros_type: sensor_msgs/msg/CameraInfo
+#   gz_type: gz.msgs.CameraInfo
+#   direction: '['
+# - gz_topic: '{world}/model/{robot_name}/link/base/sensor/camera_left/points'
+#   ros_topic: camera_left/points
+#   ros_type: sensor_msgs/msg/PointCloud2
+#   gz_type: gz.msgs.PointCloudPacked
+#   direction: '['
+# - gz_topic: '{world}/model/{robot_name}/link/base/sensor/camera_right/image'
+#   ros_topic: camera_right/image
+#   ros_type: sensor_msgs/msg/Image
+#   gz_type: gz.msgs.Image
+#   direction: '['
+# - gz_topic: '{world}/model/{robot_name}/link/base/sensor/camera_right/camera_info'
+#   ros_topic: camera_right/camera_info
+#   ros_type: sensor_msgs/msg/CameraInfo
+#   gz_type: gz.msgs.CameraInfo
+#   direction: '['
+# - gz_topic: '{world}/model/{robot_name}/link/base/sensor/camera_right/points'
+#   ros_topic: camera_right/points
+#   ros_type: sensor_msgs/msg/PointCloud2
+#   gz_type: gz.msgs.PointCloudPacked
+#   direction: '['
+# - gz_topic: '{world}/model/{robot_name}/link/base/sensor/camera_rearDown/image'
+#   ros_topic: camera_rearDown/image
+#   ros_type: sensor_msgs/msg/Image
+#   gz_type: gz.msgs.Image
+#   direction: '['
+# - gz_topic: '{world}/model/{robot_name}/link/base/sensor/camera_rearDown/camera_info'
+#   ros_topic: camera_rearDown/camera_info
+#   ros_type: sensor_msgs/msg/CameraInfo
+#   gz_type: gz.msgs.CameraInfo
+#   direction: '['
+# - gz_topic: '{world}/model/{robot_name}/link/base/sensor/camera_rearDown/points'
+#   ros_topic: camera_rearDown/points
+#   ros_type: sensor_msgs/msg/PointCloud2
+#   gz_type: gz.msgs.PointCloudPacked
+#   direction: '['
+- gz_topic: '{world}/model/{robot_name}/link/base/sensor/gpu_lidar/scan'
+  ros_topic: lidar
+  ros_type: sensor_msgs/msg/LaserScan
+  gz_type: gz.msgs.LaserScan
+  direction: '['
+- gz_topic: '{world}/model/{robot_name}/link/base/sensor/gpu_lidar/scan/points'
+  ros_topic: lidar/points
+  ros_type: sensor_msgs/msg/PointCloud2
+  gz_type: gz.msgs.PointCloudPacked
+  direction: '['

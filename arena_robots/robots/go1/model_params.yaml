@@ -1,0 +1,86 @@
+robot_model: go1
+priority: 1
+base_frame: base
+z_offset: 0.45
+sensors:
+  - name: camera_face_image
+    type: image
+    topic: ${namespace}/camera_face/image
+    frame: camera_optical_face
+  - name: camera_face_info
+    type: camera_info
+    topic: ${namespace}/camera_face/camera_info
+    frame: camera_optical_face
+  - name: camera_face_points
+    type: pointcloud
+    topic: ${namespace}/camera_face/points
+    frame: camera_optical_face
+  # Only the front (face) camera is active for now. The chin/left/right/rearDown
+  # sensors are commented out to save render cost; re-enable alongside the xacro
+  # instantiations + mappings.yaml bridges.
+  # - name: camera_chin_image
+  #   type: image
+  #   topic: ${namespace}/camera_chin/image
+  #   frame: camera_optical_chin
+  # - name: camera_chin_info
+  #   type: camera_info
+  #   topic: ${namespace}/camera_chin/camera_info
+  #   frame: camera_optical_chin
+  # - name: camera_chin_points
+  #   type: pointcloud
+  #   topic: ${namespace}/camera_chin/points
+  #   frame: camera_optical_chin
+  # - name: camera_left_image
+  #   type: image
+  #   topic: ${namespace}/camera_left/image
+  #   frame: camera_optical_left
+  # - name: camera_left_info
+  #   type: camera_info
+  #   topic: ${namespace}/camera_left/camera_info
+  #   frame: camera_optical_left
+  # - name: camera_left_points
+  #   type: pointcloud
+  #   topic: ${namespace}/camera_left/points
+  #   frame: camera_optical_left
+  # - name: camera_right_image
+  #   type: image
+  #   topic: ${namespace}/camera_right/image
+  #   frame: camera_optical_right
+  # - name: camera_right_info
+  #   type: camera_info
+  #   topic: ${namespace}/camera_right/camera_info
+  #   frame: camera_optical_right
+  # - name: camera_right_points
+  #   type: pointcloud
+  #   topic: ${namespace}/camera_right/points
+  #   frame: camera_optical_right
+  # - name: camera_rearDown_image
+  #   type: image
+  #   topic: ${namespace}/camera_rearDown/image
+  #   frame: camera_optical_rearDown
+  # - name: camera_rearDown_info
+  #   type: camera_info
+  #   topic: ${namespace}/camera_rearDown/camera_info
+  #   frame: camera_optical_rearDown
+  # - name: camera_rearDown_points
+  #   type: pointcloud
+  #   topic: ${namespace}/camera_rearDown/points
+  #   frame: camera_optical_rearDown
+  - name: lidar
+    type: laserscan
+    topic: ${namespace}/lidar
+    frame: lidar
+  - name: lidar_points
+    type: pointcloud
+    topic: ${namespace}/lidar/points
+    frame: lidar
+control:
+  mode: ros2_control
+  config: package://arena_robots/robots/go1/control.yaml
+  controllers:
+    - joint_state_broadcaster
+    - joint_group_position_controller
+  # CHAMP consumes the raw cmd_vel (Twist) directly, so the stamped output is
+  # unused; the leg joints are driven by the locomotion sidecar, not cmd_vel.
+  cmd_vel_topic: cmd_vel_stamped
+  odom_topic: odom

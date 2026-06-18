@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<!-- gz-sim port of go1_description's depthCamera (upstream used the ROS1
+     libgazebo_ros_openni_kinect plugin). One rgbd_camera per mount: emits
+     image + depth_image + points + camera_info on the link's scoped gz topic. -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:include filename="$(find arena_robots)/urdf/gz_rgbd_camera.xacro"/>
+  <xacro:macro name="go1_depth_camera" params="camID name *origin">
+    <joint name="camera_joint_${name}" type="fixed">
+      <xacro:insert_block name="origin"/>
+      <parent link="trunk"/>
+      <child link="camera_${name}"/>
+    </joint>
+
+    <link name="camera_${name}">
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size=".001 .001 .001"/>
+        </geometry>
+      </collision>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://arena_robots/robots/go1/meshes/depthCamera.dae" scale="1 1 1"/>
+        </geometry>
+        <material name="grey"/>
+      </visual>
+      <inertial>
+        <mass value="1e-5"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
+      </inertial>
+    </link>
+
+    <joint name="camera_optical_joint_${name}" type="fixed">
+      <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+      <parent link="camera_${name}"/>
+      <child link="camera_optical_${name}"/>
+    </joint>
+
+    <link name="camera_optical_${name}"/>
+
+    <xacro:gz_rgbd_camera frame="camera_${name}" sensor_name="camera_${name}"
+                          fov="2.094" width="928" height="800" near="0.1" far="5.0"
+                          update_rate="16" pose="0.04 0 0 0 0 0"/>
+  </xacro:macro>
+</robot>
