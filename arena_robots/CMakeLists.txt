@@ -27,6 +27,11 @@ install(
   DESTINATION share/${PROJECT_NAME}/launch
 )
 
+install(
+  DIRECTORY urdf/
+  DESTINATION share/${PROJECT_NAME}/urdf
+)
+
 ament_python_install_package(${PROJECT_NAME})
 
 install(PROGRAMS scripts/task_server DESTINATION lib/${PROJECT_NAME})

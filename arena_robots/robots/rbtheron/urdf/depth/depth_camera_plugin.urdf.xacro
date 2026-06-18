@@ -88,7 +88,7 @@
             
           <camera_info_topic>${node_namespace}/${node_name}/depth/camera_info</camera_info_topic>
           <topic>${node_namespace}/${node_name}/depth/image_raw</topic>
-          <gz_frame_id>${optical_frame}</gz_frame_id>
+          <gz_frame_id>$(arg sim_path)/${reference_frame}</gz_frame_id>
           <min_depth>${min_depth}</min_depth>
           <max_depth>${max_depth}</max_depth>
         </sensor>

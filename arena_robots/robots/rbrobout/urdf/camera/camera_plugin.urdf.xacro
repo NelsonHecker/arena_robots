@@ -79,7 +79,7 @@
             <visualize>false</visualize>
 
             <topic>${node_namespace}/${node_name}/color/image_raw</topic>
-            <gz_frame_id>${optical_frame}</gz_frame_id>
+            <gz_frame_id>$(arg sim_path)/${reference_frame}</gz_frame_id>
             <camera_info_topic>${node_namespace}/${node_name}/color/camera_info</camera_info_topic>
         </sensor>
       </gazebo>

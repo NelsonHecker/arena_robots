@@ -2,6 +2,7 @@
 <robot name="turtlebot" xmlns:xacro="http://ros.org/wiki/xacro">
   <xacro:arg name="namespace" default=""/>
   <xacro:arg name="gazebo_controllers" default=""/>
+  <xacro:arg name="sim_path" default=""/>
 
   <!-- Base create3 model -->
   <xacro:include filename="$(find irobot_create_description)/urdf/create3.urdf.xacro">

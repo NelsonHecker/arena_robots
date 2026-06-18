@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- gz rgbd_camera /points come out in body axes, so gz_frame_id is the body
+       frame (not optical); optical_frame_id omitted (stamping it rotates the cloud). -->
+  <xacro:macro name="gz_rgbd_camera" params="frame sensor_name fov width height near far update_rate:=15 pose:='0 0 0 0 0 0'">
+    <gazebo reference="${frame}">
+      <sensor name="${sensor_name}" type="rgbd_camera">
+        <pose>${pose}</pose>
+        <gz_frame_id>$(arg sim_path)/${frame}</gz_frame_id>
+        <update_rate>${update_rate}</update_rate>
+        <camera>
+          <horizontal_fov>${fov}</horizontal_fov>
+          <image>
+            <width>${width}</width>
+            <height>${height}</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>${near}</near>
+            <far>${far}</far>
+          </clip>
+        </camera>
+        <always_on>1</always_on>
+        <visualize>false</visualize>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+</robot>

@@ -3,6 +3,7 @@
 
 <xacro:macro name="oakd" params="name:=oakd parent_link *origin model:=pro">
   <xacro:include filename="$(find irobot_create_description)/urdf/common_properties.urdf.xacro"/>
+  <xacro:include filename="$(find arena_robots)/urdf/gz_rgbd_camera.xacro"/>
 
   <xacro:property name="mass"       value="0.061"/>
   <xacro:property name="baseline" value="0.075" />
@@ -187,25 +188,10 @@
   </gazebo>
 
   <!-- Gazebo links and joints -->
+  <xacro:gz_rgbd_camera frame="${name}_rgb_camera_frame" sensor_name="rgbd_camera"
+                        fov="1.25" width="320" height="240" near="0.3" far="100" update_rate="30"/>
+
   <gazebo reference="${name}_rgb_camera_frame">
-    <sensor name="rgbd_camera" type="rgbd_camera">
-      <gz_frame_id>$(arg name)/${name}_rgb_camera_optical_frame</gz_frame_id>
-      <camera>
-        <horizontal_fov>1.25</horizontal_fov>
-        <image>
-          <width>320</width>
-          <height>240</height>
-        </image>
-        <clip>
-          <near>0.3</near>
-          <far>100</far>
-        </clip>
-        <optical_frame_id>$(arg name)/${name}_rgb_camera_optical_frame</optical_frame_id>
-      </camera>
-      <always_on>1</always_on>
-      <update_rate>30</update_rate>
-      <visualize>true</visualize>
-    </sensor>
     <xacro:material_darkgray/>
   </gazebo>
 
