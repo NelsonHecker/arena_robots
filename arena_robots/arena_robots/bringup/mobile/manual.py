@@ -41,6 +41,7 @@ class ManualBringup(Bringup):
                 executable="rqt_robot_steering",
                 name="rqt_robot_steering",
                 output="screen",
+                parameters=[{"default_stamped": False}],
                 remappings=[("/cmd_vel", str(self.cmd_vel_topic))],
             )
         ]
