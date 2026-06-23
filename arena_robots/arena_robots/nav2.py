@@ -120,10 +120,7 @@ class SensorsDerivedYAML(YAMLFileSubstitution):
             global_sensors = [s for s in sensors if s.name in include_names]
         else:
             g_exclude = {str(t) for t in overrides.get('exclude_types', ())}
-            global_sensors = [
-                s for s in sensors
-                if (s.type.value if isinstance(s.type, SensorType) else str(s.type)) not in g_exclude
-            ]
+            global_sensors = [s for s in sensors if (s.type.value if isinstance(s.type, SensorType) else str(s.type)) not in g_exclude]
         global_sources = compile_sensors_to_nav2(
             global_sensors,
             max_range=g_raytrace,
