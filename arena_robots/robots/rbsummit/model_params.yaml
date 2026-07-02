@@ -6,22 +6,27 @@ sensors:
     type: laserscan
     topic: ${namespace}/lidar
     frame: robot_front_laser_link
+    sensor: top_lidar
   - name: lidar_points
     type: pointcloud
     topic: ${namespace}/lidar/points
     frame: robot_front_laser_link
+    sensor: top_lidar
   - name: imu
     type: imu
     topic: ${namespace}/imu/data
     frame: imu_sensor
+    sensor: imu_sensor
   - name: rgbd_camera_image
     type: image
     topic: ${namespace}/rgbd_camera/image
     frame: front_camera_color
+    sensor: front_camera_color
   - name: rgbd_camera_info
     type: camera_info
     topic: ${namespace}/rgbd_camera/camera_info
     frame: front_camera_color
+    sensor: front_camera_color
 control:
   mode: ros2_control
   config: package://arena_robots/robots/rbsummit/control.yaml

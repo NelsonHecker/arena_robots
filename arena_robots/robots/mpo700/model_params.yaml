@@ -7,18 +7,22 @@ sensors:
     type: laserscan
     topic: ${namespace}/scan
     frame: front_laser_link
+    sensor: front_laser
   - name: lidar_points
     type: pointcloud
     topic: ${namespace}/scan/points
     frame: front_laser_link
+    sensor: front_laser
   - name: lidar_rear
     type: laserscan
     topic: ${namespace}/scan/rear
     frame: rear_laser_link
+    sensor: rear_laser
   - name: lidar_rear_points
     type: pointcloud
     topic: ${namespace}/scan/rear/points
     frame: rear_laser_link
+    sensor: rear_laser
 control:
   mode: ros2_control
   config: package://arena_robots/robots/mpo700/control.yaml

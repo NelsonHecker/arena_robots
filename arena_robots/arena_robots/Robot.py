@@ -132,6 +132,7 @@ class ModelParams(dict[str, typing.Any]):
                     type=str(entry['type']),
                     topic=str(entry['topic']),
                     frame=str(entry['frame']),
+                    sensor=str(entry['sensor']) if 'sensor' in entry else None,
                 )
             )
         return out

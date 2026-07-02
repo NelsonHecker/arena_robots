@@ -6,34 +6,42 @@ sensors:
     type: laserscan
     topic: ${namespace}/front_laser
     frame: lidar
+    sensor: front_laser
   - name: front_laser_points
     type: pointcloud
     topic: ${namespace}/front_laser/points
     frame: lidar
+    sensor: front_laser
   - name: rear_laser
     type: laserscan
     topic: ${namespace}/rear_laser
     frame: lidar
+    sensor: rear_laser
   - name: rear_laser_points
     type: pointcloud
     topic: ${namespace}/rear_laser/points
     frame: lidar
+    sensor: rear_laser
   - name: imu
     type: imu
     topic: ${namespace}/imu/data
     frame: imu_sensor
+    sensor: imu_sensor
   - name: rgbd_camera_info
     type: camera_info
     topic: ${namespace}/rgbd_camera/camera_info
     frame: realsense_front_camera
+    sensor: realsense_front_camera
   - name: rgbd_camera_depth
     type: depth
     topic: ${namespace}/rgbd_camera/depth_image
     frame: realsense_front_camera
+    sensor: realsense_front_camera
   - name: rgbd_camera_points
     type: pointcloud
-    topic: ${namespace}/rgbd_camera/points
+    topic: ${namespace}/rgbd_camera/depth_image/points
     frame: realsense_front_camera
+    sensor: realsense_front_camera
 control:
   mode: ros2_control
   config: package://arena_robots/robots/boxer/control.yaml

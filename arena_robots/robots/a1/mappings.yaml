@@ -3,28 +3,3 @@
   ros_type: geometry_msgs/msg/PoseStamped
   gz_type: gz.msgs.Pose
   direction: '['
-- gz_topic: '{world}/model/{robot_name}/link/base/sensor/camera_face/image'
-  ros_topic: camera_face/image
-  ros_type: sensor_msgs/msg/Image
-  gz_type: gz.msgs.Image
-  direction: '['
-- gz_topic: '{world}/model/{robot_name}/link/base/sensor/camera_face/camera_info'
-  ros_topic: camera_face/camera_info
-  ros_type: sensor_msgs/msg/CameraInfo
-  gz_type: gz.msgs.CameraInfo
-  direction: '['
-- gz_topic: '{world}/model/{robot_name}/link/base/sensor/camera_face/points'
-  ros_topic: camera_face/points
-  ros_type: sensor_msgs/msg/PointCloud2
-  gz_type: gz.msgs.PointCloudPacked
-  direction: '['
-- gz_topic: '{world}/model/{robot_name}/link/base/sensor/gpu_lidar/scan'
-  ros_topic: lidar
-  ros_type: sensor_msgs/msg/LaserScan
-  gz_type: gz.msgs.LaserScan
-  direction: '['
-- gz_topic: '{world}/model/{robot_name}/link/base/sensor/gpu_lidar/scan/points'
-  ros_topic: lidar/points
-  ros_type: sensor_msgs/msg/PointCloud2
-  gz_type: gz.msgs.PointCloudPacked
-  direction: '['

@@ -6,22 +6,27 @@ sensors:
     type: laserscan
     topic: ${namespace}/lidar
     frame: robot_front_laser_link
+    sensor: front_laser
   - name: lidar_points
     type: pointcloud
     topic: ${namespace}/lidar/points
     frame: robot_front_laser_link
+    sensor: front_laser
   - name: lidar_rear
     type: laserscan
     topic: ${namespace}/lidar/rear
     frame: rear_laser
+    sensor: rear_laser
   - name: lidar_rear_points
     type: pointcloud
     topic: ${namespace}/lidar/rear/points
     frame: rear_laser
+    sensor: rear_laser
   - name: imu
     type: imu
     topic: ${namespace}/imu/data
     frame: imu_sensor
+    sensor: imu_sensor
 control:
   mode: ros2_control
   config: package://arena_robots/robots/rbrobout/control.yaml

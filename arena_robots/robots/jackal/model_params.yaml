@@ -7,14 +7,17 @@ sensors:
     type: laserscan
     topic: ${namespace}/lidar
     frame: lidar
+    sensor: gpu_lidar
   - name: lidar_points
     type: pointcloud
     topic: ${namespace}/lidar/points
     frame: lidar
+    sensor: gpu_lidar
   - name: imu
     type: imu
     topic: ${namespace}/imu/data
     frame: imu_sensor
+    sensor: imu_sensor
 control:
   mode: ros2_control
   config: package://arena_robots/robots/jackal/control.yaml
