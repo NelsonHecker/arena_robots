@@ -23,9 +23,6 @@
 
   <xacro:rbrobout prefix="$(arg prefix)" gazebo_ignition="$(arg gazebo_ignition)"/>
 
-  <!-- SENSORS: migrated to the component catalog (assembly.yaml, Stage M); attached
-       by the per-robot wrapper xacro (catalog.render_wrapper_xacro), not here. -->
-
   <!-- ros2_control hardware block (always active; gz plugin loaded via rbrobout.gazebo) -->
   <xacro:rbrobout_base_hw_controller/>
 

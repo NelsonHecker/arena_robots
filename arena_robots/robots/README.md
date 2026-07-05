@@ -181,6 +181,59 @@ Simulator ⇄ ROS2 topic bridge declarations, as a JSON array. Each entry:
 `{robot_name}` and `{world}` are substituted at runtime. See
 [`husky/mappings.yaml`](husky/mappings.yaml).
 
+Hand-authored rows carry only what the catalog cannot derive: `pose`, ros2_control
+plumbing (`odometry`/`cmd_vel`/`joint_states`), and `contact` sensors. Bridge rows for
+catalog-derivable sensor types (laserscan, pointcloud, imu, image, depth, camera_info)
+are generated at runtime from `effective_sensors` and deduped against this file, so
+never duplicate them here.
+
+### `assembly.yaml` — migrated robots only
+
+Sibling of `model_params.yaml` (deliberately not inside it: the existing scalar
+`priority:` field would collide). Its presence declares the robot fully migrated to the
+component catalog: sensors come from `components/` via mounts, and the chassis xacro
+carries no sensor invocations.
+
+```yaml
+prefix: ""            # frame-prefix convention; omit for the Robotnik "robot_" default
+mounts:
+  front_laser:        # mount names adopt the legacy frame names
+    parent: chassis_link
+    xyz: [0.53, 0.33, 0.1145]     # verbatim from the pre-migration xacro invocation
+    rpy: [3.141592653589793, 0, 0.7853981633974483]
+    accepts: [lidar]
+priority:
+  lidar: [front_laser]            # preference order for allocation (fallback: any accepting mount)
+defaults:
+  lidar:
+    - variant: sick_s300
+      mount: front_laser
+      overrides: {name: lidar_rear, topic: scan/rear}   # per-instance tuning lives HERE
+```
+
+Requests (`robot:=name[lidar=x,...]`) resolve against this file with replace-on-touch
+semantics; see the grammar section in
+`task_generator/task_generator/manager/README.md`.
+
+### Migrating a robot (Stage M)
+
+1. **Golden capture first**: render the pre-migration URDF via xacro in-container and
+   save to `tests/golden/<name>_premigration.urdf` (strip the container wrapper's
+   non-XML stdout prefix; verify it parses).
+2. Author/reuse `components/` entries (see [components/README.md](../components/README.md)).
+3. Write `assembly.yaml` with mount origins copied verbatim from the xacro invocations
+   (verify each sensor's actual parent link; robots differ).
+4. Strip ONLY the sensor invocations + now-unused includes from the chassis xacro,
+   leaving no comment behind; never delete macro files, other robots may include
+   them. Ensure
+   the wrapper-contract args exist (`namespace`, `prefix`, `gazebo_classic`,
+   `gazebo_ignition`) with defaults preserving legacy values.
+5. Add `tests/test_<name>_parity.py`: effective-sensors parity
+   (`effective_sensors({}) == model_params.sensors`) + canonicalized URDF structural
+   parity against the golden.
+6. Parity reproduces known drift byte-identically; migration is not a bug-fix
+   opportunity. Dead (env-gated Gazebo-Classic) blocks stay untouched.
+
 ## Optional files
 
 | Path | Purpose |
@@ -207,6 +260,8 @@ their URDFs reference `package://jackal_description/…` etc., supplied by
 3. Write `caps/mobile.yaml` (every robot has a mobile base). Add `caps/arm.yaml`
    and/or `caps/lift.yaml` if the robot has those subsystems.
 4. (Optional) add `urdf/<name>.urdf.xacro` and/or a `meshes/` submodule.
+   For catalog-migrated sensors, add `assembly.yaml` + parity tests (see
+   "Migrating a robot (Stage M)" above).
 5. If the robot ships an upstream ROS package, add it as a submodule with
    `robot = <name>` (and `update = none`) in `.gitmodules`.
 6. `arena feature robots add <name>` to fetch any submodules.

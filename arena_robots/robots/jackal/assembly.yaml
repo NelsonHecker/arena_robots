@@ -1,0 +1,23 @@
+# prefix: "" is intentional: Clearpath chassis uses unprefixed base_link (base_frame: base_link, not robot_base_link).
+prefix: ""
+mounts:
+  lidar:
+    parent: chassis_link
+    xyz: [0.0, 0.0, 0.142]
+    rpy: [0, 0, 0]
+    accepts: [lidar]
+  imu:
+    parent: chassis_link
+    xyz: [0, 0, 0]
+    rpy: [0, 0, 0]
+    accepts: [imu]
+priority:
+  lidar: [lidar]
+  imu: [imu]
+defaults:
+  lidar:
+    - variant: jackal_default
+      mount: lidar
+  imu:
+    - variant: jackal_default
+      mount: imu

@@ -1,0 +1,24 @@
+# caps/mobile.yaml's laser.angle (+-135deg) is narrower than the URDF's actual FOV
+# (+-180deg, unoverridden macro default): known pre-existing drift, kept as-is.
+prefix: ""
+mounts:
+  lidar:
+    parent: base
+    xyz: [0, 0, 0.3]
+    rpy: [0, 0, 0]
+    accepts: [lidar]
+  imu:
+    parent: base
+    xyz: [0, 0, 0]
+    rpy: [0, 0, 0]
+    accepts: [imu]
+priority:
+  lidar: [lidar]
+  imu: [imu]
+defaults:
+  lidar:
+    - variant: arena_default
+      mount: lidar
+  imu:
+    - variant: arena_default
+      mount: imu

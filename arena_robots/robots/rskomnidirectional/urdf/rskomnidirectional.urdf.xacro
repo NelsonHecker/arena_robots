@@ -8,9 +8,6 @@
   <xacro:arg name="gazebo_classic" default="false"/>
   <xacro:arg name="gazebo_ignition" default="true"/>
 
-  <!-- SENSORS: migrated to the component catalog (assembly.yaml, Stage M); attached
-       by the per-robot wrapper xacro (catalog.render_wrapper_xacro), not here. -->
-
   <xacro:include filename="$(find arena_robots)/robots/rskomnidirectional/urdf/base_hw/rskomnidirectional.ros2_control.urdf"/>
   <xacro:rskomnidirectional_base_hw_controller/>
 

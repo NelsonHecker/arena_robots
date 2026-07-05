@@ -18,10 +18,6 @@ sensors:
     topic: ${namespace}/imu/data
     frame: oakd_imu_frame
     sensor: imu_sensor
-  - name: bumper_contact
-    type: contact
-    topic: ${namespace}/bumper/contact
-    frame: bumper
   - name: rgbd_camera_info
     type: camera_info
     topic: ${namespace}/rgbd_camera/camera_info

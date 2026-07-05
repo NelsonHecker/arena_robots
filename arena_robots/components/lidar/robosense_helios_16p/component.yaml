@@ -1,0 +1,24 @@
+# node_name is hardcoded "top_lidar", not the macro's default "robosense_helios_16p".
+xacro:
+  include: 3d_lidar/robosense_helios_16p.urdf.xacro
+  macro: sensor_robosense_helios_16p
+  attach:
+    frame_prefix: "${prefix}${mount}_"
+    parent: "${prefix}${parent}"
+    node_name: top_lidar
+    node_namespace: "${namespace}"
+    gazebo_classic: "${gazebo_classic}"
+    gazebo_ignition: "${gazebo_ignition}"
+  args: {}
+sensor:
+  gz:
+    - name: "${name:-lidar}"
+      type: laserscan
+      topic: "${topic:-lidar}"
+      frame: "${prefix}${mount}_link"
+      sensor: top_lidar
+    - name: "${name:-lidar}_points"
+      type: pointcloud
+      topic: "${topic:-lidar}/points"
+      frame: "${prefix}${mount}_link"
+      sensor: top_lidar

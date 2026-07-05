@@ -72,7 +72,6 @@
     </transmission>
   </xacro:macro>
 
-
   <xacro:macro name="rocker" params="prefix joint_type location *joint_limits">
     <link name="${prefix}_rocker_link">
       <visual>
@@ -323,8 +322,6 @@
 
   <xacro:include filename="$(find arena_robots)/robots/ridgeback/urdf/ridgeback.gazebo" />
 
-  <!-- SENSORS: migrated to the component catalog (assembly.yaml, Stage M); attached
-       by the per-robot wrapper xacro (catalog.render_wrapper_xacro), not here. -->
   <xacro:arg name="namespace" default=""/>
   <xacro:arg name="prefix" default=""/>
   <xacro:arg name="gazebo_classic" default="false"/>

@@ -30,9 +30,6 @@
 
     <xacro:rbvogui prefix="$(arg prefix)" hq="${hq}"/>
 
-    <!-- SENSORS: migrated to the component catalog (assembly.yaml, Stage M); attached
-         by the per-robot wrapper xacro (catalog.render_wrapper_xacro), not here. -->
-
     <!-- ros2_control block (gz_ros2_control/GazeboSimSystem) and PosePublisher loaded via rbvogui.gazebo -->
     <xacro:if value="$(arg generate_ros2_control_tag)">
         <xacro:rbvogui_base_hw_controller/>

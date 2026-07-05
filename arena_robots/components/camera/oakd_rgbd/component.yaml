@@ -1,0 +1,38 @@
+xacro:
+  include: sensors/oakd.urdf.xacro
+  macro: oakd
+  attach:
+    name: "${mount}"
+    parent_link: "${parent}"
+    model: "${model:-pro}"
+  args:
+    model: pro
+# Output order matches legacy model_params.yaml (imu before rgbd outputs):
+# TestEffectiveSensorsParity is order-sensitive.
+sensor:
+  gz:
+    - name: "${imu_name:-imu}"
+      type: imu
+      topic: "${imu_topic:-imu/data}"
+      frame: "${prefix}${mount}_imu_frame"
+      sensor: imu_sensor
+    - name: "${name:-rgbd_camera}_info"
+      type: camera_info
+      topic: "${topic:-rgbd_camera}/camera_info"
+      frame: "${prefix}${mount}_rgb_camera_frame"
+      sensor: rgbd_camera
+    - name: "${name:-rgbd_camera}_depth"
+      type: depth
+      topic: "${topic:-rgbd_camera}/depth_image"
+      frame: "${prefix}${mount}_rgb_camera_frame"
+      sensor: rgbd_camera
+    - name: "${name:-rgbd_camera}_image"
+      type: image
+      topic: "${topic:-rgbd_camera}/image"
+      frame: "${prefix}${mount}_rgb_camera_frame"
+      sensor: rgbd_camera
+    - name: "${name:-rgbd_camera}_points"
+      type: pointcloud
+      topic: "${topic:-rgbd_camera}/points"
+      frame: "${prefix}${mount}_rgb_camera_frame"
+      sensor: rgbd_camera

@@ -1,15 +1,16 @@
 <?xml version="1.0"?>
 <robot name="turtlebot" xmlns:xacro="http://ros.org/wiki/xacro">
   <xacro:arg name="namespace" default=""/>
+  <xacro:arg name="prefix" default=""/>
   <xacro:arg name="gazebo_controllers" default=""/>
   <xacro:arg name="sim_path" default=""/>
+  <xacro:arg name="gazebo_classic" default="false"/>
+  <xacro:arg name="gazebo_ignition" default="true"/>
 
   <!-- Base create3 model -->
   <xacro:include filename="$(find irobot_create_description)/urdf/create3.urdf.xacro">
     <xacro:arg name="gazebo" value="ignition"/>
   </xacro:include>
-  <xacro:include filename="$(find arena_robots)/robots/turtlebot/urdf/sensors/rplidar.urdf.xacro" />
-  <xacro:include filename="$(find arena_robots)/robots/turtlebot/urdf/sensors/oakd.urdf.xacro" />
   <xacro:include filename="$(find arena_robots)/robots/turtlebot/urdf/sensors/camera_bracket.urdf.xacro" />
   <xacro:include filename="$(find arena_robots)/robots/turtlebot/urdf/tower_standoff.urdf.xacro" />
   <xacro:include filename="$(find arena_robots)/robots/turtlebot/urdf/tower_sensor_plate.urdf.xacro" />
@@ -107,15 +108,9 @@
   </xacro:tower_sensor_plate>
 
   <!-- Sensors -->
-  <xacro:rplidar name="rplidar" parent_link="shell_link" gazebo="true">
-    <origin xyz="${rplidar_x_offset} ${rplidar_y_offset} ${rplidar_z_offset}" rpy="0 0 ${pi/2}"/>
-  </xacro:rplidar>
   <xacro:camera_bracket name="oakd_camera_bracket">
     <origin xyz="${camera_mount_x_offset} ${camera_mount_y_offset} ${camera_mount_z_offset}"/>
   </xacro:camera_bracket>
-  <xacro:oakd model="pro" parent_link="oakd_camera_bracket">
-    <origin xyz="${oakd_pro_x_offset} ${oakd_pro_y_offset} ${oakd_pro_z_offset}"/>
-  </xacro:oakd>
 
   <xacro:turtlebot_base_hw_controller/>
 

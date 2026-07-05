@@ -1,0 +1,23 @@
+prefix: ""
+mounts:
+  lidar:
+    parent: base_link
+    xyz: [0, 0, 0.3]
+    rpy: [0, 0, 0]
+    accepts: [lidar]
+  imu:
+    parent: base_link
+    xyz: [0, 0, 0]
+    rpy: [0, 0, 0]
+    accepts: [imu]
+priority:
+  lidar: [lidar]
+  imu: [imu]
+defaults:
+  lidar:
+    - variant: arena_default
+      mount: lidar
+  imu:
+    - variant: arena_default
+      mount: imu
+      params: {frame: imu_sensor_link}

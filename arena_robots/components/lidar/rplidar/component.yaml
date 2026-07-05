@@ -1,0 +1,20 @@
+xacro:
+  include: sensors/rplidar.urdf.xacro
+  macro: rplidar
+  attach:
+    name: "${mount}"
+    parent_link: "${parent}"
+    gazebo: "true"
+  args: {}
+sensor:
+  gz:
+    - name: "${name:-lidar}"
+      type: laserscan
+      topic: "${topic:-lidar}"
+      frame: "${prefix}${mount}_link"
+      sensor: gpu_lidar
+    - name: "${name:-lidar}_points"
+      type: pointcloud
+      topic: "${topic:-lidar}/points"
+      frame: "${prefix}${mount}_link"
+      sensor: gpu_lidar

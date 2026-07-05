@@ -18,9 +18,6 @@
 
   <xacro:mpo_700_body/>
 
-  <!-- SENSORS: migrated to the component catalog (assembly.yaml, Stage M); attached
-       by the per-robot wrapper xacro (catalog.render_wrapper_xacro), not here. -->
-
   <xacro:mpo700_base_hw_controller/>
 
 </robot>

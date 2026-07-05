@@ -5,8 +5,9 @@
 <!-- =================================================================================== -->
 <robot name="WLP311D" xmlns:xacro="http://wiki.ros.org/xacro">
     <xacro:arg name="namespace" default=""/>
-    <xacro:include filename="$(find arena_robots)/config/urdf/sensors/default.xacro"/>
-    <xacro:arena_default_nav_sensors parent_link="base"/>
+    <xacro:arg name="prefix" default=""/>
+    <xacro:arg name="gazebo_classic" default="false"/>
+    <xacro:arg name="gazebo_ignition" default="true"/>
 
     <material name="black">
         <color rgba="0.0 0.0 0.0 1.0" />

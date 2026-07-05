@@ -2,7 +2,6 @@
 <robot name="rb_theron"
 	xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-
 	<!-- ***************** -->
 	<!-- Imported elements -->
 	<!-- ***************** -->
@@ -39,9 +38,6 @@
 	<!-- Here we create the robot using the xacro:macro imported at the beggining of this file -->
 
 	<xacro:rbtheron prefix="$(arg prefix)" hq="${hq}"/>
-
-	<!-- SENSORS: migrated to the component catalog (assembly.yaml, Stage M); attached
-	     by the per-robot wrapper xacro (catalog.render_wrapper_xacro), not here. -->
 
 	<!-- Controllers -->
 	<xacro:if value="$(arg gazebo_classic)">
