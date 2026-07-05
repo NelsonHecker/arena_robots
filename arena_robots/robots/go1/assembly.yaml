@@ -1,0 +1,46 @@
+# prefix: "" because go1's xacro "prefix" arg is declared but never wired to base_frame/frames.
+# chin/left/right/rearDown mounts intentionally have no defaults entry: go1 ships 5 cameras, only face is wired live.
+prefix: ""
+mounts:
+  lidar:
+    parent: trunk
+    xyz: [0.0, 0.0, 0.10]
+    rpy: [0, 0, 0]
+    accepts: [lidar]
+  face:
+    parent: trunk
+    xyz: [0.2785, 0.0125, 0.0167]
+    rpy: [3.141592653589793, 0, 0]
+    accepts: [camera]
+  chin:
+    parent: trunk
+    xyz: [0.2522, 0.0125, -0.0436]
+    rpy: [3.141592653589793, 1.5707963267948966, 0]
+    accepts: [camera]
+  left:
+    parent: trunk
+    xyz: [-0.066, 0.082, -0.0176]
+    rpy: [3.141592653589793, 0.2618, 1.5707963267948966]
+    accepts: [camera]
+  right:
+    parent: trunk
+    xyz: [-0.041, -0.082, -0.0176]
+    rpy: [3.141592653589793, 0.2618, -1.5707963267948966]
+    accepts: [camera]
+  rearDown:
+    parent: trunk
+    xyz: [-0.0825, 0.0125, -0.04365]
+    rpy: [3.141592653589793, 1.5707963267948966, 0]
+    accepts: [camera]
+priority:
+  lidar: [lidar]
+  camera: [face]
+defaults:
+  camera:
+    - variant: go1_depth
+      mount: face
+      params: {camID: "1"}
+  lidar:
+    - variant: arena_default_3d
+      mount: lidar
+      overrides: {material: grey}

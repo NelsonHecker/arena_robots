@@ -1,0 +1,25 @@
+# No depth output bridged despite the backing rgbd_camera sensor emitting one: matches
+# the model_params.yaml declaration, not an oversight.
+xacro:
+  include: include/depthcamera.xacro
+  macro: a1_depth_camera
+  attach:
+    name: "${mount}"
+  args: {}
+sensor:
+  gz:
+    - name: "camera_${mount}_image"
+      type: image
+      topic: "camera_${mount}/image"
+      frame: "camera_${mount}"
+      sensor: "camera_${mount}"
+    - name: "camera_${mount}_info"
+      type: camera_info
+      topic: "camera_${mount}/camera_info"
+      frame: "camera_${mount}"
+      sensor: "camera_${mount}"
+    - name: "camera_${mount}_points"
+      type: pointcloud
+      topic: "camera_${mount}/points"
+      frame: "camera_${mount}"
+      sensor: "camera_${mount}"

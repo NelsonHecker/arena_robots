@@ -1,0 +1,23 @@
+# frame uses the bare mount name ("${mount}", no "_link" suffix), consumers reference it
+# as-is, don't "fix" to match other lidar components.
+xacro:
+  include: "$(find arena_robots)/components/lidar/arena_default_3d/lidar.urdf.xacro"
+  macro: arena_default_3d_lidar_mount
+  attach:
+    parent_link: "${parent}"
+    frame: "${mount}"
+    material: "${material:-black}"
+  args:
+    material: black
+sensor:
+  gz:
+    - name: "${name:-lidar}"
+      type: laserscan
+      topic: "${topic:-lidar}"
+      frame: "${prefix}${mount}"
+      sensor: gpu_lidar
+    - name: "${name:-lidar}_points"
+      type: pointcloud
+      topic: "${topic:-lidar}/points"
+      frame: "${prefix}${mount}"
+      sensor: gpu_lidar

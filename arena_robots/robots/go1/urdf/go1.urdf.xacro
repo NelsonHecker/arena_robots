@@ -5,12 +5,12 @@
   <xacro:arg name="sim_path" default="" />
   <xacro:arg name="namespace" default="" />
   <xacro:arg name="gazebo_controllers" default="" />
+  <xacro:arg name="gazebo_classic" default="false" />
+  <xacro:arg name="gazebo_ignition" default="true" />
 
   <xacro:include filename="$(find arena_robots)/robots/go1/urdf/include/const.xacro" />
   <xacro:include filename="$(find arena_robots)/robots/go1/urdf/include/materials.xacro" />
   <xacro:include filename="$(find arena_robots)/robots/go1/urdf/include/leg.xacro" />
-  <xacro:include filename="$(find arena_robots)/robots/go1/urdf/include/depthcamera.xacro" />
-  <xacro:include filename="$(find arena_robots)/urdf/gz_lidar.xacro" />
 
   <link name="base">
     <visual>
@@ -77,49 +77,6 @@
   <xacro:leg name="RL" mirror="1" mirror_dae="True" front_hind="-1" front_hind_dae="False">
     <origin rpy="0 0 0" xyz="${-leg_offset_x} ${leg_offset_y} 0"/>
   </xacro:leg>
-
-  <!-- Go1 ships 5 depth/AI cameras (face, chin, left, right, rearDown). Only the
-       front (face) camera is active for now; each rgbd pass is render-heavy, so the
-       other 4 are commented out until needed (re-enable alongside mappings.yaml +
-       model_params.yaml). Drop resolution in depthcamera.xacro if RTF suffers. -->
-  <xacro:go1_depth_camera camID="1" name="face">
-    <origin rpy="${PI} 0 0" xyz="0.2785 0.0125 0.0167"/>
-  </xacro:go1_depth_camera>
-  <!--
-  <xacro:go1_depth_camera camID="2" name="chin">
-    <origin rpy="${PI} ${PI/2} 0" xyz="0.2522 0.0125 -0.0436"/>
-  </xacro:go1_depth_camera>
-  <xacro:go1_depth_camera camID="3" name="left">
-    <origin rpy="${PI} 0.2618 ${PI/2}" xyz="-0.066 0.082 -0.0176"/>
-  </xacro:go1_depth_camera>
-  <xacro:go1_depth_camera camID="4" name="right">
-    <origin rpy="${PI} 0.2618 ${-PI/2}" xyz="-0.041 -0.082 -0.0176"/>
-  </xacro:go1_depth_camera>
-  <xacro:go1_depth_camera camID="5" name="rearDown">
-    <origin rpy="${PI} ${PI/2} 0" xyz="-0.0825 0.0125 -0.04365"/>
-  </xacro:go1_depth_camera>
-  -->
-
-  <joint name="lidar_joint" type="fixed">
-    <parent link="trunk" />
-    <child link="lidar" />
-    <origin xyz="0 0 0.10" rpy="0 0 0" />
-  </joint>
-  <link name="lidar">
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>
-        <cylinder length="0.05" radius="0.04" />
-      </geometry>
-      <material name="grey" />
-    </visual>
-    <inertial>
-      <mass value="1e-5" />
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6" />
-    </inertial>
-  </link>
-  <xacro:gz_lidar frame="lidar" />
 
   <xacro:include filename="$(find arena_robots)/robots/go1/urdf/base_hw/go1.ros2_control.urdf" />
   <xacro:go1_base_hw_controller/>

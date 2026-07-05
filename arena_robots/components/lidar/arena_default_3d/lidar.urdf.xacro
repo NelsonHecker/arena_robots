@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- Shared shim for a1/go1's lidar:
+       both chassis xacros called $(find arena_robots)/urdf/gz_lidar.xacro directly
+       against an inline joint+link, never through a macro accepting *origin, so this
+       wraps that inline block (cylinder link, mass/inertia, xacro:gz_lidar invocation)
+       copied verbatim; gz_lidar.xacro itself stays untouched. Package-qualified
+       include since both robots share this component. `material` differs per robot
+       (a1: black, go1: grey; both names already defined in each robot's own
+       materials.xacro, included by the chassis before this mount renders). -->
+  <xacro:include filename="$(find arena_robots)/urdf/gz_lidar.xacro"/>
+
+  <xacro:macro name="arena_default_3d_lidar_mount" params="parent_link *origin frame:=lidar material:=black">
+    <joint name="${frame}_joint" type="fixed">
+      <xacro:insert_block name="origin"/>
+      <parent link="${parent_link}"/>
+      <child link="${frame}"/>
+    </joint>
+
+    <link name="${frame}">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <cylinder length="0.05" radius="0.04"/>
+        </geometry>
+        <material name="${material}"/>
+      </visual>
+      <inertial>
+        <mass value="1e-5"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
+      </inertial>
+    </link>
+
+    <xacro:gz_lidar frame="${frame}"/>
+  </xacro:macro>
+</robot>

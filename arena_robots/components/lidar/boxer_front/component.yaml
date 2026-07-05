@@ -1,0 +1,19 @@
+xacro:
+  include: "$(find arena_robots)/components/lidar/boxer_front/lidar.urdf.xacro"
+  macro: boxer_front_lidar_mount
+  attach:
+    parent_link: "${prefix}${parent}"
+    frame: "${prefix}${mount}"
+  args: {}
+sensor:
+  gz:
+    - name: "${name:-front_laser}"
+      type: laserscan
+      topic: "${topic:-front_laser}"
+      frame: "${prefix}${mount}"
+      sensor: front_laser
+    - name: "${name:-front_laser}_points"
+      type: pointcloud
+      topic: "${topic:-front_laser}/points"
+      frame: "${prefix}${mount}"
+      sensor: front_laser
