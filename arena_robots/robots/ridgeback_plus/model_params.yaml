@@ -15,7 +15,7 @@ sensors:
   - name: imu
     type: imu
     topic: ${namespace}/imu/data
-    frame: imu_sensor
+    frame: imu_0_link
     sensor: imu_0
 control:
   mode: ros2_control

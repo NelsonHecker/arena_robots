@@ -15,5 +15,5 @@ sensors:
   - name: imu
     type: imu
     topic: ${namespace}/imu/data
-    frame: imu_sensor
+    frame: imu_link
     sensor: imu_sensor

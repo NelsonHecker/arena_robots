@@ -1,5 +1,5 @@
 odom_frame: odom
-sensor_frame: front_laser_link
+sensor_frame: robot_front_laser_link
 radius: 0.61
 is_holonomic: false
 

@@ -1,5 +1,5 @@
 odom_frame: odom
-sensor_frame: lidar
+sensor_frame: lidar_link
 radius: 0.267
 is_holonomic: false
 
