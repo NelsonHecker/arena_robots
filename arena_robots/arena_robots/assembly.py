@@ -6,6 +6,7 @@ maximum bipartite matching. No xacro/yaml rendering, no ROS: this module only de
 
 from __future__ import annotations
 
+import re
 import typing
 
 import attrs
@@ -14,6 +15,18 @@ import attrs
 class AssemblyError(RuntimeError):
     """Infeasible or malformed assembly request. The message is the product: name the
     offending type/mount and the robot's actual inventory, never a generic failure."""
+
+
+_CHAINED_PARENT_RE = re.compile(r'^@(?P<mount>[^:]+):(?P<frame>.+)$')
+
+
+def parse_chained_parent(parent: str) -> tuple[str, str] | None:
+    """Parse a ``Mount.parent`` of the form ``"@<mount>:<frame>"`` (phase3b sec2):
+    a parent chained through another mount's component-exported frame, rather than
+    a literal chassis link name. Returns ``(mount_name, frame_name)``, or ``None``
+    for an ordinary literal-frame parent."""
+    m = _CHAINED_PARENT_RE.match(parent)
+    return (m.group('mount'), m.group('frame')) if m else None
 
 
 @attrs.define
@@ -25,6 +38,10 @@ class Mount:
     xyz: tuple[float, float, float]
     rpy: tuple[float, float, float] = (0.0, 0.0, 0.0)
     accepts: frozenset[str] = attrs.field(factory=frozenset)
+
+    @property
+    def chained_parent(self) -> tuple[str, str] | None:
+        return parse_chained_parent(self.parent)
 
 
 @attrs.define
@@ -49,6 +66,31 @@ class RequestPart:
     variant: str
     mount: str | None = None
     params: dict[str, object] = attrs.field(factory=dict)
+
+
+def _validate_mount_dag(mounts: dict[str, Mount]) -> None:
+    """Chained-parent references (phase3b sec2/3) must resolve to declared mounts
+    and form a DAG; raises :class:`AssemblyError` naming the unknown mount or the
+    cycle otherwise. Purely structural: independent of which mounts end up placed."""
+    state: dict[str, int] = {}
+
+    def visit(name: str, path: list[str]) -> None:
+        if state.get(name) == 2:
+            return
+        if state.get(name) == 1:
+            cycle = ' -> '.join([*path[path.index(name) :], name])
+            raise AssemblyError(f"chained mount parents form a cycle: {cycle}")
+        state[name] = 1
+        chained = mounts[name].chained_parent
+        if chained is not None:
+            ref, _frame = chained
+            if ref not in mounts:
+                raise AssemblyError(f"mount '{name}' parent references unknown mount '{ref}'; declared mounts: {sorted(mounts)}")
+            visit(ref, [*path, name])
+        state[name] = 2
+
+    for name in mounts:
+        visit(name, [])
 
 
 @attrs.define
@@ -84,6 +126,7 @@ class AssemblySpec:
                 rpy=(float(rpy[0]), float(rpy[1]), float(rpy[2])),
                 accepts=frozenset(str(a) for a in m.get('accepts', [])),
             )
+        _validate_mount_dag(mounts)
 
         priority: dict[str, list[str]] = {}
         for t, mount_names in data.get('priority', {}).items():
@@ -266,6 +309,14 @@ def resolve(spec: AssemblySpec, request: dict[str, list[RequestPart]]) -> Resolv
                 overrides=dict(item.overrides),
             )
         )
+
+    placed_mounts = {p.mount.name for p in placements}
+    for p in placements:
+        chained = p.mount.chained_parent
+        if chained is not None:
+            ref_mount, _frame = chained
+            if ref_mount not in placed_mounts:
+                raise AssemblyError(f"'{p.mount.name}' requires '{ref_mount}'")
 
     return ResolvedAssembly(placements=placements, warnings=warnings)
 

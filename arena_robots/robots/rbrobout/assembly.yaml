@@ -14,9 +14,29 @@ mounts:
     xyz: [0.3, -0.3, 0.0725]
     rpy: [0, 0, 0]
     accepts: [imu]
+  # top_cover0/lift0/arm0 have no defaults entry: standard on rbrobout_plus but not on
+  # plain rbrobout, so each must be explicitly requested.
+  top_cover0:
+    parent: base_link
+    xyz: [0, 0, -0.1]
+    rpy: [0, 0, 0]
+    accepts: [structure]
+  lift0:
+    parent: base_link
+    xyz: [-0.76, 0, 0.18]
+    rpy: [0, 0, 0]
+    accepts: [lift]
+  arm0:
+    parent: "@lift0:top"
+    xyz: [0, 0, 0]
+    rpy: [0, 0, 0]
+    accepts: [arm]
 priority:
   lidar: [front_laser, rear_laser]
   imu: [vectornav]
+  structure: [top_cover0]
+  lift: [lift0]
+  arm: [arm0]
 defaults:
   lidar:
     - variant: sick_microscan3

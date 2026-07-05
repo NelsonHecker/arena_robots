@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 import yaml
 from arena_robots.assembly import Mount, Placement, ResolvedAssembly
-from arena_robots.catalog import Catalog, ComponentSpec, render_effective_control, render_effective_sensors, render_wrapper_xacro
+from arena_robots.catalog import Catalog, ComponentSpec, render_effective_control, render_effective_sensors, render_wrapper_xacro, resolve_mount_parent
 from arena_robots.Robot import RobotView
 
 LIDAR_COMPONENT = {
@@ -94,8 +94,18 @@ def _write_component(root: Path, type_: str, variant: str, data: dict) -> Path:
     return path
 
 
-def _mount(name: str, accepts: list[str]) -> Mount:
-    return Mount(name=name, parent="base_link", xyz=(0.0, 0.0, 0.0), rpy=(0.0, 0.0, 0.0), accepts=frozenset(accepts))
+def _mount(name: str, accepts: list[str], parent: str = "base_link") -> Mount:
+    return Mount(name=name, parent=parent, xyz=(0.0, 0.0, 0.0), rpy=(0.0, 0.0, 0.0), accepts=frozenset(accepts))
+
+
+LIFT_COMPONENT = {
+    "xacro": {
+        "include": "ewellix_lift_900mm.xacro",
+        "macro": "ewellix_lift_900mm",
+        "attach": {"prefix": "${prefix}${mount}_", "parent": "${prefix}${parent}"},
+    },
+    "frames": {"top": "${prefix}${mount}_ewellix_lift_top_link"},
+}
 
 
 def _write_robot_view(tmp_path: Path, name: str = "testbot", *, control_gate: bool = True) -> RobotView:
@@ -167,6 +177,64 @@ class TestCatalogGet:
         _write_component(tmp_path, "lidar", "sick_s300", LIDAR_COMPONENT)
         catalog = Catalog(root=tmp_path)
         assert catalog.get("lidar", "sick_s300") is catalog.get("lidar", "sick_s300")
+
+
+class TestComponentSpecFrames:
+    def test_frames_default_empty(self, tmp_path: Path):
+        path = _write_component(tmp_path, "lidar", "sick_s300", LIDAR_COMPONENT)
+        assert ComponentSpec.from_yaml(path).frames == {}
+
+    def test_frames_parsed(self, tmp_path: Path):
+        path = _write_component(tmp_path, "lift", "ewellix_900mm", LIFT_COMPONENT)
+        spec = ComponentSpec.from_yaml(path)
+        assert spec.frames == {"top": "${prefix}${mount}_ewellix_lift_top_link"}
+
+
+class TestResolveMountParent:
+    """Phase3b sec2: ``resolve_mount_parent`` is the shared chained-parent resolver
+    consumed by both ``render_wrapper_xacro`` (xacro ``parent`` attr) and
+    ``caps.py``'s ``_instances`` (``${parent}`` in a caps template, e.g. arm
+    ``base_link``)."""
+
+    @pytest.fixture
+    def catalog(self, tmp_path: Path) -> Catalog:
+        _write_component(tmp_path, "lift", "ewellix_900mm", LIFT_COMPONENT)
+        return Catalog(root=tmp_path)
+
+    def test_unchained_mount_passes_through_literal_parent(self, catalog: Catalog):
+        mount = _mount("lift0", ["lift"], parent="base_link")
+        resolved = ResolvedAssembly(placements=[Placement(type="lift", variant="ewellix_900mm", mount=mount)])
+        assert resolve_mount_parent(resolved, catalog, mount) == "base_link"
+
+    def test_chained_mount_resolves_bare_frame(self, catalog: Catalog):
+        lift_mount = _mount("lift0", ["lift"], parent="base_link")
+        arm_mount = _mount("arm0", ["arm"], parent="@lift0:top")
+        resolved = ResolvedAssembly(
+            placements=[
+                Placement(type="lift", variant="ewellix_900mm", mount=lift_mount),
+                Placement(type="arm", variant="ur10e", mount=arm_mount),
+            ]
+        )
+        # bare (no prefix baked in): the caller re-applies its own ${prefix}${parent}
+        assert resolve_mount_parent(resolved, catalog, arm_mount) == "lift0_ewellix_lift_top_link"
+
+    def test_chained_mount_to_unplaced_mount_raises(self, catalog: Catalog):
+        arm_mount = _mount("arm0", ["arm"], parent="@lift0:top")
+        resolved = ResolvedAssembly(placements=[Placement(type="arm", variant="ur10e", mount=arm_mount)])
+        with pytest.raises(RuntimeError, match="unpopulated mount 'lift0'"):
+            resolve_mount_parent(resolved, catalog, arm_mount)
+
+    def test_chained_mount_to_undeclared_frame_raises(self, catalog: Catalog):
+        lift_mount = _mount("lift0", ["lift"], parent="base_link")
+        arm_mount = _mount("arm0", ["arm"], parent="@lift0:bogus")
+        resolved = ResolvedAssembly(
+            placements=[
+                Placement(type="lift", variant="ewellix_900mm", mount=lift_mount),
+                Placement(type="arm", variant="ur10e", mount=arm_mount),
+            ]
+        )
+        with pytest.raises(RuntimeError, match="does not export frame 'bogus'"):
+            resolve_mount_parent(resolved, catalog, arm_mount)
 
 
 class TestRenderEffectiveSensors:
@@ -284,6 +352,36 @@ class TestRenderWrapperXacroMergedControl:
         assert wrapper.index("</ros2_control>") > wrapper.rindex("<joint ")
         # the chassis's internal tag is suppressed in favor of the merged one
         assert '<xacro:arg name="generate_ros2_control_tag" default="false"/>' in wrapper
+
+    def test_chained_mount_parent_renders_referenced_frame(self, tmp_path: Path):
+        """Phase3b sec2: arm0 chained onto lift0's `top` frame renders the wrapper's
+        `<xacro:ur_robot parent=...>` attr from the lift's rendered frame, not the
+        literal `"@lift0:top"` chain string."""
+        arm_component = {
+            "xacro": {
+                "include": "ur_macro.xacro",
+                "macro": "ur_robot",
+                "attach": {"parent": "${prefix}${parent}"},
+                "args": {},
+            }
+        }
+        _write_component(tmp_path / "components", "lift", "ewellix_900mm", LIFT_COMPONENT)
+        _write_component(tmp_path / "components", "arm", "ur5e", arm_component)
+        catalog = Catalog(root=tmp_path / "components")
+        view = _write_robot_view(tmp_path, "testbot")
+        lift_mount = _mount("lift0", ["lift"], parent="base_link")
+        arm_mount = _mount("arm0", ["arm"], parent="@lift0:top")
+        resolved = ResolvedAssembly(
+            placements=[
+                Placement(type="lift", variant="ewellix_900mm", mount=lift_mount),
+                Placement(type="arm", variant="ur5e", mount=arm_mount),
+            ]
+        )
+
+        wrapper = render_wrapper_xacro(view, resolved, catalog=catalog)
+
+        assert '<xacro:ur_robot parent="$(arg prefix)lift0_ewellix_lift_top_link">' in wrapper
+        assert "@lift0:top" not in wrapper
 
     def test_ungated_chassis_with_joints_raises(self, tmp_path: Path):
         _write_component(tmp_path / "components", "arm", "ur5e", ARM_COMPONENT)

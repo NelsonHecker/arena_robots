@@ -1,0 +1,26 @@
+xacro:
+  include: "$(find arena_robots)/robots/rbrobout/urdf/structures/ewellix/ewellix_lift_900mm.urdf.xacro"
+  macro: ewellix_lift_900mm
+  attach:
+    prefix: "${prefix}${mount}_"
+    parent: "${prefix}${parent}"
+
+frames:
+  top: "${prefix}${mount}_ewellix_lift_top_link"
+
+ros2_control:
+  joints:
+    - name: "${prefix}${mount}_ewellix_lift_top_joint"
+      command_interfaces: [position]
+      state_interfaces: [position, velocity]
+
+control:
+  controller: "${mount}_controller"
+  type: position_controllers/JointGroupPositionController
+  ros__parameters:
+    joints:
+      - "${prefix}${mount}_ewellix_lift_top_joint"
+
+caps:
+  joint: "${prefix}${mount}_ewellix_lift_top_joint"
+  controller: "${mount}_controller"

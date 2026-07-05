@@ -26,6 +26,8 @@ declarations *say*, not how they get instantiated.
       ros__parameters: {...}   # templated verbatim
     caps:              # OPTIONAL; absent -> {}
       ...              # full caps/arm.yaml raw shape, templated verbatim (caps.py ArmSpec)
+    frames:            # OPTIONAL; absent -> {} (phase3b sec1, mount-on-part chaining)
+      <name>: <template>   # e.g. {top: "${prefix}${mount}_ewellix_lift_top_link"}
 
 Every string value in a ``sensor.gz`` entry is a template rendered per-placement through
 ``arena_rclpy_mixins.yaml_replace.YAMLReplacer``. The substitution context is::
@@ -67,7 +69,7 @@ import yaml
 from ament_index_python.packages import get_package_share_path
 from arena_rclpy_mixins.yaml_replace import YAMLReplacer
 
-from arena_robots.assembly import ResolvedAssembly
+from arena_robots.assembly import Mount, ResolvedAssembly
 from arena_robots.Sensor import SensorSpec
 
 if typing.TYPE_CHECKING:
@@ -98,6 +100,11 @@ class ComponentSpec:
     """Un-rendered ``caps`` block, the full ``caps/arm.yaml`` raw shape; empty for
     components with no caps contribution. Rendered by ``RobotCaps``/``effective_caps``
     (caps.py), not this module."""
+    frames: dict[str, str] = attrs.field(factory=dict)
+    """Un-rendered ``frames`` templates (phase3b sec1): named frames this component
+    exports, for another mount's ``Mount.parent`` to chain onto (e.g. a lift's
+    ``top`` frame). Empty for components nothing else mounts onto. Resolved per
+    placement by :func:`resolve_mount_parent`."""
 
     @classmethod
     def from_yaml(cls, path: Path) -> ComponentSpec:
@@ -128,6 +135,10 @@ class ComponentSpec:
         if not isinstance(caps, dict):
             raise ValueError(f"component.yaml at {path}: 'caps' must be a mapping; got {type(caps).__name__}")
 
+        frames = data.get('frames', {})
+        if not isinstance(frames, dict):
+            raise ValueError(f"component.yaml at {path}: 'frames' must be a mapping; got {type(frames).__name__}")
+
         return cls(
             xacro_include=str(xacro['include']),
             xacro_macro=str(xacro['macro']),
@@ -137,6 +148,7 @@ class ComponentSpec:
             ros2_control_joints=[dict(joint) for joint in joints],
             control=dict(control),
             caps=dict(caps),
+            frames={str(k): str(v) for k, v in frames.items()},
         )
 
 
@@ -191,15 +203,49 @@ def render_effective_sensors(resolved: ResolvedAssembly, catalog: Catalog, *, pr
     return out
 
 
+def resolve_mount_parent(resolved: ResolvedAssembly, catalog: Catalog, mount: Mount) -> str:
+    """Resolve a mount's ``parent`` for templating (phase3b sec2, chained mounts).
+
+    An ordinary mount returns its literal parent frame name unchanged. A chained
+    mount (``"@<mount>:<frame>"``) resolves to the referenced placement's rendered
+    ``frames`` template, substituted with an EMPTY ``prefix`` so the caller's own
+    ``${prefix}${parent}`` attach/caps template re-applies the real prefix exactly
+    once (the same shape a literal parent already goes through)."""
+    chained = mount.chained_parent
+    if chained is None:
+        return mount.parent
+    ref_mount_name, frame_name = chained
+    ref = next((p for p in resolved.placements if p.mount.name == ref_mount_name), None)
+    if ref is None:
+        raise RuntimeError(f"mount '{mount.name}' parent references unpopulated mount '{ref_mount_name}'")
+    component = catalog.get(ref.type, ref.variant)
+    if frame_name not in component.frames:
+        raise RuntimeError(
+            f"component '{ref.type}/{ref.variant}' (mount '{ref_mount_name}') does not export frame "
+            f"'{frame_name}'; declared frames: {sorted(component.frames)}"
+        )
+    context: dict[str, typing.Any] = {'mount': ref.mount.name, 'prefix': '', **ref.params, **ref.overrides}
+    return YAMLReplacer(context).replace(component.frames[frame_name])
+
+
 _XACRO_NS = 'http://www.ros.org/wiki/xacro'
-_ARG = f'{{{_XACRO_NS}}}arg'
 
 
 def _chassis_args(chassis_path: Path) -> list[tuple[str, str]]:
     """``(name, default)`` for every top-level ``<xacro:arg>`` in the chassis xacro, in
-    document order. The wrapper forwards exactly this surface."""
+    document order. The wrapper forwards exactly this surface.
+
+    Matched by local tag name against direct children of ``<robot>`` only: chassis
+    files across the fleet declare ``xmlns:xacro`` with at least four different URIs
+    (``ros.org/wiki/xacro``, ``wiki.ros.org/xacro``, ``www.ros.org/wiki/xacro``, and a
+    typo'd ``wiki.ros.org.xacro``), all functionally equivalent to the ``xacro`` CLI, so
+    a fully-qualified-name match would miss most of the fleet. Direct-children-only
+    (rather than a full subtree ``.iter()``) also skips non-top-level ``<xacro:arg>``
+    elements some chassis files carry as inert children of an unrelated tag (e.g.
+    turtlebot's ``<xacro:include>...<xacro:arg name="gazebo" .../></xacro:include>``,
+    which xacro itself ignores with a warning)."""
     root = ET.parse(chassis_path).getroot()
-    return [(el.get('name', ''), el.get('default', '')) for el in root.iter(_ARG)]
+    return [(el.get('name', ''), el.get('default', '')) for el in root if el.tag.rsplit('}', 1)[-1] == 'arg']
 
 
 def _joint_xml(joint: dict[str, typing.Any]) -> list[str]:
@@ -225,6 +271,9 @@ def render_wrapper_xacro(view: RobotView, resolved: ResolvedAssembly, *, catalog
     (``mount``/``prefix``/``params``/``overrides``) plus xacro-side-only keys
     (``parent``, ``namespace``, ``gazebo_classic``, ``gazebo_ignition``) whose values are
     literal ``$(arg ...)`` references, left for the actual xacro run to resolve.
+    ``parent`` is resolved via :func:`resolve_mount_parent` (phase3b sec2): an ordinary
+    mount's literal parent name passes through; a chained mount (``"@<mount>:<frame>"``)
+    resolves to the referenced placement's rendered frame instead.
 
     When any placement's component declares ``ros2_control.joints`` (phase3 sec2.10,
     merged ros2_control), one merged ``<ros2_control name="${robot}_system">`` tag is
@@ -255,7 +304,7 @@ def render_wrapper_xacro(view: RobotView, resolved: ResolvedAssembly, *, catalog
 
         context: dict[str, typing.Any] = {
             'mount': placement.mount.name,
-            'parent': placement.mount.parent,
+            'parent': resolve_mount_parent(resolved, catalog, placement.mount),
             'prefix': '$(arg prefix)',
             'namespace': '$(arg namespace)',
             'gazebo_classic': '$(arg gazebo_classic)',

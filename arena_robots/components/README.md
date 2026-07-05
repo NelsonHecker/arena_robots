@@ -23,6 +23,8 @@ ros2_control:             # joint-bearing parts only (arms): merged-tag contribu
   joints: [...]
 control: {...}            # controller block deep-merged into the chassis control.yaml
 caps: {...}               # full caps/<cap>.yaml shape, rendered per placement
+frames: {...}             # named frames this component exports (e.g. a lift's `top`),
+                          # for another mount's Mount.parent to chain onto: "@<mount>:<frame>"
 ```
 
 ## Conventions
@@ -44,3 +46,7 @@ caps: {...}               # full caps/<cap>.yaml shape, rendered per placement
   merged tag; an ungated chassis raises).
 - Per-instance tuning lives in `assembly.yaml defaults[].params/overrides`, never in the
   request grammar (parametrized-robots spec sec4).
+- **Chained mounts** (phase3b): a mount's `parent` may be `"@<mount>:<frame>"`, resolved to
+  the referenced mount's placed component's `frames.<frame>` template (e.g. an arm parented
+  on a lift's `top`). A placed part chained through an unpopulated mount is an
+  `AssemblyError`; chained-parent references must form a DAG.

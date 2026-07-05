@@ -1,0 +1,8 @@
+# No ${mount} in attach: this macro is never mount-prefixed, unlike most other
+# components.
+xacro:
+  include: "$(find arena_robots)/robots/rbrobout/urdf/bases/rbrobout/rbrobout_top_cover.urdf.xacro"
+  macro: top_cover
+  attach:
+    prefix: "${prefix}"
+    parent: "${prefix}${parent}"

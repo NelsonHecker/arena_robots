@@ -283,6 +283,113 @@ class TestAssemblySpecParse:
         assert spec.defaults["lidar"][0].overrides == {}
 
 
+class TestChainedMounts:
+    """Phase3b sec2/3: a mount's ``parent`` may be ``"@<mount>:<frame>"``, chaining
+    through another mount's placed component's exported frame."""
+
+    def test_parse_chained_parent(self):
+        from arena_robots.assembly import parse_chained_parent
+
+        assert parse_chained_parent("@lift0:top") == ("lift0", "top")
+        assert parse_chained_parent("base_link") is None
+
+    def test_unchained_mount_has_no_chained_parent(self):
+        m = _mount("top", ["lidar"])
+        assert m.chained_parent is None
+
+    def test_chained_mount_parses_ref(self):
+        m = _mount("arm0", ["arm"], parent="@lift0:top")
+        assert m.chained_parent == ("lift0", "top")
+
+    def test_parse_rejects_chained_parent_to_unknown_mount(self):
+        from arena_robots.assembly import AssemblyError, AssemblySpec
+
+        with pytest.raises(AssemblyError, match="unknown mount 'lift0'"):
+            AssemblySpec.parse(
+                {
+                    "mounts": {
+                        "arm0": {"parent": "@lift0:top", "xyz": [0, 0, 0], "accepts": ["arm"]},
+                    }
+                }
+            )
+
+    def test_parse_rejects_two_mount_cycle(self):
+        from arena_robots.assembly import AssemblyError, AssemblySpec
+
+        with pytest.raises(AssemblyError, match="cycle"):
+            AssemblySpec.parse(
+                {
+                    "mounts": {
+                        "a": {"parent": "@b:top", "xyz": [0, 0, 0], "accepts": ["x"]},
+                        "b": {"parent": "@a:top", "xyz": [0, 0, 0], "accepts": ["y"]},
+                    }
+                }
+            )
+
+    def test_parse_rejects_self_referencing_mount(self):
+        from arena_robots.assembly import AssemblyError, AssemblySpec
+
+        with pytest.raises(AssemblyError, match="cycle"):
+            AssemblySpec.parse({"mounts": {"a": {"parent": "@a:top", "xyz": [0, 0, 0], "accepts": ["x"]}}})
+
+    def test_parse_accepts_valid_chain(self):
+        from arena_robots.assembly import AssemblySpec
+
+        spec = AssemblySpec.parse(
+            {
+                "mounts": {
+                    "lift0": {"parent": "base_link", "xyz": [0, 0, 0], "accepts": ["lift"]},
+                    "arm0": {"parent": "@lift0:top", "xyz": [0, 0, 0], "accepts": ["arm"]},
+                }
+            }
+        )
+        assert spec.mounts["arm0"].chained_parent == ("lift0", "top")
+
+    def test_empty_chained_mount_is_fine(self):
+        """An unpopulated chained mount that nothing is placed on is not an error."""
+        from arena_robots.assembly import AssemblySpec, resolve
+
+        spec = AssemblySpec.parse(
+            {
+                "mounts": {
+                    "lift0": {"parent": "base_link", "xyz": [0, 0, 0], "accepts": ["lift"]},
+                    "arm0": {"parent": "@lift0:top", "xyz": [0, 0, 0], "accepts": ["arm"]},
+                }
+            }
+        )
+        resolved = resolve(spec, {})
+        assert resolved.placements == []
+
+    def test_placed_part_stranded_on_unpopulated_chain_raises(self):
+        from arena_robots.assembly import AssemblyError, AssemblySpec, RequestPart, resolve
+
+        spec = AssemblySpec.parse(
+            {
+                "mounts": {
+                    "lift0": {"parent": "base_link", "xyz": [0, 0, 0], "accepts": ["lift"]},
+                    "arm0": {"parent": "@lift0:top", "xyz": [0, 0, 0], "accepts": ["arm"]},
+                }
+            }
+        )
+        with pytest.raises(AssemblyError, match="'arm0' requires 'lift0'"):
+            resolve(spec, {"arm": [RequestPart(variant="ur10e")]})
+
+    def test_placed_part_on_populated_chain_succeeds(self):
+        from arena_robots.assembly import AssemblySpec, RequestPart, resolve
+
+        spec = AssemblySpec.parse(
+            {
+                "mounts": {
+                    "lift0": {"parent": "base_link", "xyz": [0, 0, 0], "accepts": ["lift"]},
+                    "arm0": {"parent": "@lift0:top", "xyz": [0, 0, 0], "accepts": ["arm"]},
+                }
+            }
+        )
+        resolved = resolve(spec, {"lift": [RequestPart(variant="ewellix_900mm")], "arm": [RequestPart(variant="ur10e")]})
+        by_type = {p.type: p.mount.name for p in resolved.placements}
+        assert by_type == {"lift": "lift0", "arm": "arm0"}
+
+
 class TestResolveOverrides:
     def test_default_overrides_flow_onto_placement(self):
         from arena_robots.assembly import AssemblySpec, DefaultPart, resolve

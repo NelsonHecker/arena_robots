@@ -28,6 +28,8 @@ import yaml
 from arena_rclpy_mixins.yaml_replace import YAMLReplacer
 from arena_simulation_setup.tree.Gesture import GestureSpec
 
+from arena_robots.catalog import resolve_mount_parent
+
 _CAPS_PREFIX = 'robot_'
 """Frame-templating prefix for placement-rendered caps; matches
 ``catalog.render_effective_sensors``'s default so cap frame names (e.g. arm
@@ -600,7 +602,7 @@ class RobotCaps:
                 component = self.catalog.get(placement.type, placement.variant)
                 context: dict[str, typing.Any] = {
                     'mount': placement.mount.name,
-                    'parent': placement.mount.parent,
+                    'parent': resolve_mount_parent(self.resolved, self.catalog, placement.mount),
                     'prefix': _CAPS_PREFIX,
                     **placement.params,
                     **placement.overrides,
