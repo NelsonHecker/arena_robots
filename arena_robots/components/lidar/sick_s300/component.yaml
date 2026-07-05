@@ -1,0 +1,28 @@
+# Include is package-qualified, not robot-relative: this macro lives only under
+# robots/rbvogui/, and mpo700 also places this component (a robot-relative include
+# would 404 for mpo700).
+xacro:
+  include: 2d_lidar/sick_s300.urdf.xacro
+  macro: sensor_sick_s300
+  attach:
+    frame_prefix: "${prefix}${mount}_"
+    parent: "${prefix}${parent}"
+    node_name: "${mount}"
+    node_namespace: "${namespace}"
+    gazebo_classic: "${gazebo_classic}"
+    gazebo_ignition: "${gazebo_ignition}"
+    min_angle: "${min_angle:--2.2689280275926285}"
+    max_angle: "${max_angle:-2.2689280275926285}"
+  args: {min_angle: -2.2689280275926285, max_angle: 2.2689280275926285}
+sensor:
+  gz:
+    - name: "${name:-lidar}"
+      type: laserscan
+      topic: "${topic:-scan}"
+      frame: "${prefix}${mount}_link"
+      sensor: "${mount}"
+    - name: "${name:-lidar}_points"
+      type: pointcloud
+      topic: "${topic:-scan}/points"
+      frame: "${prefix}${mount}_link"
+      sensor: "${mount}"

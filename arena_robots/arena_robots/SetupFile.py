@@ -45,8 +45,8 @@ class Config:
         ``count`` expands instances, ``pos``/``record_data_dir`` are identity extras,
         ``adapters`` (dict value) and ``<cap>.adapter`` set adapter kinds, any other
         dotted key is rejected (the dot is the adapter lane), and remaining bare
-        ``<type>``/``<type>@<mount>`` keys are morphology. Morphology is parsed and
-        validated but not yet realized: Phase 1 hard-errors if any was mentioned.
+        ``<type>``/``<type>@<mount>`` keys are morphology. Morphology is grammar-validated
+        here and realized later, per-robot, at ``Robot.parse`` resolution time.
         """
         if isinstance(data, str):
             return (cls(robot=data, name=data),)
@@ -109,9 +109,6 @@ class Config:
             if typ in cleared:
                 raise RuntimeError(f"'{typ}': cannot combine a value with 'none' already set for the same type")
             parts.setdefault(typ, []).extend(Part(variant=val, mount=mount) for val in values)
-
-        if parts:
-            raise RuntimeError(f"morphology parametrization not yet implemented: {sorted(parts)}")
 
         fields['parts'] = parts
         fields['adapters'] = adapters

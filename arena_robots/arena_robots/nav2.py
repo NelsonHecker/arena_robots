@@ -1,5 +1,6 @@
 """Nav2 launch helpers."""
 
+import json
 import tempfile
 import typing
 from pathlib import Path
@@ -95,17 +96,24 @@ class SensorsDerivedYAML(YAMLFileSubstitution):
         self,
         model_params_path: launch.SomeSubstitutionsType,
         mobile_path: launch.SomeSubstitutionsType,
+        sensors_json: launch.SomeSubstitutionsType = '',
     ):
         super().__init__(path=[], default={}, substitute=False)
         self._path = launch.utilities.normalize_to_list_of_substitutions(model_params_path)
         self._mobile_path = launch.utilities.normalize_to_list_of_substitutions(mobile_path)
+        self._sensors_json = launch.utilities.normalize_to_list_of_substitutions(sensors_json)
 
     def perform(self, context: launch.LaunchContext) -> str:
-        path_str = launch.utilities.perform_substitutions(context, self._path)
         mobile_str = launch.utilities.perform_substitutions(context, self._mobile_path)
-        sensors = ModelParams.from_yaml(path_str).sensors
         mobile = _load_mobile(mobile_str)
         max_range = mobile.laser.range if mobile.laser is not None else _DEFAULT_LIDAR_RANGE
+
+        sensors_json_str = launch.utilities.perform_substitutions(context, self._sensors_json)
+        if sensors_json_str:
+            sensors = [SensorSpec(name=d['name'], type=d['type'], topic=d['topic'], frame='') for d in json.loads(sensors_json_str)]
+        else:
+            path_str = launch.utilities.perform_substitutions(context, self._path)
+            sensors = ModelParams.from_yaml(path_str).sensors
 
         local_sources = compile_sensors_to_nav2(sensors, max_range=max_range)
 

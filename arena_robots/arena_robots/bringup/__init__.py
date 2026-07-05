@@ -48,10 +48,11 @@ class Bringup(ABC):
     kind: ClassVar[str]
     task_handlers: ClassVar[dict[TaskKind, Callable[[], type[TaskHandler]]]] = {}
 
-    def __init__(self, robot: RobotView, namespace: str, *, frame: str = "") -> None:
+    def __init__(self, robot: RobotView, namespace: str, *, frame: str = "", parts: dict[str, list] | None = None) -> None:
         self.robot = robot
         self.namespace = Namespace(namespace)
         self.frame = frame
+        self.parts: dict[str, list] = parts if parts is not None else {}
 
     @property
     def cap(self) -> str:
@@ -76,7 +77,7 @@ class Bringup(ABC):
 
 
 def check_caps(bringup: Bringup) -> None:
-    available = bringup.robot.caps.available
+    available = bringup.robot.effective_caps(bringup.parts).available
     missing = bringup.requires - available
     if missing:
         raise AdapterCapMismatch(f"Bringup {bringup.kind!r} requires caps {sorted(missing)} but robot {bringup.robot.name!r} only advertises {sorted(available)}")

@@ -1,0 +1,30 @@
+mounts:
+  front_laser:
+    parent: base_link
+    xyz: [0.8, 0.366, -0.06]
+    rpy: [0, 0, 0.7853981633974483]
+    accepts: [lidar]
+  rear_laser:
+    parent: base_link
+    xyz: [-0.8, -0.366, -0.06]
+    rpy: [0, 0, -2.356194490192345]
+    accepts: [lidar]
+  vectornav:
+    parent: base_link
+    xyz: [0.3, -0.3, 0.0725]
+    rpy: [0, 0, 0]
+    accepts: [imu]
+priority:
+  lidar: [front_laser, rear_laser]
+  imu: [vectornav]
+defaults:
+  lidar:
+    - variant: sick_microscan3
+      mount: front_laser
+      overrides: {topic: lidar}
+    - variant: sick_microscan3
+      mount: rear_laser
+      overrides: {name: lidar_rear, topic: lidar/rear}
+  imu:
+    - variant: vectornav
+      mount: vectornav

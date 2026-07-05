@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
 import yaml
+
+if TYPE_CHECKING:
+    from arena_robots.assembly import ResolvedAssembly
+    from arena_robots.catalog import Catalog
 
 
 @pytest.fixture()
@@ -214,6 +219,115 @@ class TestInstanceSpecs:
         rc = RobotCaps(caps_dir=caps)
         with pytest.raises(ValueError, match="missing 'joint'"):
             rc.gripper["g"].joint
+
+
+class TestRobotCapsAllocationDerived:
+    """`resolved`/`catalog` (phase3 sec2.10): placement-derived caps alongside the
+    static caps/ file path."""
+
+    def _catalog_with_arm(self, tmp_path: Path) -> Catalog:
+        from arena_robots.catalog import Catalog
+
+        arm_dir = tmp_path / "components" / "arm" / "ur5e"
+        arm_dir.mkdir(parents=True)
+        (arm_dir / "component.yaml").write_text(
+            yaml.dump(
+                {
+                    "xacro": {"include": "ur5e.urdf.xacro", "macro": "ur5e_arm"},
+                    "caps": {
+                        "base_link": "${prefix}${parent}",
+                        "tip_link": "${prefix}${mount}_tip",
+                        "chain": ["${prefix}${mount}_shoulder_pan_joint"],
+                        "controller": "${mount}_controller",
+                        "named_poses": {
+                            "stow": {"joints": {"${prefix}${mount}_shoulder_pan_joint": 0.0}},
+                        },
+                    },
+                }
+            )
+        )
+        return Catalog(root=tmp_path / "components")
+
+    def _resolved_with_arm(self) -> ResolvedAssembly:
+        from arena_robots.assembly import Mount, Placement, ResolvedAssembly
+
+        mount = Mount(name="arm0", parent="chassis_link", xyz=(0.0, 0.0, 0.0), accepts=frozenset({"arm"}))
+        return ResolvedAssembly(placements=[Placement(type="arm", variant="ur5e", mount=mount)])
+
+    def test_available_includes_placed_arm(self, tmp_path: Path):
+        from arena_robots.caps import RobotCaps
+
+        rc = RobotCaps(caps_dir=tmp_path / "caps", resolved=self._resolved_with_arm(), catalog=self._catalog_with_arm(tmp_path))
+        assert "arm" in rc.available
+
+    def test_arm_instances_keyed_by_mount_name(self, tmp_path: Path):
+        from arena_robots.caps import ArmSpec, RobotCaps
+
+        rc = RobotCaps(caps_dir=tmp_path / "caps", resolved=self._resolved_with_arm(), catalog=self._catalog_with_arm(tmp_path))
+        arms = rc.arm
+        assert set(arms) == {"arm0"}
+        arm = arms["arm0"]
+        assert isinstance(arm, ArmSpec)
+        assert arm.base_link == "robot_chassis_link"
+        assert arm.tip_link == "robot_arm0_tip"
+        assert arm.chain == ["robot_arm0_shoulder_pan_joint"]
+        assert arm.controller == "arm0_controller"
+
+    def test_named_poses_joint_keys_are_mount_substituted(self, tmp_path: Path):
+        """caps templates use ${...}-keyed dicts for named_poses.<pose>.joints;
+        YAMLReplacer alone only substitutes dict values, so `_instances` must also
+        fix up keys (H2 finding)."""
+        from arena_robots.caps import RobotCaps
+
+        rc = RobotCaps(caps_dir=tmp_path / "caps", resolved=self._resolved_with_arm(), catalog=self._catalog_with_arm(tmp_path))
+        stow_joints = rc.arm["arm0"].named_poses["stow"]
+        assert stow_joints == {"robot_arm0_shoulder_pan_joint": 0.0}
+
+    def test_available_unaffected_by_non_cap_bearing_placement(self, tmp_path: Path):
+        from arena_robots.assembly import Mount, Placement, ResolvedAssembly
+        from arena_robots.caps import RobotCaps
+        from arena_robots.catalog import Catalog
+
+        lidar_dir = tmp_path / "components" / "lidar" / "sick_s300"
+        lidar_dir.mkdir(parents=True)
+        (lidar_dir / "component.yaml").write_text(
+            yaml.dump(
+                {
+                    "xacro": {"include": "x.xacro", "macro": "m"},
+                    "sensor": {"gz": [{"name": "lidar", "type": "laserscan", "topic": "scan", "frame": "f", "sensor": "s"}]},
+                }
+            )
+        )
+        mount = Mount(name="front_laser", parent="base_link", xyz=(0.0, 0.0, 0.0), accepts=frozenset({"lidar"}))
+        resolved = ResolvedAssembly(placements=[Placement(type="lidar", variant="sick_s300", mount=mount)])
+        catalog = Catalog(root=tmp_path / "components")
+        rc = RobotCaps(caps_dir=tmp_path / "caps", resolved=resolved, catalog=catalog)
+        assert rc.available == frozenset()
+        assert rc.arm is None
+
+    def test_static_file_used_when_no_placements_of_type(self, tmp_path: Path):
+        """arm.yaml present but resolved has zero arm placements: static path wins."""
+        from arena_robots.assembly import ResolvedAssembly
+        from arena_robots.caps import RobotCaps
+        from arena_robots.catalog import Catalog
+
+        caps_dir = tmp_path / "caps"
+        caps_dir.mkdir()
+        (caps_dir / "arm.yaml").write_text(yaml.dump({"arm": {"base_link": "b", "tip_link": "t", "chain": ["j"], "controller": "c"}}))
+        rc = RobotCaps(caps_dir=caps_dir, resolved=ResolvedAssembly(placements=[]), catalog=Catalog(root=tmp_path / "components"))
+        assert set(rc.arm) == {"arm"}
+
+    def test_none_resolved_matches_file_only_behavior(self, tmp_path: Path):
+        from arena_robots.caps import RobotCaps
+
+        caps_dir = tmp_path / "caps"
+        caps_dir.mkdir()
+        (caps_dir / "mobile.yaml").write_text("{}")
+        rc = RobotCaps(caps_dir=caps_dir)
+        assert rc.resolved is None
+        assert rc.catalog is None
+        assert rc.available == frozenset({"mobile"})
+        assert rc.arm is None
 
 
 class TestArmSpecSRDF:

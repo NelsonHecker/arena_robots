@@ -43,10 +43,13 @@ class TestConfigParse:
                 _ = c.__dict__["count"]
 
     def test_parse_dict_unknown_bare_keys_are_morphology(self):
-        from arena_robots.SetupFile import Config
+        from arena_robots.SetupFile import Config, Part
 
-        with pytest.raises(RuntimeError, match="not yet implemented"):
-            Config.parse({"robot": "tb3", "planner": "NavFn", "controller": "DWB"})
+        configs = Config.parse({"robot": "tb3", "planner": "NavFn", "controller": "DWB"})
+        assert configs[0].parts == {
+            "planner": [Part(variant="NavFn")],
+            "controller": [Part(variant="DWB")],
+        }
 
     def test_parse_dict_mobile_adapter_key(self):
         from arena_robots.SetupFile import Config

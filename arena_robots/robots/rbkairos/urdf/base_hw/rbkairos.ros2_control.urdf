@@ -1,31 +1,39 @@
 <?xml version="1.0"?>
 <robot name="kairos" xmlns:xacro="http://ros.org/wiki/xacro">
 
+  <!-- joints-only macro (phase3 sec2.10 base_hw refactor): bare <joint> elements, no
+       <ros2_control>/<hardware> wrapper. Consumed by catalog.render_wrapper_xacro to
+       splice in an arm placement's joints alongside these; the wrapped macro below stays
+       the only entry point for unmigrated (arm-less) renders. -->
+  <xacro:macro name="rbkairos_base_hw_joints" params="prefix:=robot_">
+    <joint name="${prefix}front_left_wheel_joint">
+      <command_interface name="velocity"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="${prefix}front_right_wheel_joint">
+      <command_interface name="velocity"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="${prefix}back_left_wheel_joint">
+      <command_interface name="velocity"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="${prefix}back_right_wheel_joint">
+      <command_interface name="velocity"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+  </xacro:macro>
+
   <xacro:macro name="rbkairos_base_hw_controller">
     <ros2_control name="kairos" type="system">
       <hardware>
         <plugin>gz_ros2_control/GazeboSimSystem</plugin>
       </hardware>
-      <joint name="robot_front_left_wheel_joint">
-        <command_interface name="velocity"/>
-        <state_interface name="position"/>
-        <state_interface name="velocity"/>
-      </joint>
-      <joint name="robot_front_right_wheel_joint">
-        <command_interface name="velocity"/>
-        <state_interface name="position"/>
-        <state_interface name="velocity"/>
-      </joint>
-      <joint name="robot_back_left_wheel_joint">
-        <command_interface name="velocity"/>
-        <state_interface name="position"/>
-        <state_interface name="velocity"/>
-      </joint>
-      <joint name="robot_back_right_wheel_joint">
-        <command_interface name="velocity"/>
-        <state_interface name="position"/>
-        <state_interface name="velocity"/>
-      </joint>
+      <xacro:rbkairos_base_hw_joints prefix="robot_"/>
     </ros2_control>
   </xacro:macro>
 

@@ -1,0 +1,40 @@
+# MoveIt joint_limits.yaml for the ur10e arm component. Fixes the fitsweep-flagged
+# defect (robots/rbrobout_plus/srdf/joint_limits.yaml byte-copied the ur5e file even
+# though rbrobout_plus is a ur10e arm): max_velocity below is converted from the real
+# UR10e limits in arena_robots/deps/ur_description/config/ur10e/joint_limits.yaml
+# (User Manual UR10e v5.8; shoulder_pan/lift 120deg/s, elbow/wrist 180deg/s). Keys are
+# templated ${prefix}${mount}_*; moveit_factory.py re-keys them per placement (phase3
+# items 6/7) with the mount/prefix/parent context resolved from caps.moveit.args.
+# max_acceleration is an unsourced placeholder carried over from the ur5e file (UR does
+# not publish acceleration limits); unchanged pending owner sign-off.
+joint_limits:
+  "${prefix}${mount}_shoulder_pan_joint":
+    has_velocity_limits: true
+    max_velocity: 2.0943951023931953 # 120 deg/s
+    has_acceleration_limits: true
+    max_acceleration: 15.0
+  "${prefix}${mount}_shoulder_lift_joint":
+    has_velocity_limits: true
+    max_velocity: 2.0943951023931953 # 120 deg/s
+    has_acceleration_limits: true
+    max_acceleration: 15.0
+  "${prefix}${mount}_elbow_joint":
+    has_velocity_limits: true
+    max_velocity: 3.141592653589793 # 180 deg/s
+    has_acceleration_limits: true
+    max_acceleration: 15.0
+  "${prefix}${mount}_wrist_1_joint":
+    has_velocity_limits: true
+    max_velocity: 3.141592653589793 # 180 deg/s
+    has_acceleration_limits: true
+    max_acceleration: 15.0
+  "${prefix}${mount}_wrist_2_joint":
+    has_velocity_limits: true
+    max_velocity: 3.141592653589793 # 180 deg/s
+    has_acceleration_limits: true
+    max_acceleration: 15.0
+  "${prefix}${mount}_wrist_3_joint":
+    has_velocity_limits: true
+    max_velocity: 3.141592653589793 # 180 deg/s
+    has_acceleration_limits: true
+    max_acceleration: 15.0

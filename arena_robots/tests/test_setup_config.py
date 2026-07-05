@@ -83,51 +83,50 @@ class TestConfigParseGrammarRejections:
             Config.parse({"robot": "jackal", "parts": {"lidar": ["sick"]}})
 
 
-class TestConfigParsePhase1MorphologyGate:
-    """Phase 1 hard-errors on any morphology item (bare or @-mount keys); no silent acceptance."""
+class TestConfigParseMorphologyParts:
+    """Morphology items (bare or @-mount keys) flow through to ``parts``; realization
+    (assembler resolution) happens later, per-robot, at ``Robot.parse`` time."""
 
-    def test_bare_morphology_key_raises_not_implemented(self):
+    def test_bare_morphology_key_populates_parts(self):
+        from arena_robots.SetupFile import Config, Part
+
+        configs = Config.parse({"robot": "jackal", "lidar": "sick"})
+        assert configs[0].parts == {"lidar": [Part(variant="sick")]}
+
+    def test_mounted_morphology_key_populates_parts(self):
+        from arena_robots.SetupFile import Config, Part
+
+        configs = Config.parse({"robot": "jackal", "lidar@front": "sick"})
+        assert configs[0].parts == {"lidar": [Part(variant="sick", mount="front")]}
+
+    def test_multi_instance_morphology_populates_parts(self):
+        from arena_robots.SetupFile import Config, Part
+
+        configs = Config.parse({"robot": "jackal", "lidar": ["a", "b"]})
+        assert configs[0].parts == {"lidar": [Part(variant="a"), Part(variant="b")]}
+
+    def test_none_morphology_produces_empty_list(self):
         from arena_robots.SetupFile import Config
 
-        with pytest.raises(RuntimeError, match="not yet implemented"):
-            Config.parse({"robot": "jackal", "lidar": "sick"})
-
-    def test_mounted_morphology_key_raises_not_implemented(self):
-        from arena_robots.SetupFile import Config
-
-        with pytest.raises(RuntimeError, match="not yet implemented"):
-            Config.parse({"robot": "jackal", "lidar@front": "sick"})
-
-    def test_multi_instance_morphology_raises_not_implemented(self):
-        from arena_robots.SetupFile import Config
-
-        with pytest.raises(RuntimeError, match="not yet implemented"):
-            Config.parse({"robot": "jackal", "lidar": ["a", "b"]})
-
-    def test_none_morphology_raises_not_implemented(self):
-        from arena_robots.SetupFile import Config
-
-        with pytest.raises(RuntimeError, match="not yet implemented"):
-            Config.parse({"robot": "jackal", "lidar": "none"})
+        configs = Config.parse({"robot": "jackal", "lidar": "none"})
+        assert configs[0].parts == {"lidar": []}
 
 
 class TestConfigParseGrammarPrecedesGate:
-    """Grammar errors (none-mixing, none+mount) must be raised even though the Phase 1
-    gate would also reject the same key; the two must not be confused for each other."""
+    """Grammar errors (none-mixing, none+mount) are still hard-errors even though
+    morphology items are otherwise accepted."""
 
-    def test_none_mixed_with_variant_is_grammar_error_not_gate(self):
+    def test_none_mixed_with_variant_is_grammar_error(self):
         from arena_robots.SetupFile import Config
 
-        with pytest.raises(RuntimeError) as excinfo:
+        with pytest.raises(RuntimeError, match="none"):
             Config.parse({"robot": "jackal", "lidar": ["sick", "none"]})
-        assert "not yet implemented" not in str(excinfo.value)
 
-    def test_none_with_mount_is_grammar_error_not_gate(self):
+    def test_none_with_mount_is_grammar_error(self):
         from arena_robots.SetupFile import Config
 
-        with pytest.raises(RuntimeError) as excinfo:
+        with pytest.raises(RuntimeError, match="none"):
             Config.parse({"robot": "jackal", "lidar@front": "none"})
-        assert "not yet implemented" not in str(excinfo.value)
 
 
 class TestPart:

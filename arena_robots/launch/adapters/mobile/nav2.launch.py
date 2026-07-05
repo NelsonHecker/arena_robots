@@ -43,6 +43,7 @@ def generate_launch_description():
     inter_planner = LaunchArgument('inter_planner')
     train_mode = LaunchArgument('train_mode', default_value='false')
     planner_only = LaunchArgument('planner_only', default_value='false')
+    sensors_json = LaunchArgument('sensors_json', default_value='')
 
     def nav2_cfg(*parts):
         return PathJoinSubstitution([robots_root, 'config', 'nav2', *parts])
@@ -65,7 +66,7 @@ def generate_launch_description():
         Nav2SubBlockYAML(mobile_path),
         Nav2CollisionDerivedYAML(mobile_path),
         Nav2KinematicsDerivedYAML(mobile_path),
-        SensorsDerivedYAML(model_params_path, mobile_path),
+        SensorsDerivedYAML(model_params_path, mobile_path, sensors_json.substitution),
         YAMLFileSubstitution(nav2_cfg('defaults', 'controller_config.yaml')),
         YAMLFileSubstitution(nav2_cfg('controllers', local_planner.substitution, 'controller_config.yaml')),
         YAMLFileSubstitution(nav2_cfg('defaults', 'planner_config.yaml')),

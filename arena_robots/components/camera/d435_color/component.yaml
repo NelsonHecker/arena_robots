@@ -1,0 +1,23 @@
+xacro:
+  include: depth/intel_realsense_d435.urdf.xacro
+  macro: sensor_intel_realsense_d435
+  attach:
+    parent: "${prefix}${parent}"
+    frame_prefix: "${prefix}${mount}_"
+    node_name: "${node_name:-${name:-${mount}}}"
+    node_namespace: "${namespace}"
+    gazebo_classic: "${gazebo_classic}"
+    gazebo_ignition: "${gazebo_ignition}"
+  args: {}
+sensor:
+  gz:
+    - name: "${name:-${mount}}_image"
+      type: image
+      topic: "${topic:-${mount}}${image_suffix:-/image}"
+      frame: "${prefix}${mount}_color_frame"
+      sensor: "${node_name:-${name:-${mount}}}_color"
+    - name: "${name:-${mount}}_info"
+      type: camera_info
+      topic: "${topic:-${mount}}${info_suffix:-/camera_info}"
+      frame: "${prefix}${mount}_color_frame"
+      sensor: "${node_name:-${name:-${mount}}}_color"

@@ -1,0 +1,19 @@
+# node_name left at the macro default ("imu"): the fleet's backing sensor id is
+# "imu_sensor", not mount-derived, so no override is needed.
+xacro:
+  include: imu/vectornav.urdf.xacro
+  macro: sensor_vectornav
+  attach:
+    frame_prefix: "${prefix}${mount}_"
+    parent: "${prefix}${parent}"
+    node_namespace: "${namespace}"
+    gazebo_classic: "${gazebo_classic}"
+    gazebo_ignition: "${gazebo_ignition}"
+  args: {}
+sensor:
+  gz:
+    - name: "${name:-imu}"
+      type: imu
+      topic: "${topic:-imu/data}"
+      frame: "${prefix}${mount}_link"
+      sensor: imu_sensor

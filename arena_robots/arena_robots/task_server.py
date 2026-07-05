@@ -1,5 +1,6 @@
 """ROS node that exposes per-TaskKind action servers for a robot's configured bringups."""
 
+import json
 from typing import cast
 
 import rclpy
@@ -9,6 +10,7 @@ from rclpy.action import ActionServer
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 
+from arena_robots.assembly import RequestPart
 from arena_robots.bringup import BRINGUPS, check_caps
 from arena_robots.Robot import RobotIdentifier
 from arena_robots.task_kinds import action_type, endpoint
@@ -22,6 +24,10 @@ class TaskServerNode(Node):
         bringup_caps = cast(list[str], self.declare_parameter("bringup_caps", Parameter.Type.STRING_ARRAY).value)
         bringup_kinds = cast(list[str], self.declare_parameter("bringup_kinds", Parameter.Type.STRING_ARRAY).value)
         frame = cast(str, self.declare_parameter("frame", "").value)
+        parts = {
+            t: [RequestPart(variant=i["variant"], mount=i.get("mount")) for i in items]
+            for t, items in json.loads(cast(str, self.declare_parameter("parts_json", "{}").value)).items()
+        }
 
         if not robot_name:
             raise RuntimeError("Parameter 'robot_name' is required")
@@ -47,7 +53,7 @@ class TaskServerNode(Node):
                 continue
 
             try:
-                bringup = bringup_cls(robot, namespace, frame=frame)
+                bringup = bringup_cls(robot, namespace, frame=frame, parts=parts)
                 check_caps(bringup)
             except Exception as exc:
                 self.get_logger().error(f"bringup ({cap!r}, {kind!r}) init failed: {exc}; skipping")
