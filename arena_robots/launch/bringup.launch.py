@@ -1,11 +1,14 @@
 """Standalone robot bringup launch (no task_generator)."""
 
+from pathlib import Path
+
 from arena_bringup.substitutions import LaunchArgument
 from arena_robots.bringup import check_caps, BRINGUPS
 from arena_robots.Robot import RobotIdentifier
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, OpaqueFunction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from launch.substitutions import PathJoinSubstitution
 
@@ -20,6 +23,7 @@ def generate_launch_description():
     cap_arg = LaunchArgument('cap', default_value='mobile')
     use_sim_time_arg = LaunchArgument('use_sim_time', default_value='true')
     frame_arg = LaunchArgument('frame', default_value='')
+    active_sensors_arg = LaunchArgument('active_sensors', default_value='')
 
     def _compose(context, *args, **kwargs):
         name = robot_arg.substitution.perform(context)
@@ -28,6 +32,7 @@ def generate_launch_description():
         cap = cap_arg.substitution.perform(context)
         use_sim_time_str = use_sim_time_arg.substitution.perform(context)
         frame = frame_arg.substitution.perform(context)
+        active_sensors_csv = active_sensors_arg.substitution.perform(context)
 
         use_sim_time = use_sim_time_str.lower() in ('true', '1', 'yes')
 
@@ -49,6 +54,15 @@ def generate_launch_description():
 
         bringup_actions = bringup._launch_actions(use_sim_time=use_sim_time, frame=frame)
 
-        return [state_publisher, *bringup_actions]
+        actions = [state_publisher, *bringup_actions]
+        
+        active_sensors = []
+        if active_sensors_csv:
+            active_sensors = [s.strip() for s in active_sensors_csv.split(',') if s.strip()]
+            
+        actions.extend(bringup.telemetry_actions(active_sensors=active_sensors))
+
+        return actions
 
     return LaunchDescription([*ld_items, OpaqueFunction(function=_compose)])
+

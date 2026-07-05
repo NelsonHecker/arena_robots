@@ -66,6 +66,23 @@ class Bringup(ABC):
         **launch_args: object,
     ) -> list[Action]: ...
 
+    def telemetry_actions(self, active_sensors: list[str] | None = None) -> list[Action]:
+        from ament_index_python.packages import get_package_share_directory as get_share
+        from launch_ros.actions import Node
+        import os
+        
+        yaml_path = os.path.join(get_share('arena_robots'), 'robots', self.robot.name, 'telemetry', 'power.yaml')
+        if not os.path.isfile(yaml_path):
+            return []
+            
+        params = {'config_path': yaml_path}
+        if active_sensors: params['active_sensors'] = active_sensors
+            
+        return [Node(
+            package='arena_robots', executable='power_publisher', name='power_publisher',
+            namespace=str(self.namespace), parameters=[params], output='screen'
+        )]
+
     @property
     def requires(self) -> frozenset[str]:
         return self._bringup_meta.requires
