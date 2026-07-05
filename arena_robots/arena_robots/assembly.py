@@ -58,6 +58,11 @@ class AssemblySpec:
     mounts: dict[str, Mount] = attrs.field(factory=dict)
     priority: dict[str, list[str]] = attrs.field(factory=dict)
     defaults: dict[str, list[DefaultPart]] = attrs.field(factory=dict)
+    prefix: str = 'robot_'
+    """Frame-templating prefix for ``catalog.render_effective_sensors`` (mount frames
+    render as ``${prefix}${mount}_link``). Defaults to ``robot_`` (the Robotnik-family
+    convention rbtheron/rbrobout/rbvogui all share); a chassis with no such convention
+    (mpo700) declares ``prefix: ""`` here to match its own xacro's ``prefix`` arg default."""
 
     @classmethod
     def parse(cls, data: dict[str, typing.Any]) -> AssemblySpec:
@@ -109,7 +114,7 @@ class AssemblySpec:
                 )
             defaults[str(t)] = parts
 
-        return cls(mounts=mounts, priority=priority, defaults=defaults)
+        return cls(mounts=mounts, priority=priority, defaults=defaults, prefix=str(data.get('prefix', 'robot_')))
 
 
 @attrs.define

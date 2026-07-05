@@ -244,8 +244,9 @@ class RobotView(PathView):
         resolved = self._resolved(parts)
         if resolved is None:
             return self.model_params.sensors
-        rendered = render_effective_sensors(resolved, _CATALOG)
-        defaults_rendered = rendered if not parts else render_effective_sensors(self._resolved({}), _CATALOG)
+        prefix = self.assembly.prefix
+        rendered = render_effective_sensors(resolved, _CATALOG, prefix=prefix)
+        defaults_rendered = rendered if not parts else render_effective_sensors(self._resolved({}), _CATALOG, prefix=prefix)
         missing = {s.name for s in self.model_params.sensors} - {s.name for s in defaults_rendered}
         if missing:
             print(
