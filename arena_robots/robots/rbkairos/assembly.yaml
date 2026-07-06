@@ -1,0 +1,41 @@
+prefix: "robot_"
+mounts:
+  front_laser:
+    parent: base_link
+    xyz: [0.42109, -0.32737, 0.16037]
+    rpy: [0, -3.141592653589793, 2.356194490192345]
+    accepts: [lidar]
+  rear_laser:
+    parent: base_link
+    xyz: [-0.42109, 0.32737, 0.16037]
+    rpy: [0, -3.141592653589793, -0.7853981633974483]
+    accepts: [lidar]
+  vectornav:
+    parent: base_link
+    xyz: [0.127, -0.129, 0.212]
+    rpy: [0, 0, 0]
+    accepts: [imu]
+  front_rgbd_camera:
+    parent: base_link
+    xyz: [0.3585, 0.0, 0.25062]
+    rpy: [0, 0, 0]
+    accepts: [camera]
+priority:
+  lidar: [front_laser, rear_laser]
+  imu: [vectornav]
+  camera: [front_rgbd_camera]
+defaults:
+  lidar:
+    - variant: sick_s300
+      mount: front_laser
+      overrides: {topic: lidar}
+    - variant: sick_s300
+      mount: rear_laser
+      overrides: {name: lidar_rear, topic: lidar/rear}
+  imu:
+    - variant: vectornav
+      mount: vectornav
+  camera:
+    - variant: d435_color
+      mount: front_rgbd_camera
+      overrides: {name: rgbd_camera, topic: rgbd_camera, node_name: front_camera}
