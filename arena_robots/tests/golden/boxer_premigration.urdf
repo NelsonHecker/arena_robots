@@ -311,7 +311,7 @@
   </joint>
   <!-- Internal Realsense D435 (managed by the Boxer's internal ROS2 API) -->
   <link name="front_realsense_mount_link"/>
-  <joint name="front_realsense_mount_joint" type="fixed">
+  <joint name="front_realsense_mount_link_joint" type="fixed">
     <parent link="chassis_link"/>
     <child link="front_realsense_mount_link"/>
     <origin rpy="0 -0.257610597594 0" xyz="0.3524 0 0.0422"/>
@@ -407,65 +407,25 @@
     <child link="realsense_front_camera_color_optical_frame"/>
   </joint>
   <link name="realsense_front_camera_color_optical_frame"/>
-  <!--
-    The D435 doesn't natively provide simulation data, so include the kinect plugin to make the sensor work
-    Note that the realsense on the Boxer via the Otto API only publishes the depth image, not pointcloud data
-
-    The gazebo kinect plugin aligns the depth data with the Z axis, with X=left and Y=up
-    ROS expects the depth data along the X axis, with Y=left and Z=up
-    This link only exists to give the gazebo plugin the correctly-oriented frame
-  -->
-  <link name="realsense_front_camera_gazebo_link"/>
-  <joint name="realsense_front_camera_gazebo_joint" type="fixed">
-    <parent link="realsense_front_camera_link"/>
-    <child link="realsense_front_camera_gazebo_link"/>
-    <origin rpy="-1.5707963267948966 0 -1.5707963267948966" xyz="0.0 0 0"/>
-  </joint>
   <gazebo reference="realsense_front_camera_link">
-    <material>Gazebo/Black</material>
-    <turnGravityOff>true</turnGravityOff>
-    <sensor name="realsense_front_camera" type="depth">
+    <sensor name="realsense_front_camera" type="depth_camera">
       <gz_frame_id>/realsense_front_camera_link</gz_frame_id>
+      <always_on>1</always_on>
       <update_rate>30</update_rate>
+      <topic>rgbd_camera/depth_image</topic>
       <camera>
-        <!-- 75x65 degree FOV for the depth sensor -->
+        <camera_info_topic>rgbd_camera/camera_info</camera_info_topic>
         <horizontal_fov>1.5184351666666667</horizontal_fov>
-        <vertical_fov>1.0122901111111111</vertical_fov>
         <image>
           <width>640</width>
           <height>480</height>
-          <format>R8G8B8</format>
+          <format>R_FLOAT32</format>
         </image>
         <clip>
-          <!-- give the color sensor a maximum range of 50m so that the simulation renders nicely -->
-          <near>0.01</near>
-          <far>50.0</far>
+          <near>0.105</near>
+          <far>8.0</far>
         </clip>
       </camera>
-      <plugin filename="libgazebo_ros_openni_kinect.so" name="kinect_controller">
-        <baseline>0.2</baseline>
-        <alwaysOn>true</alwaysOn>
-        <updateRate>30</updateRate>
-        <cameraName>realsense</cameraName>
-        <imageTopicName>color/image_raw</imageTopicName>
-        <cameraInfoTopicName>color/camera_info</cameraInfoTopicName>
-        <depthImageTopicName>depth/image_rect_raw</depthImageTopicName>
-        <depthImageInfoTopicName>depth/camera_info</depthImageInfoTopicName>
-        <pointCloudTopicName>depth/color/points</pointCloudTopicName>
-        <frameName>realsense_front_camera_gazebo_link</frameName>
-        <pointCloudCutoff>0.105</pointCloudCutoff>
-        <pointCloudCutoffMax>8.0</pointCloudCutoffMax>
-        <distortionK1>0.00000001</distortionK1>
-        <distortionK2>0.00000001</distortionK2>
-        <distortionK3>0.00000001</distortionK3>
-        <distortionT1>0.00000001</distortionT1>
-        <distortionT2>0.00000001</distortionT2>
-        <CxPrime>0</CxPrime>
-        <Cx>0</Cx>
-        <Cy>0</Cy>
-        <focalLength>0</focalLength>
-        <hackBaseline>0</hackBaseline>
-      </plugin>
     </sensor>
   </gazebo>
   <!-- Front safety sensor -->

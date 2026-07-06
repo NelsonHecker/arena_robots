@@ -17,9 +17,15 @@ mounts:
     xyz: [0, 0, 0]
     rpy: [0, 0, 0]
     accepts: [imu]
+  front_realsense_mount_link:
+    parent: chassis_link
+    xyz: [0.3524, 0.0, 0.0422]
+    rpy: [0, -0.257610597594, 0]
+    accepts: [camera]
 priority:
   lidar: [front_laser, rear_sensor]
   imu: [imu]
+  camera: [front_realsense_mount_link]
 defaults:
   lidar:
     - variant: boxer_front
@@ -30,3 +36,7 @@ defaults:
     - variant: arena_default
       mount: imu
       params: {frame: imu_sensor_link}
+  camera:
+    - variant: d435_depth
+      mount: front_realsense_mount_link
+      params: {camera: realsense_front_camera}
