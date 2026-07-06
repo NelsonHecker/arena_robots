@@ -19,6 +19,7 @@ from arena_robots.catalog import Catalog, render_wrapper_xacro
 from arena_robots.Robot import RobotIdentifier
 
 COMPONENTS_ROOT = Path(__file__).resolve().parent.parent / "components"
+GOLDEN = Path(__file__).resolve().parent / "golden"
 
 _XACRO = shutil.which("xacro")
 
@@ -63,7 +64,9 @@ def _mechanism_elements(root: ET.Element) -> dict[tuple[str, str], dict]:
 @pytest.mark.skipif(_XACRO is None, reason="xacro CLI not on PATH; run under the Arena container (bash arena -c pytest)")
 class TestRboroutCollapseParity:
     @pytest.fixture(scope="class")
-    def rendered(self, tmp_path_factory: pytest.TempPathFactory) -> tuple[ET.Element, ET.Element]:
+    def trees(self, tmp_path_factory: pytest.TempPathFactory) -> tuple[ET.Element, ET.Element]:
+        """``assembled`` is the live rbrobout[parts] render; ``reference`` is rbrobout_plus's
+        frozen collapse golden."""
         view = RobotIdentifier("rbrobout").resolve_sync()
         assert view.assembly is not None
         resolved = resolve(
@@ -76,32 +79,31 @@ class TestRboroutCollapseParity:
         )
         wrapper_path = tmp_path_factory.mktemp("collapse") / "rbrobout_full.urdf.xacro"
         wrapper_path.write_text(render_wrapper_xacro(view, resolved, catalog=Catalog(root=COMPONENTS_ROOT)))
-        mine = _render(wrapper_path)
-        plus_view = RobotIdentifier("rbrobout_plus").resolve_sync()
-        plus = _render(plus_view.path / "urdf" / "rbrobout_plus.urdf.xacro")
-        return mine, plus
+        assembled = _render(wrapper_path)
+        reference = ET.parse(GOLDEN / "rbrobout_plus_collapse.urdf").getroot()
+        return assembled, reference
 
-    def test_arm_lift_structure_subtree_structurally_identical(self, rendered: tuple[ET.Element, ET.Element]) -> None:
-        mine, plus = rendered
-        assert _mechanism_elements(mine) == _mechanism_elements(plus)
+    def test_arm_lift_structure_subtree_structurally_identical(self, trees: tuple[ET.Element, ET.Element]) -> None:
+        assembled, reference = trees
+        assert _mechanism_elements(assembled) == _mechanism_elements(reference)
 
-    def test_one_merged_ros2_control_tag_with_plus_joint_set(self, rendered: tuple[ET.Element, ET.Element]) -> None:
-        mine, plus = rendered
-        mine_tags = mine.findall("ros2_control")
-        plus_tags = plus.findall("ros2_control")
-        assert len(mine_tags) == 1
-        assert len(plus_tags) == 1
-        mine_joints = {_norm(j.get("name", "")) for j in mine_tags[0].iter("joint")}
-        plus_joints = {j.get("name", "") for j in plus_tags[0].iter("joint")}
-        assert mine_joints == plus_joints
-        plugins = [p.text for p in mine_tags[0].iter("plugin")]
+    def test_one_merged_ros2_control_tag_with_reference_joint_set(self, trees: tuple[ET.Element, ET.Element]) -> None:
+        assembled, reference = trees
+        assembled_tags = assembled.findall("ros2_control")
+        reference_tags = reference.findall("ros2_control")
+        assert len(assembled_tags) == 1
+        assert len(reference_tags) == 1
+        assembled_joints = {_norm(j.get("name", "")) for j in assembled_tags[0].iter("joint")}
+        reference_joints = {j.get("name", "") for j in reference_tags[0].iter("joint")}
+        assert assembled_joints == reference_joints
+        plugins = [p.text for p in assembled_tags[0].iter("plugin")]
         assert plugins == ["gz_ros2_control/GazeboSimSystem"]
 
-    def test_gz_sensor_inventory_matches(self, rendered: tuple[ET.Element, ET.Element]) -> None:
+    def test_gz_sensor_inventory_matches(self, trees: tuple[ET.Element, ET.Element]) -> None:
         """No documented drift for the rbrobout/rbrobout_plus laser/imu pair (unlike
         rbkairos/rbvogui): this gate checks the full sensor inventory, not just
         arm/lift/structure."""
-        mine, plus = rendered
+        assembled, reference = trees
 
         def inventory(root: ET.Element) -> set[tuple[str, str]]:
             return {
@@ -110,4 +112,4 @@ class TestRboroutCollapseParity:
                 for sensor in gz.findall("sensor")
             }
 
-        assert inventory(mine) == inventory(plus)
+        assert inventory(assembled) == inventory(reference)

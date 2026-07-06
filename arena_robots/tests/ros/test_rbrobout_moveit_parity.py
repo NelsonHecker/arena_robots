@@ -1,8 +1,8 @@
 """Phase3b collapse gate, moveit params surface (parametrized-robots-phase3.md, "Phase
 3b design" sec6): moveit params for the allocation-derived
 rbrobout[structure=rbrobout_top_cover,lift=ewellix_900mm,arm=ur10e] must match
-rbrobout_plus's hand-authored ones for SRDF semantics and the arm/lift link set,
-modulo the documented rename map (lift_->lift0_, arm_->arm0_, group
+rbrobout_plus's frozen moveit params golden for SRDF semantics and the arm/lift link
+set, modulo the documented rename map (lift_->lift0_, arm_->arm0_, group
 arm0_manipulator->ur_manipulator).
 
 Joint limits are the one surface that intentionally does NOT reach parity: fitsweep
@@ -15,10 +15,13 @@ from __future__ import annotations
 
 import shutil
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import pytest
+import yaml
 
 _XACRO = shutil.which("xacro")
+GOLDEN = Path(__file__).resolve().parent.parent / "golden"
 
 
 def _norm(value: str) -> str:
@@ -54,11 +57,12 @@ def _mechanism_link_names(urdf_text: str) -> frozenset:
 @pytest.mark.skipif(_XACRO is None, reason="xacro CLI not on PATH; run under the Arena container (bash arena -c pytest)")
 class TestRboroutBuildMoveitParamsAllocationParity:
     @pytest.fixture(scope="class")
-    def params_pair(self) -> tuple[dict, dict]:
+    def params(self) -> tuple[dict, dict]:
+        """``assembled`` is built live; ``reference`` is rbrobout_plus's frozen moveit params golden."""
         from arena_robots.assembly import RequestPart
         from arena_robots.moveit_factory import build_moveit_params
 
-        mine = build_moveit_params(
+        assembled = build_moveit_params(
             "rbrobout",
             tf_prefix="robot_",
             parts={
@@ -67,22 +71,25 @@ class TestRboroutBuildMoveitParamsAllocationParity:
                 "arm": [RequestPart(variant="ur10e")],
             },
         )
-        plus = build_moveit_params("rbrobout_plus", tf_prefix="robot_")
-        assert mine is not None
-        assert plus is not None
-        return mine, plus
+        reference = {
+            "robot_description_semantic": (GOLDEN / "rbrobout_plus_moveit_semantic.srdf").read_text(),
+            "robot_description": (GOLDEN / "rbrobout_plus_moveit_description.urdf").read_text(),
+            "robot_description_planning": {"joint_limits": yaml.safe_load((GOLDEN / "rbrobout_plus_moveit_joint_limits.yaml").read_text())},
+        }
+        assert assembled is not None
+        return assembled, reference
 
-    def test_srdf_semantic_parity(self, params_pair: tuple[dict, dict]) -> None:
-        mine, plus = params_pair
-        assert _canon_srdf(mine["robot_description_semantic"]) == _canon_srdf(plus["robot_description_semantic"])
+    def test_srdf_semantic_parity(self, params: tuple[dict, dict]) -> None:
+        assembled, reference = params
+        assert _canon_srdf(assembled["robot_description_semantic"]) == _canon_srdf(reference["robot_description_semantic"])
 
-    def test_robot_description_arm_lift_link_set_parity(self, params_pair: tuple[dict, dict]) -> None:
-        mine, plus = params_pair
-        assert _mechanism_link_names(mine["robot_description"]) == _mechanism_link_names(plus["robot_description"])
+    def test_robot_description_arm_lift_link_set_parity(self, params: tuple[dict, dict]) -> None:
+        assembled, reference = params
+        assert _mechanism_link_names(assembled["robot_description"]) == _mechanism_link_names(reference["robot_description"])
 
-    def test_joint_limits_keys_match_values_diverge_by_design(self, params_pair: tuple[dict, dict]) -> None:
-        mine, plus = params_pair
-        mine_jl = mine["robot_description_planning"]["joint_limits"]
-        plus_jl = plus["robot_description_planning"]["joint_limits"]
-        assert {_norm(k) for k in mine_jl} == {_norm(k) for k in plus_jl}
-        assert mine_jl != {_norm(k): v for k, v in plus_jl.items()}
+    def test_joint_limits_keys_match_values_diverge_by_design(self, params: tuple[dict, dict]) -> None:
+        assembled, reference = params
+        assembled_jl = assembled["robot_description_planning"]["joint_limits"]
+        reference_jl = reference["robot_description_planning"]["joint_limits"]
+        assert {_norm(k) for k in assembled_jl} == {_norm(k) for k in reference_jl}
+        assert assembled_jl != {_norm(k): v for k, v in reference_jl.items()}
