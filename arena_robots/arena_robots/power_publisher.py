@@ -1,13 +1,4 @@
-"""Power publisher node — ecological energy metrics for robot navigation.
-
-Subscribes to ``sensor_msgs/msg/JointState``, applies a thermo-mechanical
-power model to **all** published joints, integrates energy over time, and
-publishes granular ``Power`` / ``Energy`` messages on every callback.
-
-Configuration is loaded from a hierarchical YAML whose path is supplied via
-the ``config_path`` ROS parameter.  Only sensors whose keys appear in the
-``active_sensors`` string-array parameter contribute to static power.
-"""
+"""Power publisher node"""
 
 from __future__ import annotations
 
@@ -25,7 +16,7 @@ from sensor_msgs.msg import JointState
 
 class PowerPublisher(Node):
     """ROS 2 node that computes instantaneous power, integrates energy, and
-    tracks battery State of Charge from ``/joint_states``."""
+    tracks battery State of Charge"""
 
     def __init__(self) -> None:
         super().__init__("power_publisher")
@@ -112,8 +103,7 @@ class PowerPublisher(Node):
 
         if not has_effort and not self._warned_empty_effort:
             self.get_logger().warning(
-                "JointState has no effort data — mechanical & thermal power "
-                "will be zero until effort is published."
+                "JointState has no effort data mechanical & thermal power will be zero until effort is published."
             )
             self._warned_empty_effort = True
 
