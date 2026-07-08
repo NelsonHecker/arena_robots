@@ -1,19 +1,21 @@
 prefix: ""
 mounts:
-  front_laser:
+  front:
     parent: base_footprint
     xyz: [0.338, 0.288, 0.223]
     rpy: [3.14, 0, 0.79]
     accepts: [lidar]
-  rear_laser:
+    frame: front_laser
+  rear:
     parent: base_footprint
     xyz: [-0.338, -0.288, 0.223]
     rpy: [3.14, 0, 3.93]
     accepts: [lidar]
+    frame: rear_laser
 defaults:
   lidar:
     - variant: sick_s300
-      mount: front_laser
+      mount: front
     - variant: sick_s300
-      mount: rear_laser
+      mount: rear
       overrides: {name: lidar_rear, topic: scan/rear}

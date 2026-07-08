@@ -37,7 +37,13 @@ class Mount:
     parent: str
     xyz: tuple[float, float, float]
     rpy: tuple[float, float, float] = (0.0, 0.0, 0.0)
-    accepts: frozenset[str] = attrs.field(factory=frozenset)
+    accepts: tuple[str, ...] = attrs.field(factory=tuple)
+    """Accepted component types, in declared order: membership validates a placement,
+    order is this socket's own preference among its accepted types, consulted only
+    under contention (sec2.6)."""
+    frame: str | None = None
+    """Identity stem substituted for ${mount} at render (frame+joint+sensor frame_id);
+    None -> falls back to name. Decouples addressing (name) from the sim2real contract."""
 
     @property
     def chained_parent(self) -> tuple[str, str] | None:
@@ -46,10 +52,12 @@ class Mount:
 
 @attrs.define
 class DefaultPart:
-    """One entry of a robot's declared default assembly; always pinned to a mount."""
+    """One entry of a robot's declared default assembly."""
 
     variant: str
-    mount: str
+    mount: str | None = None
+    """Pinned socket, or ``None`` to join the unpinned matching pool like a shorthand
+    request item (forced onto the sole accepting mount when only one exists)."""
     params: dict[str, object] = attrs.field(factory=dict)
     overrides: dict[str, str] = attrs.field(factory=dict)
     """Per-placement sensor-template overrides (catalog.py), e.g. rbtheron's rear
@@ -60,7 +68,7 @@ class DefaultPart:
 @attrs.define
 class RequestPart:
     """One requested part instance from a fleet-def morphology item; ``mount`` set only
-    for an explicit ``@pin``. ``params`` is reserved for later bracket-level tuning and is
+    for an explicit pin. ``params`` is reserved for later bracket-level tuning and is
     accepted but not propagated into the resolved assembly."""
 
     variant: str
@@ -108,9 +116,11 @@ class AssemblySpec:
     @classmethod
     def parse(cls, data: dict[str, typing.Any]) -> AssemblySpec:
         """Parse the ``assembly.yaml`` shape (mounts/defaults keys, sec2.5).
-        Validates that defaults reference declared mounts that accept their type;
-        raises :class:`AssemblyError` otherwise. Allocation preference among mounts
-        accepting the same type follows mount declaration order (first-declared wins)."""
+        Validates that a pinned default references a declared mount that accepts its
+        type; raises :class:`AssemblyError` otherwise. Allocation preference among
+        mounts accepting the same type follows mount declaration order (first-declared
+        wins); preference among types at one mount follows ``accepts`` declaration
+        order (sec2.6)."""
         mounts_raw = data.get('mounts', {})
         if not isinstance(mounts_raw, dict):
             raise AssemblyError(f"assembly.yaml 'mounts' must be a mapping; got {type(mounts_raw).__name__}")
@@ -119,12 +129,14 @@ class AssemblySpec:
         for name, m in mounts_raw.items():
             xyz = m.get('xyz', [0.0, 0.0, 0.0])
             rpy = m.get('rpy', [0.0, 0.0, 0.0])
+            frame_raw = m.get('frame')
             mounts[name] = Mount(
                 name=str(name),
                 parent=str(m['parent']),
                 xyz=(float(xyz[0]), float(xyz[1]), float(xyz[2])),
                 rpy=(float(rpy[0]), float(rpy[1]), float(rpy[2])),
-                accepts=frozenset(str(a) for a in m.get('accepts', [])),
+                accepts=tuple(str(a) for a in m.get('accepts', [])),
+                frame=str(frame_raw) if frame_raw is not None else None,
             )
         _validate_mount_dag(mounts)
 
@@ -132,14 +144,16 @@ class AssemblySpec:
         for t, entries in data.get('defaults', {}).items():
             parts: list[DefaultPart] = []
             for entry in entries:
-                mount_name = str(entry['mount'])
-                if mount_name not in mounts:
-                    raise AssemblyError(f"defaults['{t}']: unknown mount '{mount_name}'; declared mounts: {sorted(mounts)}")
-                if t not in mounts[mount_name].accepts:
-                    raise AssemblyError(
-                        f"defaults['{t}']: mount '{mount_name}' does not accept '{t}' "
-                        f"(accepts: {sorted(mounts[mount_name].accepts)})"
-                    )
+                mount_raw = entry.get('mount')
+                mount_name = str(mount_raw) if mount_raw is not None else None
+                if mount_name is not None:
+                    if mount_name not in mounts:
+                        raise AssemblyError(f"defaults['{t}']: unknown mount '{mount_name}'; declared mounts: {sorted(mounts)}")
+                    if t not in mounts[mount_name].accepts:
+                        raise AssemblyError(
+                            f"defaults['{t}']: mount '{mount_name}' does not accept '{t}' "
+                            f"(accepts: {sorted(mounts[mount_name].accepts)})"
+                        )
                 parts.append(
                     DefaultPart(
                         variant=str(entry['variant']),
@@ -184,6 +198,64 @@ class _Item:
     overrides: dict[str, str] = attrs.field(factory=dict)
 
 
+def build_request(
+    spec: AssemblySpec, directives: dict[str, list[str]]
+) -> tuple[dict[str, list[RequestPart]], frozenset[str], frozenset[str]]:
+    """Disambiguate raw setup-grammar directives (``lhs -> raw value strings``) into a
+    type-keyed request plus cleared-socket/cleared-type sets (mount-centric addressing).
+
+    LHS is resolved by name against declared mounts first: a declared mount name is
+    MOUNT-CENTRIC (``mount=type/variant``, or bare ``mount=variant`` when the socket
+    accepts exactly one type); otherwise a known accepted type is SHORTHAND
+    (``type=variant``, resolver places one of the type); a name matching both wins as
+    a mount (mount beats type on collision). ``/`` is only the type/variant separator,
+    consulted only for mount-centric fills. Returns ``(type_keyed_request,
+    cleared_sockets, cleared_types)`` for :func:`resolve`.
+    """
+    known_types = {t for m in spec.mounts.values() for t in m.accepts}
+    request: dict[str, list[RequestPart]] = {}
+    cleared_sockets: set[str] = set()
+    cleared_types: set[str] = set()
+
+    for lhs, values in directives.items():
+        if lhs in spec.mounts:
+            mount = spec.mounts[lhs]
+            has_clear = 'none' in values
+            fills = [v for v in values if v != 'none']
+            if has_clear and fills:
+                raise AssemblyError(f"socket '{lhs}': cannot combine 'none' with a fill value")
+            if len(fills) > 1:
+                raise AssemblyError(f"socket '{lhs}' targeted more than once")
+            if has_clear:
+                cleared_sockets.add(lhs)
+                continue
+            for value in fills:
+                if '/' in value:
+                    typ, _, variant = value.partition('/')
+                    if typ not in mount.accepts:
+                        raise AssemblyError(f"socket '{lhs}' does not accept '{typ}' (accepts: {sorted(mount.accepts)})")
+                else:
+                    if len(mount.accepts) != 1:
+                        raise AssemblyError(f"socket '{lhs}' accepts multiple types {sorted(mount.accepts)}; use type/variant")
+                    typ = mount.accepts[0]
+                    variant = value
+                request.setdefault(typ, []).append(RequestPart(variant=variant, mount=lhs))
+        elif lhs in known_types:
+            has_clear = 'none' in values
+            fills = [v for v in values if v != 'none']
+            if has_clear and fills:
+                raise AssemblyError(f"'{lhs}': 'none' cannot be combined with other value(s) for the same type")
+            if has_clear:
+                cleared_types.add(lhs)
+                continue
+            for value in fills:
+                request.setdefault(lhs, []).append(RequestPart(variant=value, mount=None))
+        else:
+            raise AssemblyError(f"unknown '{lhs}': not a mount {sorted(spec.mounts)} nor an accepted type {sorted(known_types)}")
+
+    return request, frozenset(cleared_sockets), frozenset(cleared_types)
+
+
 def _mounts_accepting(spec: AssemblySpec, t: str) -> list[str]:
     return [m.name for m in spec.mounts.values() if t in m.accepts]
 
@@ -195,49 +267,93 @@ def _candidates(item: _Item, mounts_pool: list[str], mounts: dict[str, Mount]) -
 
 
 def _match(items: list[_Item], mounts_pool: list[str], mounts: dict[str, Mount]) -> tuple[dict[int, str], list[int]]:
-    """Maximum bipartite matching via Kuhn's augmenting paths. Returns (item-index ->
-    mount-name assignment, indices left unmatched). Complete: a perfect assignment of
-    all ``items`` exists iff the returned unmatched list is empty."""
-    mount_owner: dict[str, int] = {}
+    """Optimal bipartite assignment via backtracking: MAXIMUM cardinality first, then
+    minimum summed preference-rank (index of ``item.type`` in the assigned mount's
+    ``accepts``), then the lexicographically-earliest mount-declaration-order tuple (in
+    item-index order) as the deterministic uniqueness tie-break. Returns (item-index ->
+    mount-name assignment, indices left unmatched); a perfect assignment of all
+    ``items`` exists iff the returned unmatched list is empty.
+    """
+    n = len(items)
+    mount_index = {name: i for i, name in enumerate(mounts)}
+    unmatched_rank = len(mounts)  # sentinel: sorts after every real declaration index
+    candidates = [_candidates(item, mounts_pool, mounts) for item in items]
 
-    def try_assign(idx: int, visited: set[str]) -> bool:
-        for mount_name in _candidates(items[idx], mounts_pool, mounts):
-            if mount_name in visited:
+    best: dict[str, typing.Any] = {'key': None, 'assignment': {}, 'unmatched': list(range(n))}
+
+    def recurse(idx: int, used: set[str], assignment: dict[int, str], placed: int, rank_sum: int, order: tuple[int, ...]) -> None:
+        if best['key'] is not None and -(placed + (n - idx)) > best['key'][0]:
+            return  # even matching everything remaining can't beat the current best's cardinality
+        if idx == n:
+            key = (-placed, rank_sum, order)
+            if best['key'] is None or key < best['key']:
+                best['key'] = key
+                best['assignment'] = dict(assignment)
+                best['unmatched'] = [i for i in range(n) if i not in assignment]
+            return
+
+        for mount_name in candidates[idx]:
+            if mount_name in used:
                 continue
-            visited.add(mount_name)
-            if mount_name not in mount_owner or try_assign(mount_owner[mount_name], visited):
-                mount_owner[mount_name] = idx
-                return True
-        return False
+            used.add(mount_name)
+            assignment[idx] = mount_name
+            rank = mounts[mount_name].accepts.index(items[idx].type)
+            recurse(idx + 1, used, assignment, placed + 1, rank_sum + rank, (*order, mount_index[mount_name]))
+            del assignment[idx]
+            used.remove(mount_name)
 
-    unmatched: list[int] = []
-    for idx in range(len(items)):
-        if not try_assign(idx, set()):
-            unmatched.append(idx)
+        recurse(idx + 1, used, assignment, placed, rank_sum, (*order, unmatched_rank))
 
-    return {idx: mount for mount, idx in mount_owner.items()}, unmatched
+    recurse(0, set(), {}, 0, 0, ())
+    return best['assignment'], best['unmatched']
 
 
-def resolve(spec: AssemblySpec, request: dict[str, list[RequestPart]]) -> ResolvedAssembly:
+def resolve(
+    spec: AssemblySpec,
+    request: dict[str, list[RequestPart]],
+    *,
+    cleared_sockets: frozenset[str] = frozenset(),
+    cleared_types: frozenset[str] = frozenset(),
+) -> ResolvedAssembly:
     """Resolve a per-type part request against ``spec`` into concrete placements.
 
-    Replace-on-touch (sec2.3): a type absent from ``request`` keeps ``spec.defaults``;
-    a type present in ``request`` (even as ``[]``, the ``=none`` clear) discards its
-    defaults entirely. Per-type gating (sec2.8): touching a type with no accepting
-    mount anywhere is an error, except clearing it, which is a warning. Allocation is
-    maximum bipartite matching over ALL parts of ALL types against ALL mounts jointly
-    (sec2.6): ``@pin``s are fixed edges, checked first.
+    Replace-on-touch (sec2.3): a default part ``d`` is dropped when ANY of: its socket
+    is in ``cleared_sockets``; its type is in ``cleared_types``; its socket is filled by
+    a mount-centric request item (socket-scoped replace); or its type is named in the
+    request by an unpinned (shorthand) item or an empty fill list (type-scoped replace).
+    Surviving defaults keep their optional mount, joining the unpinned matching pool
+    alongside shorthand request items when ``mount`` is ``None``. Per-type gating (sec2.8): touching a type with no
+    accepting mount anywhere is an error, except clearing it, which is a warning.
+    Allocation is maximum bipartite matching over ALL parts of ALL types against ALL
+    mounts jointly (sec2.6): pins are fixed edges, checked first. ``cleared_sockets``/
+    ``cleared_types`` default to empty so callers that already hold a type-keyed
+    ``request`` (e.g. a fully-pinned reconstruction, or a direct fleet-def morphology
+    dict) keep working unchanged.
     """
     warnings: list[str] = []
     effective: dict[str, list[_Item]] = {}
 
+    socket_touched = {r.mount for items in request.values() for r in items if r.mount is not None}
+    type_touched = {t for t, items in request.items() if not items or any(r.mount is None for r in items)}
+
     for t, default_parts in spec.defaults.items():
-        if t in request:
-            continue
-        effective[t] = [
-            _Item(type=t, variant=p.variant, mount=p.mount, params=p.params, overrides=p.overrides, local_index=i)
-            for i, p in enumerate(default_parts)
+        survivors = [
+            p
+            for p in default_parts
+            if p.mount not in cleared_sockets
+            and t not in cleared_types
+            and p.mount not in socket_touched
+            and t not in type_touched
         ]
+        if survivors:
+            effective.setdefault(t, []).extend(
+                _Item(type=t, variant=p.variant, mount=p.mount, params=p.params, overrides=p.overrides, local_index=i)
+                for i, p in enumerate(survivors)
+            )
+
+    for t in cleared_types:
+        if t not in request and not _mounts_accepting(spec, t):
+            warnings.append(f"'{t}' cleared but robot declares no '{t}' mounts (no-op)")
 
     for t, requested in request.items():
         mounts_for_type = _mounts_accepting(spec, t)
@@ -247,7 +363,7 @@ def resolve(spec: AssemblySpec, request: dict[str, list[RequestPart]]) -> Resolv
                 continue
             inventory = ", ".join(f"{m.name} accepts {sorted(m.accepts)}" for m in spec.mounts.values()) or "(no mounts declared)"
             raise AssemblyError(f"robot declares no '{t}' mounts; mount inventory: {inventory}")
-        effective[t] = [_Item(type=t, variant=p.variant, mount=p.mount, params={}, local_index=i) for i, p in enumerate(requested)]
+        effective.setdefault(t, []).extend(_Item(type=t, variant=p.variant, mount=p.mount, params={}, local_index=i) for i, p in enumerate(requested))
 
     flat: list[_Item] = [item for parts in effective.values() for item in parts]
 
@@ -311,6 +427,23 @@ def resolve(spec: AssemblySpec, request: dict[str, list[RequestPart]]) -> Resolv
                 raise AssemblyError(f"'{p.mount.name}' requires '{ref_mount}'")
 
     return ResolvedAssembly(placements=placements, warnings=warnings)
+
+
+def apply_frame_overrides(resolved: ResolvedAssembly, frames: dict[str, str]) -> ResolvedAssembly:
+    """Bake a per-deployment frame override (mount name -> identity stem) onto a
+    resolved assembly (sec2, sim2real frames block). Each matching placement's mount
+    gets its ``frame`` set to the override, winning over both the mount's declared
+    ``frame`` and its addressing ``name``: ``catalog._frame_stem`` then substitutes the
+    override for ``${mount}`` in every frame/joint/sensor/controller template. Keys
+    naming no placed mount are inert. Returns ``resolved`` unchanged when ``frames`` is
+    empty."""
+    if not frames:
+        return resolved
+    placements = [
+        attrs.evolve(p, mount=attrs.evolve(p.mount, frame=frames[p.mount.name])) if p.mount.name in frames else p
+        for p in resolved.placements
+    ]
+    return ResolvedAssembly(placements=placements, warnings=list(resolved.warnings))
 
 
 def warn_if_blind(resolved: ResolvedAssembly, required_types: set[str]) -> list[str]:

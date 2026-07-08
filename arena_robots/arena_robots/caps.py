@@ -28,7 +28,7 @@ import yaml
 from arena_rclpy_mixins.yaml_replace import YAMLReplacer
 from arena_simulation_setup.tree.Gesture import GestureSpec
 
-from arena_robots.catalog import resolve_mount_parent
+from arena_robots.catalog import _frame_stem, resolve_mount_parent
 
 _CAPS_PREFIX = 'robot_'
 """Frame-templating prefix for placement-rendered caps; matches
@@ -542,6 +542,8 @@ class RobotCaps:
     caps_dir: Path
     resolved: object | None = None
     catalog: object | None = None
+    # chassis assembly prefix (${prefix}); robots with no prefix convention (jackal) pass ""
+    prefix: str = _CAPS_PREFIX
 
     _cached: dict[str, typing.Any] = attrs.field(factory=dict, init=False)
 
@@ -601,9 +603,9 @@ class RobotCaps:
             for placement in placements:
                 component = self.catalog.get(placement.type, placement.variant)
                 context: dict[str, typing.Any] = {
-                    'mount': placement.mount.name,
+                    'mount': _frame_stem(placement.mount),
                     'parent': resolve_mount_parent(self.resolved, self.catalog, placement.mount),
-                    'prefix': _CAPS_PREFIX,
+                    'prefix': self.prefix,
                     **placement.params,
                     **placement.overrides,
                 }

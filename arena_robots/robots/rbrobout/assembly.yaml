@@ -1,19 +1,22 @@
 mounts:
-  front_laser:
+  front:
     parent: base_link
     xyz: [0.8, 0.366, -0.06]
     rpy: [0, 0, 0.7853981633974483]
     accepts: [lidar]
-  rear_laser:
+    frame: front_laser
+  rear:
     parent: base_link
     xyz: [-0.8, -0.366, -0.06]
     rpy: [0, 0, -2.356194490192345]
     accepts: [lidar]
-  vectornav:
+    frame: rear_laser
+  imu:
     parent: base_link
     xyz: [0.3, -0.3, 0.0725]
     rpy: [0, 0, 0]
     accepts: [imu]
+    frame: vectornav
   # top_cover0/lift0/arm0 have no defaults entry: standard on rbrobout_plus but not on
   # plain rbrobout, so each must be explicitly requested.
   top_cover0:
@@ -34,11 +37,11 @@ mounts:
 defaults:
   lidar:
     - variant: sick_microscan3
-      mount: front_laser
+      mount: front
       overrides: {topic: lidar}
     - variant: sick_microscan3
-      mount: rear_laser
+      mount: rear
       overrides: {name: lidar_rear, topic: lidar/rear}
   imu:
     - variant: vectornav
-      mount: vectornav
+      mount: imu

@@ -3,11 +3,11 @@ and the RViz parameter-injection path."""
 
 from __future__ import annotations
 
-import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
+import xacro
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from arena_rclpy_mixins.yaml_replace import YAMLReplacer
@@ -94,16 +94,13 @@ def _compose_srdf(robot: arena_robots.Robot.RobotView, fragment_path: Path, cont
     (prefix/mount/parent), then merge it with the chassis's residual SRDF fragment
     (``robots/<robot>/srdf/<robot>.srdf.xacro``, if declared) under one ``<robot>``
     element. Returns the path to a temp file holding the composed document."""
-    fragment_xml = subprocess.check_output(
-        ["xacro", "--inorder", str(fragment_path), *(f"{k}:={v}" for k, v in context.items())],
-        text=True,
-    )
+    fragment_xml = xacro.process_file(str(fragment_path), mappings={k: str(v) for k, v in context.items()}).toxml()
     merged = ET.Element("robot", {"name": robot.name})
     merged.extend(list(ET.fromstring(fragment_xml)))
 
     base_srdf = robot.path / "srdf" / f"{robot.name}.srdf.xacro"
     if base_srdf.is_file():
-        base_xml = subprocess.check_output(["xacro", "--inorder", str(base_srdf)], text=True)
+        base_xml = xacro.process_file(str(base_srdf)).toxml()
         merged.extend(list(ET.fromstring(base_xml)))
 
     with NamedTemporaryFile(mode="w", suffix=".srdf", delete=False) as f:

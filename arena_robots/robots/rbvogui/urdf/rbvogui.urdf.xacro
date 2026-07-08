@@ -26,13 +26,10 @@
 	<xacro:arg name="gazebo_controllers" default=""/>
 	<xacro:arg name="gazebo_classic" default="false"/>
 	<xacro:arg name="gazebo_ignition" default="true"/>
-	<xacro:arg name="generate_ros2_control_tag" default="true"/>
 
     <xacro:rbvogui prefix="$(arg prefix)" hq="${hq}"/>
 
     <!-- ros2_control block (gz_ros2_control/GazeboSimSystem) and PosePublisher loaded via rbvogui.gazebo -->
-    <xacro:if value="$(arg generate_ros2_control_tag)">
-        <xacro:rbvogui_base_hw_controller/>
-    </xacro:if>
+    <xacro:rbvogui_base_hw_controller/>
 
 </robot>

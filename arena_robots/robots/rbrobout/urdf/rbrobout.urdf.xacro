@@ -20,13 +20,10 @@
   <xacro:arg name="gazebo_classic" default="false"/>
   <xacro:arg name="gazebo_ignition" default="true"/>
   <xacro:arg name="gazebo_controllers" default=""/>
-  <xacro:arg name="generate_ros2_control_tag" default="true"/>
 
   <xacro:rbrobout prefix="$(arg prefix)" gazebo_ignition="$(arg gazebo_ignition)"/>
 
   <!-- ros2_control hardware block (always active; gz plugin loaded via rbrobout.gazebo) -->
-  <xacro:if value="$(arg generate_ros2_control_tag)">
-    <xacro:rbrobout_base_hw_controller/>
-  </xacro:if>
+  <xacro:rbrobout_base_hw_controller/>
 
 </robot>

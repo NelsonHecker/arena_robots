@@ -2,37 +2,40 @@
 # imu_link, used by an untouched dead Gazebo-Classic IMU block.
 prefix: ""
 mounts:
-  front_laser:
+  front:
     parent: chassis_link
     xyz: [0.3062, 0.0, 0.1614]
     rpy: [0, 0, 0]
     accepts: [lidar]
-  rear_sensor:
+    frame: front_laser
+  rear:
     parent: chassis_link
     xyz: [-0.3404, 0.0241, 0.0779]
     rpy: [0, -0.0698131700798, 3.141592653589793]
     accepts: [lidar]
+    frame: rear_sensor
   imu:
     parent: base_link
     xyz: [0, 0, 0]
     rpy: [0, 0, 0]
     accepts: [imu]
-  front_realsense_mount_link:
+  front_cam:
     parent: chassis_link
     xyz: [0.3524, 0.0, 0.0422]
     rpy: [0, -0.257610597594, 0]
     accepts: [camera]
+    frame: front_realsense_mount_link
 defaults:
   lidar:
     - variant: boxer_front
-      mount: front_laser
+      mount: front
     - variant: boxer_rear
-      mount: rear_sensor
+      mount: rear
   imu:
     - variant: arena_default
       mount: imu
       params: {frame: imu_sensor_link}
   camera:
     - variant: d435_depth
-      mount: front_realsense_mount_link
+      mount: front_cam
       params: {camera: realsense_front_camera}

@@ -19,8 +19,8 @@ sensor:
       type: laserscan     # BRIDGE_TYPES in Sensor.py drive derived bridge rows
       topic: "${topic:-scan}"
       frame: "${prefix}${mount}_link"
-ros2_control:             # joint-bearing parts only (arms): merged-tag contribution
-  joints: [...]
+ros2_control:             # joint-bearing parts only (arms): control-joint patch
+  joints: [...]           # rendered by catalog.render_control_joints, injected post-render
 control: {...}            # controller block deep-merged into the chassis control.yaml
 caps: {...}               # full caps/<cap>.yaml shape, rendered per placement
 frames: {...}             # named frames this component exports (e.g. a lift's `top`),
@@ -41,9 +41,13 @@ frames: {...}             # named frames this component exports (e.g. a lift's `
 - **Sim-only sensors** (rendered under gz but unbridged, e.g. GPS/navsat): the macro renders
   them, `sensor.gz` simply omits them; no SensorSpec, no bridge row.
 - **Arm components** contribute four artifacts (`xacro`, `ros2_control.joints`, `control`,
-  `caps`) and require the chassis to gate its internal ros2_control tag behind a
-  `generate_ros2_control_tag` xacro:arg (the wrapper flips it when it synthesizes the
-  merged tag; an ungated chassis raises).
+  `caps`). The chassis and every placed component each render their own `ros2_control`
+  tag normally (no gating xacro:arg needed on either side); `ros2_control.joints` is a
+  separate control-joint patch (`catalog.render_control_joints`, computed straight from
+  `ResolvedAssembly`, not by parsing xacro output) that arena_simulation_setup's urdf
+  loader (`_inject_ros2_control_joints`) merges post-render into the chassis's own tag
+  (the one whose plugin is `gz_ros2_control/GazeboSimSystem`), dropping every other
+  `ros2_control` tag (an arm's own native one, superseded by the patch).
 - Per-instance tuning lives in `assembly.yaml defaults[].params/overrides`, never in the
   request grammar (parametrized-robots spec sec4).
 - **Chained mounts** (phase3b): a mount's `parent` may be `"@<mount>:<frame>"`, resolved to

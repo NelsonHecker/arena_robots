@@ -1,5 +1,5 @@
 """Tests for arena_robots.SetupFile.Config.parse against the parametrized-robot grammar
-(.claude/parametrized-robots.md sec2.1-2.3)."""
+(.claude/parametrized-robots.md sec2.1-2.3): mount-centric addressing."""
 
 from __future__ import annotations
 
@@ -53,6 +53,26 @@ class TestConfigParseAdapters:
             Config.parse({"robot": "jackal", "adapters": "nav2"})
 
 
+class TestConfigParseFrames:
+    def test_frames_block_routes_verbatim(self):
+        from arena_robots.SetupFile import Config
+
+        configs = Config.parse({"robot": "jackal", "frames": {"top": "custom_laser_link"}})
+        assert configs[0].frames == {"top": "custom_laser_link"}
+
+    def test_frames_block_non_dict_raises(self):
+        from arena_robots.SetupFile import Config
+
+        with pytest.raises(RuntimeError):
+            Config.parse({"robot": "jackal", "frames": "custom_laser_link"})
+
+    def test_frames_defaults_to_empty(self):
+        from arena_robots.SetupFile import Config
+
+        configs = Config.parse({"robot": "jackal"})
+        assert configs[0].frames == {}
+
+
 class TestConfigParseIdentityLaneExtra:
     def test_pos_routes_to_extra_without_error(self):
         from arena_robots.SetupFile import Config
@@ -83,62 +103,59 @@ class TestConfigParseGrammarRejections:
             Config.parse({"robot": "jackal", "parts": {"lidar": ["sick"]}})
 
 
-class TestConfigParseMorphologyParts:
-    """Morphology items (bare or @-mount keys) flow through to ``parts``; realization
-    (assembler resolution) happens later, per-robot, at ``Robot.parse`` time."""
+class TestConfigParseMorphologyDirectives:
+    """Bare keys (mount-centric ``mount=type/variant`` / ``mount=variant`` or
+    shorthand ``type=variant``) are grammar-collected here as raw value strings only;
+    mount-vs-type disambiguation and ``none`` semantics are resolved later, per-robot,
+    by ``arena_assembly.build_request`` at ``Robot.parse`` resolution time."""
 
-    def test_bare_morphology_key_populates_parts(self):
-        from arena_robots.SetupFile import Config, Part
+    def test_shorthand_key_populates_parts_as_raw_strings(self):
+        from arena_robots.SetupFile import Config
 
         configs = Config.parse({"robot": "jackal", "lidar": "sick"})
-        assert configs[0].parts == {"lidar": [Part(variant="sick")]}
+        assert configs[0].parts == {"lidar": ["sick"]}
 
-    def test_mounted_morphology_key_populates_parts(self):
-        from arena_robots.SetupFile import Config, Part
+    def test_mount_centric_type_slash_variant_populates_parts_as_raw_strings(self):
+        from arena_robots.SetupFile import Config
 
-        configs = Config.parse({"robot": "jackal", "lidar@front": "sick"})
-        assert configs[0].parts == {"lidar": [Part(variant="sick", mount="front")]}
+        configs = Config.parse({"robot": "jackal", "top": "lidar/sick"})
+        assert configs[0].parts == {"top": ["lidar/sick"]}
 
-    def test_multi_instance_morphology_populates_parts(self):
-        from arena_robots.SetupFile import Config, Part
+    def test_multi_instance_directive_populates_list(self):
+        from arena_robots.SetupFile import Config
 
         configs = Config.parse({"robot": "jackal", "lidar": ["a", "b"]})
-        assert configs[0].parts == {"lidar": [Part(variant="a"), Part(variant="b")]}
+        assert configs[0].parts == {"lidar": ["a", "b"]}
 
-    def test_none_morphology_produces_empty_list(self):
+    def test_multiple_directives_populate_independent_keys(self):
+        from arena_robots.SetupFile import Config
+
+        configs = Config.parse({"robot": "jackal", "lidar": "sick", "top": "camera/d435"})
+        assert configs[0].parts == {"lidar": ["sick"], "top": ["camera/d435"]}
+
+    def test_none_value_passed_through_uninterpreted(self):
+        """Config.parse collects 'none' as a raw value like any other, the clear grammar
+        being interpreted downstream in build_request."""
         from arena_robots.SetupFile import Config
 
         configs = Config.parse({"robot": "jackal", "lidar": "none"})
-        assert configs[0].parts == {"lidar": []}
+        assert configs[0].parts == {"lidar": ["none"]}
 
-
-class TestConfigParseGrammarPrecedesGate:
-    """Grammar errors (none-mixing, none+mount) are still hard-errors even though
-    morphology items are otherwise accepted."""
-
-    def test_none_mixed_with_variant_is_grammar_error(self):
+    def test_parts_defaults_to_empty(self):
         from arena_robots.SetupFile import Config
 
-        with pytest.raises(RuntimeError, match="none"):
-            Config.parse({"robot": "jackal", "lidar": ["sick", "none"]})
+        configs = Config.parse({"robot": "jackal"})
+        assert configs[0].parts == {}
 
-    def test_none_with_mount_is_grammar_error(self):
+    def test_runtime_spawn_shaped_dict_routes_bare_mount_into_parts(self):
+        """The runtime spawn path (``arena robot jackal top:=arm/ur5e``) builds a flat
+        dict with ``robot``/``name``/``pos`` plus bare mount directives; the bare key
+        must land in ``parts``, not get dropped."""
         from arena_robots.SetupFile import Config
 
-        with pytest.raises(RuntimeError, match="none"):
-            Config.parse({"robot": "jackal", "lidar@front": "none"})
-
-
-class TestPart:
-    def test_part_default_mount_is_none(self):
-        from arena_robots.SetupFile import Part
-
-        p = Part(variant="sick")
-        assert p.variant == "sick"
-        assert p.mount is None
-
-    def test_part_mount_is_stored(self):
-        from arena_robots.SetupFile import Part
-
-        p = Part(variant="sick", mount="front")
-        assert p.mount == "front"
+        configs = Config.parse({"robot": "jackal", "name": "j0", "pos": (1, 2, 0), "top": "arm/ur5e"})
+        assert len(configs) == 1
+        c = configs[0]
+        assert c.parts == {"top": ["arm/ur5e"]}
+        assert c.name == "j0"
+        assert c.extra["pos"] == (1, 2, 0)

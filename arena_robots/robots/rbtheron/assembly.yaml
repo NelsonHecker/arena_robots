@@ -1,43 +1,48 @@
 mounts:
-  front_laser:
+  front:
     parent: base_link
     xyz: [0.2675, -0.215, 0.1613]
     rpy: [0, -3.141592653589793, 2.356194490192345]
     accepts: [lidar]
-  rear_laser:
+    frame: front_laser
+  rear:
     parent: base_link
     xyz: [-0.2675, 0.215, 0.1613]
     rpy: [0, -3.141592653589793, -0.7853981633974483]
     accepts: [lidar]
-  vectornav:
+    frame: rear_laser
+  imu:
     parent: base_link
     xyz: [-0.1975, 0.0, 0.1598]
     rpy: [0, 0, 0]
     accepts: [imu]
-  front_rgbd_camera:
+    frame: vectornav
+  front_cam:
     parent: base_link
     xyz: [0.3045, 0.0, 0.1898]
     rpy: [0, 0, 0]
     accepts: [camera]
-  rear_rgbd_camera:
+    frame: front_rgbd_camera
+  rear_cam:
     parent: base_link
     xyz: [-0.3045, 0.0, 0.1158]
     rpy: [0, 0, 3.141592653589793]
     accepts: [camera]
+    frame: rear_rgbd_camera
 defaults:
   lidar:
     - variant: hokuyo_ust20lx
-      mount: front_laser
+      mount: front
     - variant: hokuyo_ust20lx
-      mount: rear_laser
+      mount: rear
       overrides: {name: lidar_rear, topic: scan/rear}
   imu:
     - variant: vectornav
-      mount: vectornav
+      mount: imu
   camera:
     - variant: d435_color
-      mount: front_rgbd_camera
+      mount: front_cam
       overrides: {name: front_camera, topic: front_camera}
     - variant: d435_color
-      mount: rear_rgbd_camera
+      mount: rear_cam
       overrides: {name: rear_camera, topic: rear_camera}

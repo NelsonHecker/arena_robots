@@ -14,7 +14,6 @@ xacro:
     visual_parameters_file: "$(find ur_description)/config/ur10e/visual_parameters.yaml"
     sim_gazebo: "${gazebo_classic}"
     sim_ignition: "${gazebo_ignition}"
-    generate_ros2_control_tag: "false"
     safety_limits: "${safety_limits:-false}"
   args:
     safety_limits: false

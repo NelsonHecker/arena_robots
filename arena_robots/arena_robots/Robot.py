@@ -230,7 +230,7 @@ class RobotView(PathView):
             return None
         return assembly_mod.resolve(spec, parts)
 
-    def effective_sensors(self, parts: dict[str, list[assembly_mod.RequestPart]]) -> list[SensorSpec]:
+    def effective_sensors(self, parts: dict[str, list[assembly_mod.RequestPart]], *, frames: dict[str, str] | None = None) -> list[SensorSpec]:
         """The robot's full effective ``SensorSpec`` list for a parts request (``{}``
         for pure defaults). Robots with no assembly.yaml (``assembly`` is ``None``)
         return ``model_params.sensors`` unchanged. Robots with an assembly.yaml
@@ -244,6 +244,7 @@ class RobotView(PathView):
         resolved = self._resolved(parts)
         if resolved is None:
             return self.model_params.sensors
+        resolved = assembly_mod.apply_frame_overrides(resolved, frames or {})
         prefix = self.assembly.prefix
         rendered = render_effective_sensors(resolved, _CATALOG, prefix=prefix)
         defaults_rendered = rendered if not parts else render_effective_sensors(self._resolved({}), _CATALOG, prefix=prefix)
@@ -255,7 +256,7 @@ class RobotView(PathView):
             )
         return rendered
 
-    def effective_caps(self, parts: dict[str, list[assembly_mod.RequestPart]]) -> RobotCaps:
+    def effective_caps(self, parts: dict[str, list[assembly_mod.RequestPart]], *, frames: dict[str, str] | None = None) -> RobotCaps:
         """The robot's effective :class:`RobotCaps` for a parts request (``{}`` for
         pure defaults), mirroring :meth:`effective_sensors`. Robots with no
         assembly.yaml return ``self.caps`` unchanged; robots with an assembly.yaml get
@@ -264,7 +265,8 @@ class RobotView(PathView):
         resolved = self._resolved(parts)
         if resolved is None:
             return self.caps
-        return RobotCaps(self.caps.caps_dir, resolved=resolved, catalog=_CATALOG)
+        resolved = assembly_mod.apply_frame_overrides(resolved, frames or {})
+        return RobotCaps(self.caps.caps_dir, resolved=resolved, catalog=_CATALOG, prefix=self.assembly.prefix)
 
     @property
     def model(self) -> ModelWrapper:

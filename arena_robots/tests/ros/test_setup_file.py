@@ -43,12 +43,12 @@ class TestConfigParse:
                 _ = c.__dict__["count"]
 
     def test_parse_dict_unknown_bare_keys_are_morphology(self):
-        from arena_robots.SetupFile import Config, Part
+        from arena_robots.SetupFile import Config
 
         configs = Config.parse({"robot": "tb3", "planner": "NavFn", "controller": "DWB"})
         assert configs[0].parts == {
-            "planner": [Part(variant="NavFn")],
-            "controller": [Part(variant="DWB")],
+            "planner": ["NavFn"],
+            "controller": ["DWB"],
         }
 
     def test_parse_dict_mobile_adapter_key(self):

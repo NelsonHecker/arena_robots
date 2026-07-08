@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 import yaml
-from arena_robots.assembly import Mount, Placement, ResolvedAssembly
-from arena_robots.catalog import Catalog, ComponentSpec, render_effective_control, render_effective_sensors, render_wrapper_xacro, resolve_mount_parent
+from arena_robots.assembly import Mount, Placement, ResolvedAssembly, apply_frame_overrides
+from arena_robots.catalog import Catalog, ComponentSpec, render_control_joints, render_effective_control, render_effective_sensors, render_wrapper_xacro, resolve_mount_parent
 from arena_robots.Robot import RobotView
 
 LIDAR_COMPONENT = {
@@ -108,25 +108,19 @@ LIFT_COMPONENT = {
 }
 
 
-def _write_robot_view(tmp_path: Path, name: str = "testbot", *, control_gate: bool = True) -> RobotView:
-    """Minimal on-disk robot dir: just enough for ``render_wrapper_xacro`` (a
-    chassis xacro with one ``xacro:arg`` and a stub base_hw ros2_control.urdf).
-    ``RobotView`` takes a bare path (arena_simulation_setup.tree.PathView); no
-    ament index / ROS environment involved."""
+def _write_robot_view(tmp_path: Path, name: str = "testbot") -> RobotView:
+    """Minimal on-disk robot dir: just enough for ``render_wrapper_xacro`` (a chassis
+    xacro with one ``xacro:arg``). ``RobotView`` takes a bare path
+    (arena_simulation_setup.tree.PathView); no ament index / ROS environment involved."""
     robot_dir = tmp_path / "robots" / name
     urdf_dir = robot_dir / "urdf"
     urdf_dir.mkdir(parents=True)
-    gate = '  <xacro:arg name="generate_ros2_control_tag" default="true"/>\n' if control_gate else ""
     (urdf_dir / f"{name}.urdf.xacro").write_text(
         '<?xml version="1.0"?>\n'
         f'<robot name="{name}" xmlns:xacro="http://www.ros.org/wiki/xacro">\n'
         '  <xacro:arg name="prefix" default="robot_"/>\n'
-        f"{gate}"
         "</robot>\n"
     )
-    base_hw_dir = urdf_dir / "base_hw"
-    base_hw_dir.mkdir()
-    (base_hw_dir / f"{name}.ros2_control.urdf").write_text("<robot/>\n")
     return RobotView(robot_dir)
 
 
@@ -292,6 +286,12 @@ class TestRenderEffectiveSensors:
         assert sensors[0].name == "lidar_rear"
         assert sensors[0].topic == "${namespace}/scan/rear"
 
+    def test_frame_override_substitutes_into_rendered_frame(self, catalog: Catalog):
+        resolved = apply_frame_overrides(self._resolved(), {"front_laser": "override_stem"})
+        sensors = render_effective_sensors(resolved, catalog)
+        assert sensors[0].frame == "robot_override_stem_link"
+        assert "front_laser" not in sensors[0].frame
+
     def test_deepcopy_isolation_across_placements(self, catalog: Catalog):
         """Renders front-then-rear from the SAME cached ComponentSpec; if render_effective_sensors
         failed to deepcopy the shared template dicts (YAMLReplacer.replace mutates in place),
@@ -311,10 +311,12 @@ class TestRenderEffectiveSensors:
         assert sensors[0].topic == "${namespace}/scan"
 
 
-class TestRenderWrapperXacroMergedControl:
-    """Phase3 sec2.10 merged ros2_control: no placement declares joints -> wrapper
-    is byte-identical to today (chassis handles its own tag); a placement with
-    ``ros2_control.joints`` -> wrapper synthesizes exactly one merged tag."""
+class TestRenderWrapperXacroNoControlSynthesis:
+    """render_wrapper_xacro synthesizes no ``ros2_control`` tag of its own (regardless of
+    whether a placement declares joints): the chassis and every placement's component each
+    render their own xacro exactly as written, no gating required. Post-render merging is
+    arena_simulation_setup.utils.models.urdf._inject_ros2_control_joints's job, fed by
+    :func:`render_control_joints` (tested below)."""
 
     def test_no_joints_no_ros2_control_tag(self, tmp_path: Path):
         _write_component(tmp_path / "components", "lidar", "sick_s300", LIDAR_COMPONENT)
@@ -328,7 +330,10 @@ class TestRenderWrapperXacroMergedControl:
         assert "<ros2_control" not in wrapper
         assert "base_hw_joints" not in wrapper
 
-    def test_arm_joints_synthesize_one_merged_tag(self, tmp_path: Path):
+    def test_arm_joints_do_not_synthesize_a_tag(self, tmp_path: Path):
+        """A placement declaring ``ros2_control.joints`` makes render_wrapper_xacro emit
+        nothing extra for it: no ``<ros2_control>``, no ``<joint>``, no chassis-arg gating.
+        The arm's own macro invocation renders normally."""
         _write_component(tmp_path / "components", "arm", "ur5e", ARM_COMPONENT)
         catalog = Catalog(root=tmp_path / "components")
         view = _write_robot_view(tmp_path, "testbot")
@@ -337,21 +342,10 @@ class TestRenderWrapperXacroMergedControl:
 
         wrapper = render_wrapper_xacro(view, resolved, catalog=catalog)
 
-        assert wrapper.count("<ros2_control ") == 1
-        assert '<ros2_control name="testbot_system" type="system">' in wrapper
-        assert "<plugin>gz_ros2_control/GazeboSimSystem</plugin>" in wrapper
-        base_hw_path = view.path / "urdf" / "base_hw" / "testbot.ros2_control.urdf"
-        assert f'<xacro:include filename="{base_hw_path}"/>' in wrapper
-        assert '<xacro:testbot_base_hw_joints prefix="$(arg prefix)"/>' in wrapper
-        assert wrapper.count("<joint ") == 2
-        assert '<joint name="$(arg prefix)arm0_shoulder_pan_joint">' in wrapper
-        assert '<joint name="$(arg prefix)arm0_shoulder_lift_joint">' in wrapper
-        assert '<command_interface name="position"/>' in wrapper
-        assert '<state_interface name="velocity"/>' in wrapper
-        # the merged tag closes once, after both placement joints
-        assert wrapper.index("</ros2_control>") > wrapper.rindex("<joint ")
-        # the chassis's internal tag is suppressed in favor of the merged one
-        assert '<xacro:arg name="generate_ros2_control_tag" default="false"/>' in wrapper
+        assert "<ros2_control" not in wrapper
+        assert "<joint " not in wrapper
+        assert "generate_ros2_control_tag" not in wrapper
+        assert "<xacro:ur_robot " in wrapper
 
     def test_chained_mount_parent_renders_referenced_frame(self, tmp_path: Path):
         """Phase3b sec2: arm0 chained onto lift0's `top` frame renders the wrapper's
@@ -383,15 +377,80 @@ class TestRenderWrapperXacroMergedControl:
         assert '<xacro:ur_robot parent="$(arg prefix)lift0_ewellix_lift_top_link">' in wrapper
         assert "@lift0:top" not in wrapper
 
-    def test_ungated_chassis_with_joints_raises(self, tmp_path: Path):
+    def test_frame_override_flows_into_wrapper_attach(self, tmp_path: Path):
+        """A deployment frame override baked onto resolved_assembly reaches
+        render_wrapper_xacro via _frame_stem: the component's ${mount}-templated attach
+        renders with the override stem, not the addressing mount name."""
         _write_component(tmp_path / "components", "arm", "ur5e", ARM_COMPONENT)
         catalog = Catalog(root=tmp_path / "components")
-        view = _write_robot_view(tmp_path, control_gate=False)
+        view = _write_robot_view(tmp_path, "testbot")
+        resolved = ResolvedAssembly(placements=[Placement(type="arm", variant="ur5e", mount=_mount("arm0", ["arm"]))])
+        overridden = apply_frame_overrides(resolved, {"arm0": "leftarm"})
+
+        wrapper = render_wrapper_xacro(view, overridden, catalog=catalog)
+
+        assert 'parent="$(arg prefix)leftarm_parent"' in wrapper
+        assert "arm0_parent" not in wrapper
+
+
+class TestRenderControlJoints:
+    """Phase3 arm-on-any-chassis merge: ``render_control_joints`` computes the
+    control-joint patch straight from ``resolved``/``catalog`` (no xacro involved),
+    for arena_simulation_setup's urdf loader to inject post-render."""
+
+    def test_no_placement_declares_joints_is_empty(self, tmp_path: Path):
+        _write_component(tmp_path, "lidar", "sick_s300", LIDAR_COMPONENT)
+        catalog = Catalog(root=tmp_path)
+        front_laser = _mount("front_laser", ["lidar"])
+        resolved = ResolvedAssembly(placements=[Placement(type="lidar", variant="sick_s300", mount=front_laser)])
+
+        assert render_control_joints(resolved, catalog) == []
+
+    def test_arm_placement_renders_joints_with_resolved_prefix(self, tmp_path: Path):
+        _write_component(tmp_path, "arm", "ur5e", ARM_COMPONENT)
+        catalog = Catalog(root=tmp_path)
         arm_mount = _mount("arm0", ["arm"])
         resolved = ResolvedAssembly(placements=[Placement(type="arm", variant="ur5e", mount=arm_mount)])
 
-        with pytest.raises(RuntimeError, match="generate_ros2_control_tag"):
-            render_wrapper_xacro(view, resolved, catalog=catalog)
+        joints = render_control_joints(resolved, catalog, prefix="robot_")
+
+        assert joints == [
+            {"name": "robot_arm0_shoulder_pan_joint", "command_interfaces": ["position"], "state_interfaces": ["position", "velocity"]},
+            {"name": "robot_arm0_shoulder_lift_joint", "command_interfaces": ["position"], "state_interfaces": ["position", "velocity"]},
+        ]
+
+    def test_multiple_placements_concatenate_in_order(self, tmp_path: Path):
+        _write_component(tmp_path, "arm", "ur5e", ARM_COMPONENT)
+        catalog = Catalog(root=tmp_path)
+        resolved = ResolvedAssembly(
+            placements=[
+                Placement(type="arm", variant="ur5e", mount=_mount("arm0", ["arm"])),
+                Placement(type="arm", variant="ur5e", mount=_mount("arm1", ["arm"])),
+            ]
+        )
+
+        joints = render_control_joints(resolved, catalog, prefix="robot_")
+
+        assert [j["name"] for j in joints] == [
+            "robot_arm0_shoulder_pan_joint",
+            "robot_arm0_shoulder_lift_joint",
+            "robot_arm1_shoulder_pan_joint",
+            "robot_arm1_shoulder_lift_joint",
+        ]
+
+    def test_frame_override_replaces_mount_stem_in_joint_names(self, tmp_path: Path):
+        """A deployment frame override baked onto resolved_assembly flows through
+        render_control_joints via _frame_stem: injected joint names carry the override
+        stem, not the addressing mount name, so ros2_control binds the real driver's
+        joints on a sim2real deployment."""
+        _write_component(tmp_path, "arm", "ur5e", ARM_COMPONENT)
+        catalog = Catalog(root=tmp_path)
+        resolved = ResolvedAssembly(placements=[Placement(type="arm", variant="ur5e", mount=_mount("arm0", ["arm"]))])
+        overridden = apply_frame_overrides(resolved, {"arm0": "leftarm"})
+
+        joints = render_control_joints(overridden, catalog, prefix="robot_")
+
+        assert [j["name"] for j in joints] == ["robot_leftarm_shoulder_pan_joint", "robot_leftarm_shoulder_lift_joint"]
 
 
 RBVOGUI_BASE_CONTROL = {
@@ -448,3 +507,30 @@ class TestRenderEffectiveControl:
 
         assert extra == []
         assert merged == RBVOGUI_BASE_CONTROL
+
+    def test_frame_override_flows_into_controller_and_joints(self, tmp_path: Path):
+        """A deployment frame override baked onto resolved_assembly reaches
+        render_effective_control via _frame_stem: both the synthesized controller name
+        and its joints list carry the override stem."""
+        _write_component(tmp_path, "arm", "ur5e", ARM_COMPONENT)
+        catalog = Catalog(root=tmp_path)
+        resolved = ResolvedAssembly(placements=[Placement(type="arm", variant="ur5e", mount=_mount("arm", ["arm"]))])
+        overridden = apply_frame_overrides(resolved, {"arm": "leftarm"})
+
+        merged, extra = render_effective_control(overridden, RBVOGUI_BASE_CONTROL, catalog)
+
+        assert extra == ["leftarm_controller"]
+        assert merged["leftarm_controller"]["ros__parameters"]["joints"] == [
+            "robot_leftarm_shoulder_pan_joint",
+            "robot_leftarm_shoulder_lift_joint",
+        ]
+
+    def test_zero_prefix_chassis_renders_unprefixed_joints(self, tmp_path: Path):
+        _write_component(tmp_path, "arm", "ur5e", ARM_COMPONENT)
+        catalog = Catalog(root=tmp_path)
+        arm_mount = _mount("arm", ["arm"])
+        resolved = ResolvedAssembly(placements=[Placement(type="arm", variant="ur5e", mount=arm_mount)])
+
+        merged, extra = render_effective_control(resolved, RBVOGUI_BASE_CONTROL, catalog, prefix="")
+
+        assert merged["arm_controller"]["ros__parameters"]["joints"] == ["arm_shoulder_pan_joint", "arm_shoulder_lift_joint"]

@@ -1,10 +1,11 @@
 prefix: ""
 mounts:
-  lidar:
+  front:
     parent: base
     xyz: [0, 0, 0.3]
     rpy: [0, 0, 0]
     accepts: [lidar]
+    frame: lidar
   imu:
     parent: base
     xyz: [0, 0, 0]
@@ -13,7 +14,7 @@ mounts:
 defaults:
   lidar:
     - variant: arena_default
-      mount: lidar
+      mount: front
   imu:
     - variant: arena_default
       mount: imu

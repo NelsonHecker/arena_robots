@@ -131,10 +131,46 @@ class TestBuildMoveitParamsAllocationParity:
         its robot_description still comes from the static chassis xacro, not a
         wrapper render (evidenced by the hand-spliced ros2_control tag name,
         "rbvogui_plus_arm", from urdf/base_hw/rbvogui_plus.ros2_control.urdf, rather
-        than the wrapper's synthesized "<robot>_system" merged-tag name)."""
+        than a migrated chassis's own tag name, e.g. "vogui")."""
         _, plus = params_pair
         root = ET.fromstring(plus["robot_description_semantic"])
         assert "ur_manipulator" in {g.get("name") for g in root.iter("group")}
         assert any("front_right_base_wheel" in (dc.get("link1", "") + dc.get("link2", "")) for dc in root.iter("disable_collisions"))
         assert 'name="rbvogui_plus_arm"' in plus["robot_description"]
-        assert "rbvogui_plus_system" not in plus["robot_description"]
+        assert 'name="vogui"' not in plus["robot_description"]
+
+
+@pytest.mark.skipif(_XACRO is None, reason="xacro CLI not on PATH; run under the Arena container (bash arena -c pytest)")
+class TestBuildMoveitParamsZeroPrefixChassis:
+    """jackal declares ``prefix: ""`` (no Robotnik robot_ convention). Composing an arm
+    onto it must render the SRDF with the SAME empty prefix as the URDF, so the planning
+    group's chain and disable_collisions reference links that actually exist in the URDF.
+    Regression for the xacro-CLI empty-``prefix:=`` fallback to the fragment default
+    robot_ (``_compose_srdf`` now renders via the xacro python API, which honors "")."""
+
+    @pytest.fixture(scope="class")
+    def params(self) -> dict:
+        from arena_robots.assembly import RequestPart
+        from arena_robots.moveit_factory import build_moveit_params
+
+        p = build_moveit_params("jackal", tf_prefix="", parts={"arm": [RequestPart(variant="ur5e", mount="top")]}, instance="top")
+        assert p is not None
+        return p
+
+    def test_srdf_carries_no_robot_prefix(self, params: dict) -> None:
+        root = ET.fromstring(params["robot_description_semantic"])
+        for chain in (c for g in root.iter("group") for c in g.findall("chain")):
+            assert chain.get("base_link", "").startswith("top_")
+            assert not chain.get("base_link", "").startswith("robot_")
+            assert not chain.get("tip_link", "").startswith("robot_")
+
+    def test_every_srdf_link_exists_in_urdf(self, params: dict) -> None:
+        urdf_links = {link.get("name") for link in ET.fromstring(params["robot_description"]).iter("link")}
+        srdf = ET.fromstring(params["robot_description_semantic"])
+        srdf_links: set[str] = set()
+        for chain in (c for g in srdf.iter("group") for c in g.findall("chain")):
+            srdf_links |= {chain.get("base_link", ""), chain.get("tip_link", "")}
+        for dc in srdf.iter("disable_collisions"):
+            srdf_links |= {dc.get("link1", ""), dc.get("link2", "")}
+        srdf_links.discard("")
+        assert not (srdf_links - urdf_links), f"SRDF references links absent from URDF: {sorted(srdf_links - urdf_links)}"

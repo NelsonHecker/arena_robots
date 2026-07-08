@@ -15,8 +15,9 @@ from pathlib import Path
 
 import pytest
 from arena_robots.assembly import RequestPart, resolve
-from arena_robots.catalog import Catalog, render_wrapper_xacro
+from arena_robots.catalog import Catalog, render_control_joints, render_wrapper_xacro
 from arena_robots.Robot import RobotIdentifier
+from arena_simulation_setup.utils.models.urdf import _inject_ros2_control_joints
 
 COMPONENTS_ROOT = Path(__file__).resolve().parent.parent / "components"
 GOLDEN = Path(__file__).resolve().parent / "golden"
@@ -77,9 +78,15 @@ class TestRboroutCollapseParity:
                 "arm": [RequestPart(variant="ur10e")],
             },
         )
+        catalog = Catalog(root=COMPONENTS_ROOT)
         wrapper_path = tmp_path_factory.mktemp("collapse") / "rbrobout_full.urdf.xacro"
-        wrapper_path.write_text(render_wrapper_xacro(view, resolved, catalog=Catalog(root=COMPONENTS_ROOT)))
+        wrapper_path.write_text(render_wrapper_xacro(view, resolved, catalog=catalog))
         assembled = _render(wrapper_path)
+        # the chassis's own tag plus each joint-bearing part's native tag both land in
+        # `assembled`; reproduce the loader's post-render merge
+        # (arena_simulation_setup.utils.models.urdf._inject_ros2_control_joints) here,
+        # fed by the same control-joint patch the runtime plumbs to the loader.
+        _inject_ros2_control_joints(assembled, render_control_joints(resolved, catalog, prefix=view.assembly.prefix))
         reference = ET.parse(GOLDEN / "rbrobout_plus_collapse.urdf").getroot()
         return assembled, reference
 

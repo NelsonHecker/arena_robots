@@ -32,7 +32,7 @@ declarations *say*, not how they get instantiated.
 Every string value in a ``sensor.gz`` entry is a template rendered per-placement through
 ``arena_rclpy_mixins.yaml_replace.YAMLReplacer``. The substitution context is::
 
-    {'mount': placement.mount.name, 'prefix': prefix, **placement.params, **placement.overrides}
+    {'mount': _frame_stem(placement.mount), 'prefix': prefix, **placement.params, **placement.overrides}
 
 i.e. the mount name and frame prefix are always available, a placement's resolved macro
 ``params`` are spread in next, and ``placement.overrides`` (assembly.py, authoring-only,
@@ -91,7 +91,9 @@ class ComponentSpec:
     ros2_control_joints: list[dict[str, object]] = attrs.field(factory=list)
     """Un-rendered ``ros2_control.joints`` entries; empty for
     components with no actuator axes (sensors). Render per-placement via
-    :func:`render_wrapper_xacro`'s merged-tag synthesis."""
+    :func:`render_control_joints`, then injected post-render into the chassis's
+    own ``ros2_control`` tag (arena_simulation_setup's urdf loader,
+    ``_inject_ros2_control_joints``, arm-on-any-chassis merge)."""
     control: dict[str, object] = attrs.field(factory=dict)
     """Un-rendered ``control`` block (``controller``/``type``/``ros__parameters``);
     empty for components with no controller. Render per-placement via
@@ -184,7 +186,7 @@ def render_effective_sensors(resolved: ResolvedAssembly, catalog: Catalog, *, pr
     for placement in resolved.placements:
         component = catalog.get(placement.type, placement.variant)
         context: dict[str, typing.Any] = {
-            'mount': placement.mount.name,
+            'mount': _frame_stem(placement.mount),
             'prefix': prefix,
             **placement.params,
             **placement.overrides,
@@ -201,6 +203,14 @@ def render_effective_sensors(resolved: ResolvedAssembly, catalog: Catalog, *, pr
                 )
             )
     return out
+
+
+def _frame_stem(mount: Mount) -> str:
+    """Identity stem substituted for ``${mount}`` in component templates (frame, joint,
+    sensor frame_id, controller name). Defaults to the addressing name; a mount's
+    ``frame`` override decouples the sim2real TF/joint/sensor contract from a renamed
+    addressing name."""
+    return mount.frame or mount.name
 
 
 def resolve_mount_parent(resolved: ResolvedAssembly, catalog: Catalog, mount: Mount) -> str:
@@ -224,7 +234,7 @@ def resolve_mount_parent(resolved: ResolvedAssembly, catalog: Catalog, mount: Mo
             f"component '{ref.type}/{ref.variant}' (mount '{ref_mount_name}') does not export frame "
             f"'{frame_name}'; declared frames: {sorted(component.frames)}"
         )
-    context: dict[str, typing.Any] = {'mount': ref.mount.name, 'prefix': '', **ref.params, **ref.overrides}
+    context: dict[str, typing.Any] = {'mount': _frame_stem(ref.mount), 'prefix': '', **ref.params, **ref.overrides}
     return YAMLReplacer(context).replace(component.frames[frame_name])
 
 
@@ -248,17 +258,6 @@ def _chassis_args(chassis_path: Path) -> list[tuple[str, str]]:
     return [(el.get('name', ''), el.get('default', '')) for el in root if el.tag.rsplit('}', 1)[-1] == 'arg']
 
 
-def _joint_xml(joint: dict[str, typing.Any]) -> list[str]:
-    """Rendered ``<joint>`` element lines for one ``ros2_control.joints`` entry."""
-    lines = [f'    <joint name={quoteattr(str(joint["name"]))}>']
-    for iface in joint.get('command_interfaces', []):
-        lines.append(f'      <command_interface name={quoteattr(str(iface))}/>')
-    for iface in joint.get('state_interfaces', []):
-        lines.append(f'      <state_interface name={quoteattr(str(iface))}/>')
-    lines.append('    </joint>')
-    return lines
-
-
 def render_wrapper_xacro(view: RobotView, resolved: ResolvedAssembly, *, catalog: Catalog | None = None) -> str:
     """Generate a complete wrapper ``.urdf.xacro`` document for ``view``: forwards the
     chassis's own ``xacro:arg`` surface, includes the chassis xacro, then includes +
@@ -275,13 +274,13 @@ def render_wrapper_xacro(view: RobotView, resolved: ResolvedAssembly, *, catalog
     mount's literal parent name passes through; a chained mount (``"@<mount>:<frame>"``)
     resolves to the referenced placement's rendered frame instead.
 
-    When any placement's component declares ``ros2_control.joints`` (phase3 sec2.10,
-    merged ros2_control), one merged ``<ros2_control name="${robot}_system">`` tag is
-    synthesized: the chassis's joints-only ``${robot}_base_hw_joints`` macro (contract
-    with the base_hw refactor: included from ``urdf/base_hw/<robot>.ros2_control.urdf``,
-    takes a ``prefix`` arg) plus every placement's rendered ``<joint>`` elements. When no
-    placement declares joints, nothing is emitted here: the chassis xacro keeps handling
-    its own tag exactly as it does today.
+    No ``ros2_control`` synthesis happens here (phase3 arm-on-any-chassis merge): the
+    chassis and every placement's component each render their own ``ros2_control`` tag
+    (or none) exactly as their own xacro dictates, so the rendered document may carry
+    MULTIPLE ``ros2_control`` tags. arena_simulation_setup's urdf loader
+    (``_inject_ros2_control_joints``) merges them post-render, fed by
+    :func:`render_control_joints`'s control-joint patch, computed independently from
+    ``resolved`` (not by parsing this wrapper's xacro output).
     """
     catalog = catalog if catalog is not None else Catalog()
     chassis_path = view.path / 'urdf' / f'{view.name}.urdf.xacro'
@@ -289,7 +288,6 @@ def render_wrapper_xacro(view: RobotView, resolved: ResolvedAssembly, *, catalog
 
     body_lines: list[str] = []
     included: set[str] = set()
-    control_joint_lines: list[str] = []
     for placement in resolved.placements:
         component = catalog.get(placement.type, placement.variant)
         # package-qualified ($(find ...)) and absolute includes pass through verbatim,
@@ -303,7 +301,7 @@ def render_wrapper_xacro(view: RobotView, resolved: ResolvedAssembly, *, catalog
             included.add(macro_ref)
 
         context: dict[str, typing.Any] = {
-            'mount': placement.mount.name,
+            'mount': _frame_stem(placement.mount),
             'parent': resolve_mount_parent(resolved, catalog, placement.mount),
             'prefix': '$(arg prefix)',
             'namespace': '$(arg namespace)',
@@ -321,39 +319,38 @@ def render_wrapper_xacro(view: RobotView, resolved: ResolvedAssembly, *, catalog
         body_lines.append(f'    <origin xyz="{x} {y} {z}" rpy="{r} {p} {yw}"/>')
         body_lines.append(f'  </xacro:{component.xacro_macro}>')
 
-        if component.ros2_control_joints:
-            joints = YAMLReplacer(context).replace(copy.deepcopy(component.ros2_control_joints))
-            for joint in joints:
-                control_joint_lines.extend(_joint_xml(joint))
-
-    if control_joint_lines:
-        # the merged tag replaces the chassis's internal one, the chassis must gate it
-        if 'generate_ros2_control_tag' not in {name for name, _ in args}:
-            raise RuntimeError(
-                f"{chassis_path}: chassis must declare a 'generate_ros2_control_tag' xacro:arg "
-                'to gate its internal ros2_control tag before joint-bearing parts can be mounted'
-            )
-        args = [(n, 'false' if n == 'generate_ros2_control_tag' else d) for n, d in args]
-
     lines = ['<?xml version="1.0"?>', f'<robot name="{view.name}" xmlns:xacro="{_XACRO_NS}">']
     for name, default in args:
         lines.append(f'  <xacro:arg name={quoteattr(name)} default={quoteattr(default)}/>')
     lines.append(f'  <xacro:include filename={quoteattr(str(chassis_path))}/>')
     lines.extend(body_lines)
-
-    if control_joint_lines:
-        base_hw_path = view.path / 'urdf' / 'base_hw' / f'{view.name}.ros2_control.urdf'
-        lines.append(f'  <ros2_control name="{view.name}_system" type="system">')
-        lines.append('    <hardware>')
-        lines.append('      <plugin>gz_ros2_control/GazeboSimSystem</plugin>')
-        lines.append('    </hardware>')
-        lines.append(f'    <xacro:include filename={quoteattr(str(base_hw_path))}/>')
-        lines.append(f'    <xacro:{view.name}_base_hw_joints prefix="$(arg prefix)"/>')
-        lines.extend(control_joint_lines)
-        lines.append('  </ros2_control>')
-
     lines.append('</robot>')
     return '\n'.join(lines) + '\n'
+
+
+def render_control_joints(resolved: ResolvedAssembly, catalog: Catalog, *, prefix: str = 'robot_') -> list[dict[str, object]]:
+    """Render every placement's ``ros2_control.joints`` templates into the robot's
+    control-joint patch (phase3 sec2.10, arm-on-any-chassis merge): the ``<joint>``
+    entries a joint-bearing part (e.g. an arm) contributes, for post-render injection
+    into the chassis's own ``ros2_control`` tag (arena_simulation_setup's urdf loader,
+    ``_inject_ros2_control_joints``). Unlike :func:`render_wrapper_xacro`'s xacro-side
+    templating, ``prefix`` here is the real resolved value (not a ``$(arg prefix)``
+    token): injection runs after xacro has already resolved everything. Same
+    templating context as :func:`render_effective_sensors`. Empty when no placement
+    declares joints."""
+    out: list[dict[str, object]] = []
+    for placement in resolved.placements:
+        component = catalog.get(placement.type, placement.variant)
+        if not component.ros2_control_joints:
+            continue
+        context: dict[str, typing.Any] = {
+            'mount': _frame_stem(placement.mount),
+            'prefix': prefix,
+            **placement.params,
+            **placement.overrides,
+        }
+        out.extend(YAMLReplacer(context).replace(copy.deepcopy(component.ros2_control_joints)))
+    return out
 
 
 def render_effective_control(
@@ -373,7 +370,7 @@ def render_effective_control(
         if not component.control:
             continue
         context: dict[str, typing.Any] = {
-            'mount': placement.mount.name,
+            'mount': _frame_stem(placement.mount),
             'prefix': prefix,
             **placement.params,
             **placement.overrides,

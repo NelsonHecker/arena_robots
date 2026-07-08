@@ -1,11 +1,12 @@
 # prefix: "" because a1's xacro "prefix" arg is declared but never wired to base_frame/frames.
 prefix: ""
 mounts:
-  lidar:
+  top:
     parent: trunk
     xyz: [0.0, 0.0, 0.10]
     rpy: [0, 0, 0]
     accepts: [lidar]
+    frame: lidar
   face:
     parent: trunk
     xyz: [0.271, 0.0125, 0.0167]
@@ -17,4 +18,4 @@ defaults:
       mount: face
   lidar:
     - variant: arena_default_3d
-      mount: lidar
+      mount: top
