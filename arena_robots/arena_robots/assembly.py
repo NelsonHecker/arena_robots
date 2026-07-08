@@ -95,10 +95,9 @@ def _validate_mount_dag(mounts: dict[str, Mount]) -> None:
 
 @attrs.define
 class AssemblySpec:
-    """Parsed ``assembly.yaml``: mounts + per-type priority + declared defaults."""
+    """Parsed ``assembly.yaml``: mounts + declared defaults."""
 
     mounts: dict[str, Mount] = attrs.field(factory=dict)
-    priority: dict[str, list[str]] = attrs.field(factory=dict)
     defaults: dict[str, list[DefaultPart]] = attrs.field(factory=dict)
     prefix: str = 'robot_'
     """Frame-templating prefix for ``catalog.render_effective_sensors`` (mount frames
@@ -108,9 +107,10 @@ class AssemblySpec:
 
     @classmethod
     def parse(cls, data: dict[str, typing.Any]) -> AssemblySpec:
-        """Parse the ``assembly.yaml`` shape (mounts/priority/defaults keys, sec2.5).
-        Validates that priority and defaults reference declared mounts and that defaults
-        mounts accept their type; raises :class:`AssemblyError` otherwise."""
+        """Parse the ``assembly.yaml`` shape (mounts/defaults keys, sec2.5).
+        Validates that defaults reference declared mounts that accept their type;
+        raises :class:`AssemblyError` otherwise. Allocation preference among mounts
+        accepting the same type follows mount declaration order (first-declared wins)."""
         mounts_raw = data.get('mounts', {})
         if not isinstance(mounts_raw, dict):
             raise AssemblyError(f"assembly.yaml 'mounts' must be a mapping; got {type(mounts_raw).__name__}")
@@ -127,13 +127,6 @@ class AssemblySpec:
                 accepts=frozenset(str(a) for a in m.get('accepts', [])),
             )
         _validate_mount_dag(mounts)
-
-        priority: dict[str, list[str]] = {}
-        for t, mount_names in data.get('priority', {}).items():
-            for mn in mount_names:
-                if mn not in mounts:
-                    raise AssemblyError(f"priority['{t}']: unknown mount '{mn}'; declared mounts: {sorted(mounts)}")
-            priority[str(t)] = [str(mn) for mn in mount_names]
 
         defaults: dict[str, list[DefaultPart]] = {}
         for t, entries in data.get('defaults', {}).items():
@@ -157,7 +150,7 @@ class AssemblySpec:
                 )
             defaults[str(t)] = parts
 
-        return cls(mounts=mounts, priority=priority, defaults=defaults, prefix=str(data.get('prefix', 'robot_')))
+        return cls(mounts=mounts, defaults=defaults, prefix=str(data.get('prefix', 'robot_')))
 
 
 @attrs.define
@@ -195,21 +188,20 @@ def _mounts_accepting(spec: AssemblySpec, t: str) -> list[str]:
     return [m.name for m in spec.mounts.values() if t in m.accepts]
 
 
-def _candidates(item: _Item, mounts_pool: list[str], mounts: dict[str, Mount], priority: dict[str, list[str]]) -> list[str]:
-    pool_set = set(mounts_pool)
-    pref = [m for m in priority.get(item.type, []) if m in pool_set and item.type in mounts[m].accepts]
-    rest = [m for m in mounts_pool if m not in pref and item.type in mounts[m].accepts]
-    return pref + rest
+def _candidates(item: _Item, mounts_pool: list[str], mounts: dict[str, Mount]) -> list[str]:
+    """Mounts accepting ``item.type``, in mount declaration order (the allocation
+    preference: first-declared wins)."""
+    return [m for m in mounts_pool if item.type in mounts[m].accepts]
 
 
-def _match(items: list[_Item], mounts_pool: list[str], mounts: dict[str, Mount], priority: dict[str, list[str]]) -> tuple[dict[int, str], list[int]]:
+def _match(items: list[_Item], mounts_pool: list[str], mounts: dict[str, Mount]) -> tuple[dict[int, str], list[int]]:
     """Maximum bipartite matching via Kuhn's augmenting paths. Returns (item-index ->
     mount-name assignment, indices left unmatched). Complete: a perfect assignment of
     all ``items`` exists iff the returned unmatched list is empty."""
     mount_owner: dict[str, int] = {}
 
     def try_assign(idx: int, visited: set[str]) -> bool:
-        for mount_name in _candidates(items[idx], mounts_pool, mounts, priority):
+        for mount_name in _candidates(items[idx], mounts_pool, mounts):
             if mount_name in visited:
                 continue
             visited.add(mount_name)
@@ -277,7 +269,7 @@ def resolve(spec: AssemblySpec, request: dict[str, list[RequestPart]]) -> Resolv
     unpinned = [item for item in flat if item.mount is None]
     mounts_pool = [name for name in spec.mounts if name not in occupied]
 
-    assignment, unmatched = _match(unpinned, mounts_pool, spec.mounts, spec.priority)
+    assignment, unmatched = _match(unpinned, mounts_pool, spec.mounts)
 
     if unmatched:
         by_type: dict[str, list[int]] = {}
@@ -292,7 +284,7 @@ def resolve(spec: AssemblySpec, request: dict[str, list[RequestPart]]) -> Resolv
             lines.append(f"requested {n_req}x {t}, only {len(inv)} {t}-mount{plural} ({', '.join(inv)}); drop one or add a mount")
         for idx in unmatched:
             item = unpinned[idx]
-            cands = _candidates(item, mounts_pool, spec.mounts, spec.priority)
+            cands = _candidates(item, mounts_pool, spec.mounts)
             lines.append(f"{item.type}#{item.local_index} candidates: [{', '.join(cands)}]" if cands else f"{item.type}#{item.local_index} candidates: none")
         raise AssemblyError("; ".join(lines))
 

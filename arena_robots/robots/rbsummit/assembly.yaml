@@ -15,10 +15,6 @@ mounts:
     xyz: [0.324, 0.012, 0.172]
     rpy: [0, 0, 0]
     accepts: [camera]
-priority:
-  lidar: [top_3d_laser]
-  imu: [vectornav]
-  camera: [front_rgbd_camera]
 defaults:
   lidar:
     - variant: robosense_helios_16p

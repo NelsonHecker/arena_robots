@@ -201,15 +201,19 @@ mounts:
     parent: chassis_link
     xyz: [0.53, 0.33, 0.1145]     # verbatim from the pre-migration xacro invocation
     rpy: [3.141592653589793, 0, 0.7853981633974483]
-    accepts: [lidar]
-priority:
-  lidar: [front_laser]            # preference order for allocation (fallback: any accepting mount)
+    accepts: [lidar]              # a set: a mount may accept more than one part type
 defaults:
   lidar:
     - variant: sick_s300
       mount: front_laser
       overrides: {name: lidar_rear, topic: scan/rear}   # per-instance tuning lives HERE
 ```
+
+`accepts` is a set, not a scalar: a versatile mounting point (e.g. a top plate) may
+accept several part types. When more than one mount accepts the same type, allocation
+preference among them follows mount DECLARATION ORDER in this file, first-declared
+wins. There is no separate `priority:` field; reorder the `mounts:` block itself to
+change preference.
 
 Requests (`robot:=name[lidar=x,...]`) resolve against this file with replace-on-touch
 semantics; see the grammar section in

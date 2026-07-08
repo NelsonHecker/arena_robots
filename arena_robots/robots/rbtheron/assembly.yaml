@@ -24,10 +24,6 @@ mounts:
     xyz: [-0.3045, 0.0, 0.1158]
     rpy: [0, 0, 3.141592653589793]
     accepts: [camera]
-priority:
-  lidar: [front_laser, rear_laser]
-  imu: [vectornav]
-  camera: [front_rgbd_camera, rear_rgbd_camera]
 defaults:
   lidar:
     - variant: hokuyo_ust20lx

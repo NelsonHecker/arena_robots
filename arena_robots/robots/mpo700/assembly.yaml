@@ -10,8 +10,6 @@ mounts:
     xyz: [-0.338, -0.288, 0.223]
     rpy: [3.14, 0, 3.93]
     accepts: [lidar]
-priority:
-  lidar: [front_laser, rear_laser]
 defaults:
   lidar:
     - variant: sick_s300

@@ -11,9 +11,6 @@ mounts:
     xyz: [0.271, 0.0125, 0.0167]
     rpy: [0, 0, 0]
     accepts: [camera]
-priority:
-  lidar: [lidar]
-  camera: [face]
 defaults:
   camera:
     - variant: a1_depth

@@ -31,12 +31,6 @@ mounts:
     xyz: [0, 0, 0]
     rpy: [0, 0, 0]
     accepts: [arm]
-priority:
-  lidar: [front_laser, rear_laser]
-  imu: [vectornav]
-  structure: [top_cover0]
-  lift: [lift0]
-  arm: [arm0]
 defaults:
   lidar:
     - variant: sick_microscan3

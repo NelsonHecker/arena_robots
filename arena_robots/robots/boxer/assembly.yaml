@@ -22,10 +22,6 @@ mounts:
     xyz: [0.3524, 0.0, 0.0422]
     rpy: [0, -0.257610597594, 0]
     accepts: [camera]
-priority:
-  lidar: [front_laser, rear_sensor]
-  imu: [imu]
-  camera: [front_realsense_mount_link]
 defaults:
   lidar:
     - variant: boxer_front

@@ -24,7 +24,6 @@ class TestResolveDefaults:
 
         spec = AssemblySpec(
             mounts={"top": _mount("top", ["lidar"])},
-            priority={"lidar": ["top"]},
             defaults={"lidar": [DefaultPart(variant="sick_s300", mount="top")]},
         )
         resolved = resolve(spec, {})
@@ -136,10 +135,7 @@ class TestResolveMatching:
         matching must still land both."""
         from arena_robots.assembly import AssemblySpec, RequestPart, resolve
 
-        spec = AssemblySpec(
-            mounts={"A": _mount("A", ["lidar", "camera"]), "B": _mount("B", ["lidar"])},
-            priority={"lidar": ["A", "B"], "camera": ["A"]},
-        )
+        spec = AssemblySpec(mounts={"A": _mount("A", ["lidar", "camera"]), "B": _mount("B", ["lidar"])})
         request = {"camera": [RequestPart(variant="d435")], "lidar": [RequestPart(variant="sick")]}
         resolved = resolve(spec, request)
         by_type = {p.type: p.mount.name for p in resolved.placements}
@@ -151,22 +147,16 @@ class TestResolveMatching:
         reassign it to B once camera (A-only) needs the mount."""
         from arena_robots.assembly import AssemblySpec, RequestPart, resolve
 
-        spec = AssemblySpec(
-            mounts={"A": _mount("A", ["lidar", "camera"]), "B": _mount("B", ["lidar"])},
-            priority={"lidar": ["A", "B"], "camera": ["A"]},
-        )
+        spec = AssemblySpec(mounts={"A": _mount("A", ["lidar", "camera"]), "B": _mount("B", ["lidar"])})
         request = {"lidar": [RequestPart(variant="sick")], "camera": [RequestPart(variant="d435")]}
         resolved = resolve(spec, request)
         by_type = {p.type: p.mount.name for p in resolved.placements}
         assert by_type == {"lidar": "B", "camera": "A"}
 
-    def test_priority_preference_respected_when_slack_exists(self):
+    def test_declaration_order_preference_respected_when_slack_exists(self):
         from arena_robots.assembly import AssemblySpec, RequestPart, resolve
 
-        spec = AssemblySpec(
-            mounts={"top": _mount("top", ["lidar"]), "front": _mount("front", ["lidar"])},
-            priority={"lidar": ["front", "top"]},
-        )
+        spec = AssemblySpec(mounts={"front": _mount("front", ["lidar"]), "top": _mount("top", ["lidar"])})
         resolved = resolve(spec, {"lidar": [RequestPart(variant="sick")]})
         assert resolved.placements[0].mount.name == "front"
 
@@ -227,25 +217,31 @@ class TestWarnIfBlind:
 
 
 class TestAssemblySpecParse:
-    def test_parse_builds_mounts_priority_defaults(self):
+    def test_parse_builds_mounts_defaults(self):
         from arena_robots.assembly import AssemblySpec
 
         spec = AssemblySpec.parse(
             {
                 "mounts": {"top": {"parent": "base_link", "xyz": [0, 0, 0.2], "accepts": ["lidar"]}},
-                "priority": {"lidar": ["top"]},
                 "defaults": {"lidar": [{"variant": "sick_s300", "mount": "top", "params": {"max_angle": 2.1}}]},
             }
         )
         assert spec.mounts["top"].accepts == frozenset({"lidar"})
-        assert spec.priority == {"lidar": ["top"]}
         assert spec.defaults["lidar"][0].params == {"max_angle": 2.1}
 
-    def test_parse_rejects_priority_referencing_unknown_mount(self):
-        from arena_robots.assembly import AssemblyError, AssemblySpec
+    def test_parse_declaration_order_is_allocation_preference(self):
+        from arena_robots.assembly import AssemblySpec, RequestPart, resolve
 
-        with pytest.raises(AssemblyError, match="unknown mount"):
-            AssemblySpec.parse({"mounts": {}, "priority": {"lidar": ["top"]}})
+        spec = AssemblySpec.parse(
+            {
+                "mounts": {
+                    "front": {"parent": "base_link", "xyz": [0, 0, 0], "accepts": ["lidar"]},
+                    "rear": {"parent": "base_link", "xyz": [0, 0, 0], "accepts": ["lidar"]},
+                }
+            }
+        )
+        resolved = resolve(spec, {"lidar": [RequestPart(variant="sick")]})
+        assert resolved.placements[0].mount.name == "front"
 
     def test_parse_rejects_default_mount_not_accepting_type(self):
         from arena_robots.assembly import AssemblyError, AssemblySpec
