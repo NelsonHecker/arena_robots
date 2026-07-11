@@ -70,6 +70,10 @@ def _prefix_srdf_links(srdf_xml: str, tf_prefix: str) -> str:
         v = vj.get("child_link")
         if v:
             vj.set("child_link", tf_prefix + v)
+    for ee in root.iter("end_effector"):
+        v = ee.get("parent_link")
+        if v:
+            ee.set("parent_link", tf_prefix + v)
     return ET.tostring(root, encoding="unicode")
 
 
@@ -89,14 +93,25 @@ def _select_arm(robot_name: str, arms: dict[str, object], instance: str | None) 
     return instance, arms[instance]
 
 
-def _compose_srdf(robot: arena_robots.Robot.RobotView, fragment_path: Path, context: dict[str, str]) -> Path:
+def _compose_srdf(
+    robot: arena_robots.Robot.RobotView,
+    fragment_path: Path,
+    context: dict[str, str],
+    extras: list[tuple[Path, dict[str, str]]] | None = None,
+) -> Path:
     """Xacro-render the placed arm component's SRDF fragment with ``context``
     (prefix/mount/parent), then merge it with the chassis's residual SRDF fragment
-    (``robots/<robot>/srdf/<robot>.srdf.xacro``, if declared) under one ``<robot>``
-    element. Returns the path to a temp file holding the composed document."""
+    (``robots/<robot>/srdf/<robot>.srdf.xacro``, if declared) and any ``extras``
+    (per-placement ``(fragment, context)`` pairs, e.g. a gripper chained onto the arm)
+    under one ``<robot>`` element. Returns the path to a temp file holding the
+    composed document."""
     fragment_xml = xacro.process_file(str(fragment_path), mappings={k: str(v) for k, v in context.items()}).toxml()
     merged = ET.Element("robot", {"name": robot.name})
     merged.extend(list(ET.fromstring(fragment_xml)))
+
+    for extra_path, extra_context in extras or []:
+        extra_xml = xacro.process_file(str(extra_path), mappings={k: str(v) for k, v in extra_context.items()}).toxml()
+        merged.extend(list(ET.fromstring(extra_xml)))
 
     base_srdf = robot.path / "srdf" / f"{robot.name}.srdf.xacro"
     if base_srdf.is_file():
@@ -106,6 +121,33 @@ def _compose_srdf(robot: arena_robots.Robot.RobotView, fragment_path: Path, cont
     with NamedTemporaryFile(mode="w", suffix=".srdf", delete=False) as f:
         f.write(ET.tostring(merged, encoding="unicode"))
         return Path(f.name)
+
+
+def _gripper_srdf_extras(resolved: object, arm_mount: str, prefix: str) -> list[tuple[Path, dict[str, str]]]:
+    """``(fragment, context)`` per gripper placement chained onto ``arm_mount`` whose
+    component caps declare a ``moveit.srdf`` fragment. The context adds ``arm`` (the
+    carrying arm's frame stem) beside the usual prefix/mount, for the fragment's
+    end_effector parent link/group and the wrist adjacency disable."""
+    from arena_robots.catalog import Catalog, _frame_stem
+
+    arm_placement = next((p for p in resolved.placements if p.type == "arm" and p.mount.name == arm_mount), None)
+    if arm_placement is None:
+        return []
+    catalog = Catalog()
+    extras: list[tuple[Path, dict[str, str]]] = []
+    for placement in resolved.placements:
+        if placement.type != "gripper":
+            continue
+        chained = placement.mount.chained_parent
+        if chained is None or chained[0] != arm_mount:
+            continue
+        mv = (catalog.get(placement.type, placement.variant).caps or {}).get("moveit") or {}
+        srdf_ref = mv.get("srdf") or {}
+        if "path" not in srdf_ref:
+            continue
+        fragment = Path(get_package_share_directory(srdf_ref.get("package", "arena_robots"))) / srdf_ref["path"]
+        extras.append((fragment, {"prefix": prefix, "mount": _frame_stem(placement.mount), "arm": _frame_stem(arm_placement.mount)}))
+    return extras
 
 
 def _render_joint_limits(jl_path: Path, context: dict[str, str]) -> Path:
@@ -158,7 +200,7 @@ def build_moveit_params(robot_name: str, tf_prefix: str = "", parts: dict[str, l
     arms = caps.arm
     if arms is None:
         raise ValueError(f"{robot_name}: arm cap required but absent")
-    _key, arm = _select_arm(robot_name, arms, instance)
+    arm_key, arm = _select_arm(robot_name, arms, instance)
 
     mv = arm.raw.get("moveit") or {}
     pkg = mv.get("package")
@@ -191,7 +233,8 @@ def build_moveit_params(robot_name: str, tf_prefix: str = "", parts: dict[str, l
 
     if resolved is not None:
         placement_context = {k: mappings[k] for k in ("prefix", "mount", "parent") if k in mappings}
-        srdf_abs = _compose_srdf(robot, srdf_abs, placement_context)
+        extras = _gripper_srdf_extras(resolved, arm_key, placement_context.get("prefix", ""))
+        srdf_abs = _compose_srdf(robot, srdf_abs, placement_context, extras)
         jl_abs = _render_joint_limits(jl_abs, placement_context)
 
     moveit_config = MoveItConfigsBuilder(robot_name="ur", package_name=pkg).robot_description(file_path=str(urdf_abs), mappings=mappings).robot_description_semantic(srdf_abs, mappings=mappings).joint_limits(jl_abs).to_moveit_configs()

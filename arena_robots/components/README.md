@@ -25,6 +25,8 @@ control: {...}            # controller block deep-merged into the chassis contro
 caps: {...}               # full caps/<cap>.yaml shape, rendered per placement
 frames: {...}             # named frames this component exports (e.g. a lift's `top`),
                           # for another mount's Mount.parent to chain onto: "@<mount>:<frame>"
+variants: [...]           # family component: variant names this one dir serves, rendered
+                          # per placement off ${variant} (e.g. arm/ur for the UR family)
 ```
 
 ## Conventions
@@ -40,6 +42,8 @@ frames: {...}             # named frames this component exports (e.g. a lift's `
   sensors (e.g. an RGBD camera bundling an IMU).
 - **Sim-only sensors** (rendered under gz but unbridged, e.g. GPS/navsat): the macro renders
   them, `sensor.gz` simply omits them; no SensorSpec, no bridge row.
+- **No-prefix components** (`lidar/arena_default`, `imu/arena_default`): omit `${prefix}`
+  templating entirely since none of their placing robots use a frame-prefix convention.
 - **Arm components** contribute four artifacts (`xacro`, `ros2_control.joints`, `control`,
   `caps`). The chassis and every placed component each render their own `ros2_control`
   tag normally (no gating xacro:arg needed on either side); `ros2_control.joints` is a
@@ -54,3 +58,18 @@ frames: {...}             # named frames this component exports (e.g. a lift's `
   the referenced mount's placed component's `frames.<frame>` template (e.g. an arm parented
   on a lift's `top`). A placed part chained through an unpopulated mount is an
   `AssemblyError`; chained-parent references must form a DAG.
+- **Family components**: a dir whose `variants:` lists the variant names it serves resolves
+  any of them through the one shared spec (`Catalog` falls back when no dedicated dir
+  exists; an exact dir still wins). `${variant}` joins the render context per placement;
+  per-variant data files live beside the spec keyed by `${variant}` (e.g.
+  `arm/ur/joint_limits/${variant}.yaml`).
+- **Gripper components** chain onto an arm's exported `tip` frame (a gripper mount's
+  `parent: "@<arm mount>:tip"`). The actuated joint carries command interfaces; mimic
+  joints ride along state-only with `mimic: true` (the explicit jazzy ros2_control
+  attribute; humble-era `<param name="mimic">` entries leave the joints NaN). Known
+  jazzy gz limitation: mimic fingers stay limp in sim (gz_ros2_control 1.2 registers
+  but does not enforce mimic, dartsim has no mimic constraint, bullet-featherstone
+  breaks position control, and world-plugin JointPositionReset enforcement aborts the
+  server), so only the actuated finger moves until the stack catches up.
+  `caps.moveit.srdf` names a fragment merged into the composed SRDF per placement
+  (`moveit_factory._gripper_srdf_extras`, context adds `arm` = the carrying arm's stem).

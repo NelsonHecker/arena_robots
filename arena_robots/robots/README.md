@@ -219,6 +219,9 @@ Requests (`robot:=name[lidar=x,...]`) resolve against this file with replace-on-
 semantics; see the grammar section in
 `task_generator/task_generator/manager/README.md`.
 
+A sensor that is physically present but deliberately left unbridged (e.g. a GPS/navsat
+mast) stays inline in the robot's own xacro; it gets no mount or component entry here.
+
 ### Migrating a robot (Stage M)
 
 1. **Golden capture first**: render the pre-migration URDF via xacro in-container and

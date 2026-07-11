@@ -17,6 +17,11 @@ mounts:
     xyz: [0.0, 0.0, 0.205]
     rpy: [0, 0, 0]
     accepts: [lidar, camera, arm]
+  top_tool:
+    parent: "@top:tip"
+    xyz: [0, 0, 0]
+    rpy: [0, 0, 0]
+    accepts: [gripper]
 defaults:
   lidar:
     - variant: jackal_default

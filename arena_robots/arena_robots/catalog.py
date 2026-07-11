@@ -107,6 +107,11 @@ class ComponentSpec:
     exports, for another mount's ``Mount.parent`` to chain onto (e.g. a lift's
     ``top`` frame). Empty for components nothing else mounts onto. Resolved per
     placement by :func:`resolve_mount_parent`."""
+    variants: list[str] = attrs.field(factory=list)
+    """Variant names this component serves when no dedicated ``<variant>/`` dir exists
+    (family component, e.g. one ``arm/ur`` serving the whole UR family, parameterized
+    per-placement off ``${variant}`` in attach name / ur_description config paths /
+    ur_type). Empty for ordinary one-dir-per-variant components."""
 
     @classmethod
     def from_yaml(cls, path: Path) -> ComponentSpec:
@@ -141,6 +146,10 @@ class ComponentSpec:
         if not isinstance(frames, dict):
             raise ValueError(f"component.yaml at {path}: 'frames' must be a mapping; got {type(frames).__name__}")
 
+        variants = data.get('variants', [])
+        if not isinstance(variants, list):
+            raise ValueError(f"component.yaml at {path}: 'variants' must be a list; got {type(variants).__name__}")
+
         return cls(
             xacro_include=str(xacro['include']),
             xacro_macro=str(xacro['macro']),
@@ -151,6 +160,7 @@ class ComponentSpec:
             control=dict(control),
             caps=dict(caps),
             frames={str(k): str(v) for k, v in frames.items()},
+            variants=[str(v) for v in variants],
         )
 
 
@@ -169,12 +179,31 @@ class Catalog:
         key = (type_, variant)
         if key not in self._cache:
             path = self._root / type_ / variant / 'component.yaml'
-            if not path.is_file():
-                type_dir = self._root / type_
-                available = sorted(p.name for p in type_dir.iterdir() if p.is_dir()) if type_dir.is_dir() else []
-                raise RuntimeError(f"component '{type_}/{variant}' not found; available '{type_}' variants: {available}")
-            self._cache[key] = ComponentSpec.from_yaml(path)
+            if path.is_file():
+                self._cache[key] = ComponentSpec.from_yaml(path)
+            else:
+                self._cache[key] = self._resolve_family(type_, variant)
         return self._cache[key]
+
+    def _resolve_family(self, type_: str, variant: str) -> ComponentSpec:
+        """Resolve a variant with no dedicated ``<variant>/`` dir against a family
+        component (a sibling whose ``variants:`` list names it, e.g. one ``arm/ur``
+        serving the whole UR family). The shared spec is rendered per-placement off
+        ``${variant}`` (catalog contexts thread in ``placement.variant``). Raises
+        listing both concrete dirs and every family-declared variant."""
+        type_dir = self._root / type_
+        concrete = sorted(p.name for p in type_dir.iterdir() if p.is_dir()) if type_dir.is_dir() else []
+        family_variants: list[str] = []
+        for name in concrete:
+            candidate = type_dir / name / 'component.yaml'
+            if not candidate.is_file():
+                continue
+            spec = ComponentSpec.from_yaml(candidate)
+            if variant in spec.variants:
+                return spec
+            family_variants.extend(spec.variants)
+        available = sorted(set(concrete) | set(family_variants))
+        raise RuntimeError(f"component '{type_}/{variant}' not found; available '{type_}' variants: {available}")
 
 
 def render_effective_sensors(resolved: ResolvedAssembly, catalog: Catalog, *, prefix: str = 'robot_') -> list[SensorSpec]:
@@ -187,6 +216,7 @@ def render_effective_sensors(resolved: ResolvedAssembly, catalog: Catalog, *, pr
         component = catalog.get(placement.type, placement.variant)
         context: dict[str, typing.Any] = {
             'mount': _frame_stem(placement.mount),
+            'variant': placement.variant,
             'prefix': prefix,
             **placement.params,
             **placement.overrides,
@@ -234,7 +264,7 @@ def resolve_mount_parent(resolved: ResolvedAssembly, catalog: Catalog, mount: Mo
             f"component '{ref.type}/{ref.variant}' (mount '{ref_mount_name}') does not export frame "
             f"'{frame_name}'; declared frames: {sorted(component.frames)}"
         )
-    context: dict[str, typing.Any] = {'mount': _frame_stem(ref.mount), 'prefix': '', **ref.params, **ref.overrides}
+    context: dict[str, typing.Any] = {'mount': _frame_stem(ref.mount), 'variant': ref.variant, 'prefix': '', **ref.params, **ref.overrides}
     return YAMLReplacer(context).replace(component.frames[frame_name])
 
 
@@ -302,6 +332,7 @@ def render_wrapper_xacro(view: RobotView, resolved: ResolvedAssembly, *, catalog
 
         context: dict[str, typing.Any] = {
             'mount': _frame_stem(placement.mount),
+            'variant': placement.variant,
             'parent': resolve_mount_parent(resolved, catalog, placement.mount),
             'prefix': '$(arg prefix)',
             'namespace': '$(arg namespace)',
@@ -345,6 +376,7 @@ def render_control_joints(resolved: ResolvedAssembly, catalog: Catalog, *, prefi
             continue
         context: dict[str, typing.Any] = {
             'mount': _frame_stem(placement.mount),
+            'variant': placement.variant,
             'prefix': prefix,
             **placement.params,
             **placement.overrides,
@@ -371,6 +403,7 @@ def render_effective_control(
             continue
         context: dict[str, typing.Any] = {
             'mount': _frame_stem(placement.mount),
+            'variant': placement.variant,
             'prefix': prefix,
             **placement.params,
             **placement.overrides,

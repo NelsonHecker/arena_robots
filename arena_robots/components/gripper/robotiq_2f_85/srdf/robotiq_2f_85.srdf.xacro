@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<!-- robotiq_2f_85 gripper SRDF fragment: group/end_effector/disable_collisions
+     for a gripper chained onto an arm's tip, merged into the composed SRDF by
+     moveit_factory.py alongside the arm fragment. prefix/mount are the usual placement
+     args; `arm` is the carrying arm's frame stem, resolved from the mount chain. -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="robotiq_2f_85_gripper_fragment">
+  <xacro:arg name="prefix" default=""/>
+  <xacro:arg name="mount" default="tool"/>
+  <xacro:arg name="arm" default="arm"/>
+
+  <group name="$(arg mount)">
+    <joint name="$(arg prefix)$(arg mount)_robotiq_85_left_knuckle_joint"/>
+  </group>
+
+  <group_state name="open" group="$(arg mount)">
+    <joint name="$(arg prefix)$(arg mount)_robotiq_85_left_knuckle_joint" value="0.0"/>
+  </group_state>
+  <group_state name="close" group="$(arg mount)">
+    <joint name="$(arg prefix)$(arg mount)_robotiq_85_left_knuckle_joint" value="0.8"/>
+  </group_state>
+
+  <end_effector name="$(arg mount)" parent_link="$(arg prefix)$(arg arm)_tool0" group="$(arg mount)" parent_group="$(arg arm)_manipulator"/>
+
+  <disable_collisions link1="$(arg prefix)$(arg arm)_wrist_3_link" link2="$(arg prefix)$(arg mount)_robotiq_85_base_link" reason="Adjacent"/>
+  <disable_collisions link1="$(arg prefix)$(arg mount)_robotiq_85_base_link" link2="$(arg prefix)$(arg mount)_robotiq_85_left_knuckle_link" reason="Adjacent"/>
+  <disable_collisions link1="$(arg prefix)$(arg mount)_robotiq_85_base_link" link2="$(arg prefix)$(arg mount)_robotiq_85_right_knuckle_link" reason="Adjacent"/>
+  <disable_collisions link1="$(arg prefix)$(arg mount)_robotiq_85_base_link" link2="$(arg prefix)$(arg mount)_robotiq_85_left_inner_knuckle_link" reason="Adjacent"/>
+  <disable_collisions link1="$(arg prefix)$(arg mount)_robotiq_85_base_link" link2="$(arg prefix)$(arg mount)_robotiq_85_right_inner_knuckle_link" reason="Adjacent"/>
+  <disable_collisions link1="$(arg prefix)$(arg mount)_robotiq_85_left_knuckle_link" link2="$(arg prefix)$(arg mount)_robotiq_85_left_finger_link" reason="Adjacent"/>
+  <disable_collisions link1="$(arg prefix)$(arg mount)_robotiq_85_right_knuckle_link" link2="$(arg prefix)$(arg mount)_robotiq_85_right_finger_link" reason="Adjacent"/>
+  <disable_collisions link1="$(arg prefix)$(arg mount)_robotiq_85_left_inner_knuckle_link" link2="$(arg prefix)$(arg mount)_robotiq_85_left_finger_tip_link" reason="Adjacent"/>
+  <disable_collisions link1="$(arg prefix)$(arg mount)_robotiq_85_right_inner_knuckle_link" link2="$(arg prefix)$(arg mount)_robotiq_85_right_finger_tip_link" reason="Adjacent"/>
+  <disable_collisions link1="$(arg prefix)$(arg mount)_robotiq_85_left_finger_link" link2="$(arg prefix)$(arg mount)_robotiq_85_left_finger_tip_link" reason="Default"/>
+  <disable_collisions link1="$(arg prefix)$(arg mount)_robotiq_85_right_finger_link" link2="$(arg prefix)$(arg mount)_robotiq_85_right_finger_tip_link" reason="Default"/>
+  <disable_collisions link1="$(arg prefix)$(arg mount)_robotiq_85_left_finger_tip_link" link2="$(arg prefix)$(arg mount)_robotiq_85_right_finger_tip_link" reason="User"/>
+  <disable_collisions link1="$(arg prefix)$(arg mount)_robotiq_85_base_link" link2="$(arg prefix)$(arg mount)_robotiq_85_left_finger_link" reason="User"/>
+  <disable_collisions link1="$(arg prefix)$(arg mount)_robotiq_85_base_link" link2="$(arg prefix)$(arg mount)_robotiq_85_right_finger_link" reason="User"/>
+  <disable_collisions link1="$(arg prefix)$(arg mount)_robotiq_85_left_knuckle_link" link2="$(arg prefix)$(arg mount)_robotiq_85_left_inner_knuckle_link" reason="User"/>
+  <disable_collisions link1="$(arg prefix)$(arg mount)_robotiq_85_right_knuckle_link" link2="$(arg prefix)$(arg mount)_robotiq_85_right_inner_knuckle_link" reason="User"/>
+</robot>

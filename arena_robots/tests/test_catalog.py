@@ -156,6 +156,24 @@ class TestComponentSpecFromYaml:
         assert spec.caps == {}
 
 
+class TestComponentSpecVariants:
+    """A family component declares the variant names it serves via `variants:` (empty for
+    ordinary one-dir-per-variant components)."""
+
+    def test_variants_default_empty(self, tmp_path: Path):
+        path = _write_component(tmp_path, "lidar", "sick_s300", LIDAR_COMPONENT)
+        assert ComponentSpec.from_yaml(path).variants == []
+
+    def test_variants_parsed(self, tmp_path: Path):
+        path = _write_component(tmp_path, "arm", "ur", {**ARM_COMPONENT, "variants": ["ur5e", "ur10e"]})
+        assert ComponentSpec.from_yaml(path).variants == ["ur5e", "ur10e"]
+
+    def test_rejects_non_list_variants(self, tmp_path: Path):
+        path = _write_component(tmp_path, "arm", "ur", {**ARM_COMPONENT, "variants": "ur5e"})
+        with pytest.raises(ValueError, match="variants"):
+            ComponentSpec.from_yaml(path)
+
+
 class TestCatalogGet:
     def test_missing_variant_lists_available(self, tmp_path: Path):
         _write_component(tmp_path, "lidar", "sick_s300", LIDAR_COMPONENT)
@@ -171,6 +189,31 @@ class TestCatalogGet:
         _write_component(tmp_path, "lidar", "sick_s300", LIDAR_COMPONENT)
         catalog = Catalog(root=tmp_path)
         assert catalog.get("lidar", "sick_s300") is catalog.get("lidar", "sick_s300")
+
+
+class TestCatalogFamilyFallback:
+    """A variant with no dedicated `<variant>/` dir resolves against a sibling family
+    component whose `variants:` names it; a concrete dir still wins when present."""
+
+    def test_variant_without_dir_resolves_to_family(self, tmp_path: Path):
+        _write_component(tmp_path, "arm", "ur", {**ARM_COMPONENT, "variants": ["ur5e", "ur10e"]})
+        spec = Catalog(root=tmp_path).get("arm", "ur5e")
+        assert "ur5e" in spec.variants
+
+    def test_exact_dir_wins_over_family(self, tmp_path: Path):
+        _write_component(tmp_path, "arm", "ur", {**ARM_COMPONENT, "variants": ["ur5e"]})
+        concrete = dict(ARM_COMPONENT)
+        concrete["caps"] = {"tip_link": "CONCRETE"}
+        _write_component(tmp_path, "arm", "ur5e", concrete)
+        assert Catalog(root=tmp_path).get("arm", "ur5e").caps["tip_link"] == "CONCRETE"
+
+    def test_unknown_variant_lists_family_variants(self, tmp_path: Path):
+        _write_component(tmp_path, "arm", "ur", {**ARM_COMPONENT, "variants": ["ur5e", "ur10e"]})
+        with pytest.raises(RuntimeError) as excinfo:
+            Catalog(root=tmp_path).get("arm", "nope")
+        msg = str(excinfo.value)
+        assert "arm/nope" in msg
+        assert "ur5e" in msg and "ur10e" in msg
 
 
 class TestComponentSpecFrames:

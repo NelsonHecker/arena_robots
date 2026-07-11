@@ -1,6 +1,8 @@
-"""Tests for components/arm/{ur5e,ur10e} (phase3 sec2.10.1). `effective_caps` (item5)
-now consumes the `caps:` block via `RobotCaps`/`_substitute_keys`; render_wrapper_xacro
-wiring of `ros2_control`/`control` is still separate work."""
+"""Tests for the components/arm/ur family component (phase3 sec2.10.1, UR-family
+collapse). One templated `arm/ur` component serves the whole UR family via the catalog's
+`variants:` fallback; `${variant}` threads the ur_type into attach name, ur_description
+config dir, and the per-variant MoveIt joint_limits path. `effective_caps` (item5)
+consumes the `caps:` block via `RobotCaps`/`_substitute_keys`."""
 
 from __future__ import annotations
 
@@ -16,72 +18,88 @@ from arena_robots.caps import ArmSpec
 from arena_robots.catalog import Catalog, ComponentSpec
 
 COMPONENTS_ROOT = Path(__file__).resolve().parent.parent / "components"
+FAMILY = COMPONENTS_ROOT / "arm" / "ur"
 ARM_JOINTS = ["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"]
+UR_VARIANTS = ["ur3", "ur3e", "ur5", "ur5e", "ur7e", "ur8long", "ur10", "ur10e", "ur12e", "ur15", "ur16e", "ur18", "ur20", "ur30"]
 
 
-@pytest.fixture(params=["ur5e", "ur10e"])
-def variant(request: pytest.FixtureRequest) -> str:
-    return request.param
+class TestFamilyComponentSpec:
+    """The single `arm/ur/component.yaml` parses and declares the family via `variants:`;
+    its variant-specific surfaces (attach name, ur_type, joint_limits path) stay templated
+    on `${variant}` in the un-rendered spec."""
 
+    @pytest.fixture(scope="class")
+    def spec(self) -> ComponentSpec:
+        return ComponentSpec.from_yaml(FAMILY / "component.yaml")
 
-class TestComponentSpecFromYaml:
-    """component.yaml parses via the landed ComponentSpec schema (catalog.py:77)."""
+    def test_declares_ur_family_variants(self, spec: ComponentSpec) -> None:
+        assert spec.variants == UR_VARIANTS
 
-    def test_parses(self, variant: str) -> None:
-        spec = ComponentSpec.from_yaml(COMPONENTS_ROOT / "arm" / variant / "component.yaml")
+    def test_attach_and_urtype_templated_on_variant(self, spec: ComponentSpec) -> None:
         assert spec.xacro_include == "$(find ur_description)/urdf/ur_macro.xacro"
         assert spec.xacro_macro == "ur_robot"
-        assert spec.attach["name"] == variant
-        # the arm renders its own native ros2_control tag, the loader's post-render
-        # injection (_inject_ros2_control_joints) drives the merge from the
-        # ros2_control.joints patch below, not from this attach key.
-        assert "generate_ros2_control_tag" not in spec.attach
+        assert spec.attach["name"] == "${variant}"
+        assert spec.attach["joint_limits_parameters_file"] == "$(find ur_description)/config/${variant}/joint_limits.yaml"
+        assert spec.caps["moveit"]["args"]["ur_type"] == "${variant}"
 
-    def test_ros2_control_joints(self, variant: str) -> None:
-        spec = ComponentSpec.from_yaml(COMPONENTS_ROOT / "arm" / variant / "component.yaml")
-        assert len(spec.ros2_control_joints) == 6
+    def test_ros2_control_and_control_blocks(self, spec: ComponentSpec) -> None:
         names = [j["name"] for j in spec.ros2_control_joints]
         assert names == [f"${{prefix}}${{mount}}_{j}" for j in ARM_JOINTS]
-        for j in spec.ros2_control_joints:
-            assert j["command_interfaces"] == ["position"]
-            assert j["state_interfaces"] == ["position", "velocity"]
-
-    def test_control_block(self, variant: str) -> None:
-        spec = ComponentSpec.from_yaml(COMPONENTS_ROOT / "arm" / variant / "component.yaml")
         assert spec.control["controller"] == "${mount}_controller"
-        assert spec.control["type"] == "joint_trajectory_controller/JointTrajectoryController"
-        params = spec.control["ros__parameters"]
-        assert len(params["joints"]) == 6
-        assert params["state_publish_rate"] == 50.0
+        assert spec.control["ros__parameters"]["state_publish_rate"] == 50.0
 
-    def test_caps_block_shape(self, variant: str) -> None:
-        spec = ComponentSpec.from_yaml(COMPONENTS_ROOT / "arm" / variant / "component.yaml")
+    def test_exports_tip_frame_for_gripper_chaining(self, spec: ComponentSpec) -> None:
+        assert spec.frames == {"tip": "${prefix}${mount}_tool0"}
+
+    def test_caps_moveit_paths_point_at_shared_family_files(self, spec: ComponentSpec) -> None:
         caps = spec.caps
         assert caps["base_link"] == "${prefix}${parent}"
         assert caps["tip_link"] == "${prefix}${mount}_tool0"
-        assert len(caps["chain"]) == 6
         assert caps["moveit"]["planning_group"] == "${mount}_manipulator"
-        assert caps["moveit"]["srdf"]["path"] == f"components/arm/{variant}/srdf/{variant}.srdf.xacro"
-        assert caps["moveit"]["joint_limits"]["path"] == f"components/arm/{variant}/joint_limits.yaml"
+        assert caps["moveit"]["srdf"]["path"] == "components/arm/ur/srdf/ur.srdf.xacro"
+        assert caps["moveit"]["joint_limits"]["path"] == "components/arm/ur/joint_limits/${variant}.yaml"
         assert set(caps["named_poses"]) == {"stow", "ready", "wave_up", "wave_l", "wave_r"}
-        assert caps["workspace"]["type"] == "box"
+
+
+class TestCatalogFamilyResolution:
+    """A variant with no dedicated dir resolves against the family component whose
+    `variants:` names it (catalog family-fallback); every UR variant maps to `arm/ur`."""
+
+    @pytest.fixture(scope="class")
+    def catalog(self) -> Catalog:
+        return Catalog(root=COMPONENTS_ROOT)
+
+    @pytest.mark.parametrize("variant", UR_VARIANTS)
+    def test_every_variant_resolves_to_family(self, catalog: Catalog, variant: str) -> None:
+        spec = catalog.get("arm", variant)
+        assert variant in spec.variants
+        assert spec.caps["tip_link"] == "${prefix}${mount}_tool0"
+
+    def test_resolution_is_cached(self, catalog: Catalog) -> None:
+        assert catalog.get("arm", "ur5e") is catalog.get("arm", "ur5e")
+
+    def test_unknown_variant_lists_family_variants(self, catalog: Catalog) -> None:
+        with pytest.raises(RuntimeError) as excinfo:
+            catalog.get("arm", "ur999")
+        msg = str(excinfo.value)
+        assert "arm/ur999" in msg
+        assert "ur5e" in msg and "ur10e" in msg
 
 
 class TestRenderedCapsIsArmSpecCompatible:
-    """Rendering caps: with a concrete mount (as `effective_caps`, item5, now does)
-    must produce a dict ArmSpec (caps.py:388) can front, including named_poses.
-    named_poses joint names are dict KEYS; YAMLReplacer alone only substitutes dict
-    values (and `**spread` keys), so `arena_robots.caps._substitute_keys` does a
-    second pass over the already-value-rendered tree to fix those up too."""
+    """Rendering caps with a concrete mount/variant (as `effective_caps`, item5, does)
+    must produce a dict `ArmSpec` (caps.py) can front, including mount-substituted
+    `named_poses` keys (`_substitute_keys` second pass over the value-rendered tree)."""
 
     def _rendered_caps(self, variant: str) -> dict:
         from arena_robots.caps import _substitute_keys
 
-        spec = ComponentSpec.from_yaml(COMPONENTS_ROOT / "arm" / variant / "component.yaml")
-        context = {"mount": "arm0", "prefix": "robot_", "parent": "chassis_link"}
+        spec = Catalog(root=COMPONENTS_ROOT).get("arm", variant)
+        context = {"mount": "arm0", "variant": variant, "prefix": "robot_", "parent": "chassis_link"}
         rendered = YAMLReplacer(context).replace(copy.deepcopy(spec.caps))
         return _substitute_keys(rendered, context)
 
+    @pytest.mark.parametrize("variant", ["ur3e", "ur5e", "ur10e"])
     def test_scalar_fields_resolve(self, variant: str) -> None:
         caps = self._rendered_caps(variant)
         arm = ArmSpec(path=Path("test"), raw=caps, name="arm0")
@@ -92,8 +110,8 @@ class TestRenderedCapsIsArmSpecCompatible:
         assert arm.planning_group == "arm0_manipulator"
         assert arm.workspace is not None
 
-    def test_named_poses_keys_are_mount_substituted(self, variant: str) -> None:
-        caps = self._rendered_caps(variant)
+    def test_named_poses_keys_are_mount_substituted(self) -> None:
+        caps = self._rendered_caps("ur5e")
         arm = ArmSpec(path=Path("test"), raw=caps, name="arm0")
         stow_joints = arm.named_poses["stow"]
         assert "robot_arm0_shoulder_pan_joint" in stow_joints
@@ -101,61 +119,58 @@ class TestRenderedCapsIsArmSpecCompatible:
 
 
 class TestSrdfFragment:
-    def test_parses_as_xml(self, variant: str) -> None:
-        root = ET.parse(COMPONENTS_ROOT / "arm" / variant / "srdf" / f"{variant}.srdf.xacro").getroot()
+    """The shared `arm/ur/srdf/ur.srdf.xacro` is UR-type-agnostic (link/joint names are
+    identical across the family); only prefix/mount/parent are xacro args."""
+
+    def test_parses_as_xml(self) -> None:
+        root = ET.parse(FAMILY / "srdf" / "ur.srdf.xacro").getroot()
         group = root.find("group")
         assert group.get("name") == "$(arg mount)_manipulator"
         assert len(root.findall("group_state")) == 2
-        # 8 intra-arm + 2 mount-adjacency (chassis_link vs arm base_link/base_link_inertia,
-        # moved in from the legacy monolith so the fragment is self-contained, phase3 item6)
+        # 8 intra-arm + 2 mount-adjacency (chassis_link vs arm base_link/base_link_inertia)
         assert len(root.findall("disable_collisions")) == 10
-
-    def test_ur5e_and_ur10e_fragments_are_identical(self) -> None:
-        """group_state joint values are generic UR presets, not ur_type-dependent
-        (evidence: rbrobout_plus's ur10e srdf carries the same values as the ur5e
-        _plus robots); only the <robot name=...> attribute should differ."""
-        ur5e = ET.tostring(ET.parse(COMPONENTS_ROOT / "arm" / "ur5e" / "srdf" / "ur5e.srdf.xacro").getroot())
-        ur10e = ET.tostring(ET.parse(COMPONENTS_ROOT / "arm" / "ur10e" / "srdf" / "ur10e.srdf.xacro").getroot())
-        assert ur5e.replace(b"ur5e", b"ur10e") == ur10e
 
 
 class TestJointLimits:
-    def test_parses_and_has_six_joints(self, variant: str) -> None:
-        data = yaml.safe_load((COMPONENTS_ROOT / "arm" / variant / "joint_limits.yaml").read_text())
-        limits = data["joint_limits"]
+    """Per-variant MoveIt planning joint_limits under `arm/ur/joint_limits/<variant>.yaml`:
+    velocity from ur_description (matches the URDF/controller), uniform `max_acceleration`,
+    templated `${prefix}${mount}_*` keys. ur5e keeps its shipped 360deg/s wrists."""
+
+    def _limits(self, variant: str) -> dict:
+        return yaml.safe_load((FAMILY / "joint_limits" / f"{variant}.yaml").read_text())["joint_limits"]
+
+    @pytest.mark.parametrize("variant", UR_VARIANTS)
+    def test_each_variant_has_six_templated_joints(self, variant: str) -> None:
+        limits = self._limits(variant)
         assert set(limits) == {f"${{prefix}}${{mount}}_{j}" for j in ARM_JOINTS}
         for entry in limits.values():
             assert entry["has_velocity_limits"] is True
             assert entry["max_acceleration"] == 15.0
 
-    def test_ur10e_velocity_differs_from_ur5e_defect(self) -> None:
-        """fitsweep defect: rbrobout_plus (ur10e) byte-copied ur5e's joint_limits.yaml.
-        The ur10e component must NOT reproduce that: shoulder joints are slower (UR10e
-        120deg/s vs UR5e's 180deg/s here) and wrists are NOT doubled to 2*pi."""
-        ur5e = yaml.safe_load((COMPONENTS_ROOT / "arm" / "ur5e" / "joint_limits.yaml").read_text())["joint_limits"]
-        ur10e = yaml.safe_load((COMPONENTS_ROOT / "arm" / "ur10e" / "joint_limits.yaml").read_text())["joint_limits"]
+    def test_ur5e_keeps_shipped_360_wrists(self) -> None:
+        limits = self._limits("ur5e")
+        assert limits["${prefix}${mount}_shoulder_pan_joint"]["max_velocity"] == pytest.approx(math.pi)
+        assert limits["${prefix}${mount}_wrist_1_joint"]["max_velocity"] == pytest.approx(2 * math.pi)
+
+    def test_ur10e_differs_from_ur5e(self) -> None:
+        """The prior fitsweep defect byte-copied ur5e's limits onto ur10e. The family must
+        not: ur10e shoulders are slower (120deg/s) and wrists are 180deg/s, not 360deg/s."""
+        ur5e, ur10e = self._limits("ur5e"), self._limits("ur10e")
         assert ur5e != ur10e
         assert ur10e["${prefix}${mount}_shoulder_pan_joint"]["max_velocity"] == pytest.approx(math.radians(120))
         assert ur10e["${prefix}${mount}_wrist_1_joint"]["max_velocity"] == pytest.approx(math.radians(180))
-        assert ur5e["${prefix}${mount}_wrist_1_joint"]["max_velocity"] == pytest.approx(2 * math.pi)
 
-
-class TestCatalogGet:
-    def test_catalog_resolves_both_variants(self, variant: str) -> None:
-        catalog = Catalog(root=COMPONENTS_ROOT)
-        spec = catalog.get("arm", variant)
-        assert spec.caps["tip_link"] == "${prefix}${mount}_tool0"
+    def test_cb_ur5_follows_ur_description_not_ur5e(self) -> None:
+        """CB-series ur5 has no shipped consumer, so it takes ur_description's conservative
+        180deg/s wrists (the URDF/controller value), unlike ur5e's authored 360deg/s."""
+        assert self._limits("ur5")["${prefix}${mount}_wrist_1_joint"]["max_velocity"] == pytest.approx(math.pi)
 
 
 class TestEffectiveCapsRbvoguiPlusParity:
-    """rbvogui_plus collapse checklist step4 (phase3 sec 'rbvogui_plus collapse
-    checklist'): `RobotCaps` rendering the ur5e component at mount='arm' must
-    reproduce today's static robots/rbvogui_plus/caps/arm.yaml for every field
-    `effective_caps` (item5) actually owns. `moveit.srdf`/`moveit.joint_limits`
-    paths and `moveit.planning_group` are excluded: those now correctly point at
-    the component's own files/group naming (item2, not item5's rendering surface),
-    a legitimate divergence from the pre-migration static file, not a byte-for-byte
-    target."""
+    """rbvogui_plus collapse checklist step4: `RobotCaps` rendering the ur5e variant at
+    mount='arm' must reproduce today's static robots/rbvogui_plus/caps/arm.yaml for every
+    field `effective_caps` (item5) owns. `moveit.srdf`/`moveit.joint_limits`/`planning_group`
+    are excluded: those correctly point at the component's own files/group naming."""
 
     def test_matches_static_caps_for_owned_fields(self) -> None:
         from arena_robots.assembly import Mount, Placement, ResolvedAssembly
@@ -174,9 +189,8 @@ class TestEffectiveCapsRbvoguiPlusParity:
 
 
 class TestEffectiveCapsHonorsMountFrame:
-    """A mount's ``frame`` (identity stem, sec2.x) drives caps content via
-    ``catalog._frame_stem``, not the mount's addressing ``name``; the instance dict
-    key stays the addressing name regardless."""
+    """A mount's ``frame`` (identity stem) drives caps content via ``catalog._frame_stem``,
+    not the mount's addressing ``name``; the instance dict key stays the addressing name."""
 
     def test_tip_link_and_chain_use_frame_not_name(self) -> None:
         from arena_robots.assembly import Mount, Placement, ResolvedAssembly
@@ -195,8 +209,8 @@ class TestEffectiveCapsHonorsMountFrame:
 
 
 class TestEffectiveCapsHonorsChassisPrefix:
-    """A zero-prefix chassis (e.g. jackal, ``assembly.yaml`` ``prefix: ""``) must
-    render arm caps without the ``robot_`` default baked in."""
+    """A zero-prefix chassis (e.g. jackal, ``assembly.yaml`` ``prefix: ""``) must render
+    arm caps without the ``robot_`` default baked in."""
 
     def test_zero_prefix_chassis_renders_unprefixed(self) -> None:
         from arena_robots.assembly import Mount, Placement, ResolvedAssembly

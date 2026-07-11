@@ -1,13 +1,12 @@
 <?xml version="1.0"?>
-<!-- ur10e component SRDF fragment (phase3 sec2.10): group/group_states/mount-adjacency
+<!-- ur component SRDF fragment: group/group_states/mount-adjacency
      disable_collisions/intra-arm disable_collisions, extracted byte-identical (link/joint
      names aside) from robots/{rbvogui,rbkairos,rbrobout}_plus/srdf/*.srdf.xacro (verified:
      only the chassis-residual fragment differs per robot; that lives in the chassis's own
-     srdf/<robot>.srdf.xacro, composed alongside this fragment by moveit_factory.py). Content
-     is identical to the ur5e fragment: group_state joint values are generic UR presets, not
-     ur_type-dependent. Proper xacro: prefix/mount/parent are declared args, resolved per
-     placement from caps.moveit.args (phase3 items 6/7, SRDF composition parity). -->
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="ur10e_arm_fragment">
+     srdf/<robot>.srdf.xacro, composed alongside this fragment by moveit_factory.py). Proper
+     xacro: prefix/mount/parent are declared args, resolved per placement from caps.moveit.args
+     (SRDF composition). -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="ur_arm_fragment">
   <xacro:arg name="prefix" default="robot_"/>
   <xacro:arg name="mount" default="arm0"/>
   <xacro:arg name="parent" default="chassis_link"/>

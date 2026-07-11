@@ -1,22 +1,24 @@
-# UR5e arm component (phase3 sec2.10). Placement templating context adds `parent`
-# (mount.parent, xacro-side only) beside the usual mount/prefix/params/overrides; caps
-# rendering (effective_caps, item5) must supply it too once that lands.
+variants: [ur3, ur3e, ur5, ur5e, ur7e, ur8long, ur10, ur10e, ur12e, ur15, ur16e, ur18, ur20, ur30]
+
 xacro:
   include: "$(find ur_description)/urdf/ur_macro.xacro"
   macro: ur_robot
   attach:
     tf_prefix: "${prefix}${mount}_"
-    name: ur5e
+    name: "${variant}"
     parent: "${prefix}${parent}"
-    joint_limits_parameters_file: "$(find ur_description)/config/ur5e/joint_limits.yaml"
-    kinematics_parameters_file: "$(find ur_description)/config/ur5e/default_kinematics.yaml"
-    physical_parameters_file: "$(find ur_description)/config/ur5e/physical_parameters.yaml"
-    visual_parameters_file: "$(find ur_description)/config/ur5e/visual_parameters.yaml"
+    joint_limits_parameters_file: "$(find ur_description)/config/${variant}/joint_limits.yaml"
+    kinematics_parameters_file: "$(find ur_description)/config/${variant}/default_kinematics.yaml"
+    physical_parameters_file: "$(find ur_description)/config/${variant}/physical_parameters.yaml"
+    visual_parameters_file: "$(find ur_description)/config/${variant}/visual_parameters.yaml"
     sim_gazebo: "${gazebo_classic}"
     sim_ignition: "${gazebo_ignition}"
     safety_limits: "${safety_limits:-false}"
   args:
     safety_limits: false
+
+frames:
+  tip: "${prefix}${mount}_tool0"
 
 ros2_control:
   joints:
@@ -39,7 +41,8 @@ ros2_control:
       command_interfaces: [position]
       state_interfaces: [position, velocity]
 
-# JTC params verbatim from robots/rbvogui_plus/control.yaml's arm_controller section.
+# control params must stay in sync with robots/rbvogui_plus/control.yaml's arm_controller
+# section (maintained there, not derived from this component).
 control:
   controller: "${mount}_controller"
   type: joint_trajectory_controller/JointTrajectoryController
@@ -56,9 +59,8 @@ control:
     state_publish_rate: 50.0
     action_monitor_rate: 20.0
 
-# Full caps/arm.yaml shape (caps.py:381 ArmSpec), rendered per placement. Values verbatim
-# from robots/rbvogui_plus/caps/arm.yaml (fitsweep: variant-invariant workspace/named_poses);
-# only joint/link names are mount-reprefixed (robot_arm_* -> ${prefix}${mount}_*).
+# workspace/named_poses must stay in sync with robots/rbvogui_plus/caps/arm.yaml
+# (maintained there, not derived from this component).
 caps:
   base_link: "${prefix}${parent}"
   tip_link: "${prefix}${mount}_tool0"
@@ -75,12 +77,12 @@ caps:
     planning_group: "${mount}_manipulator"
     srdf:
       package: arena_robots
-      path: components/arm/ur5e/srdf/ur5e.srdf.xacro
+      path: components/arm/ur/srdf/ur.srdf.xacro
     joint_limits:
       package: arena_robots
-      path: components/arm/ur5e/joint_limits.yaml
+      path: components/arm/ur/joint_limits/${variant}.yaml
     args:
-      ur_type: ur5e
+      ur_type: "${variant}"
       prefix: "${prefix}"
       safety_limits: true
       mount: "${mount}"

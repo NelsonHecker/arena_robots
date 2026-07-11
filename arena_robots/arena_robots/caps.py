@@ -604,6 +604,7 @@ class RobotCaps:
                 component = self.catalog.get(placement.type, placement.variant)
                 context: dict[str, typing.Any] = {
                     'mount': _frame_stem(placement.mount),
+                    'variant': placement.variant,
                     'parent': resolve_mount_parent(self.resolved, self.catalog, placement.mount),
                     'prefix': self.prefix,
                     **placement.params,
