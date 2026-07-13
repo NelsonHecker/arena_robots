@@ -1,4 +1,4 @@
-# prefix: "" because a1's xacro "prefix" arg is declared but never wired to base_frame/frames.
+# prefix: "" because champ config, control.yaml and caps reference the unprefixed names.
 prefix: ""
 mounts:
   top:

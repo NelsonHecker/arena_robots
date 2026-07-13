@@ -12,7 +12,7 @@
   <xacro:include filename="$(find arena_robots)/robots/go1/urdf/include/materials.xacro" />
   <xacro:include filename="$(find arena_robots)/robots/go1/urdf/include/leg.xacro" />
 
-  <link name="base">
+  <link name="$(arg prefix)base">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
@@ -21,13 +21,13 @@
     </visual>
   </link>
 
-  <joint name="floating_base" type="fixed">
+  <joint name="$(arg prefix)floating_base" type="fixed">
     <origin rpy="0 0 0" xyz="0 0 0"/>
-    <parent link="base"/>
-    <child link="trunk"/>
+    <parent link="$(arg prefix)base"/>
+    <child link="$(arg prefix)trunk"/>
   </joint>
 
-  <link name="trunk">
+  <link name="$(arg prefix)trunk">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
@@ -51,13 +51,13 @@
     </inertial>
   </link>
 
-  <joint name="imu_joint" type="fixed">
-    <parent link="trunk"/>
-    <child link="imu_link"/>
+  <joint name="$(arg prefix)imu_joint" type="fixed">
+    <parent link="$(arg prefix)trunk"/>
+    <child link="$(arg prefix)imu_link"/>
     <origin rpy="0 0 0" xyz="-0.01592 -0.06659 -0.00617"/>
   </joint>
 
-  <link name="imu_link">
+  <link name="$(arg prefix)imu_link">
     <inertial>
       <mass value="0.001"/>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -65,21 +65,21 @@
     </inertial>
   </link>
 
-  <xacro:leg name="FR" mirror="-1" mirror_dae="False" front_hind="1" front_hind_dae="True">
+  <xacro:leg name="FR" prefix="$(arg prefix)" mirror="-1" mirror_dae="False" front_hind="1" front_hind_dae="True">
     <origin rpy="0 0 0" xyz="${leg_offset_x} ${-leg_offset_y} 0"/>
   </xacro:leg>
-  <xacro:leg name="FL" mirror="1" mirror_dae="True" front_hind="1" front_hind_dae="True">
+  <xacro:leg name="FL" prefix="$(arg prefix)" mirror="1" mirror_dae="True" front_hind="1" front_hind_dae="True">
     <origin rpy="0 0 0" xyz="${leg_offset_x} ${leg_offset_y} 0"/>
   </xacro:leg>
-  <xacro:leg name="RR" mirror="-1" mirror_dae="False" front_hind="-1" front_hind_dae="False">
+  <xacro:leg name="RR" prefix="$(arg prefix)" mirror="-1" mirror_dae="False" front_hind="-1" front_hind_dae="False">
     <origin rpy="0 0 0" xyz="${-leg_offset_x} ${-leg_offset_y} 0"/>
   </xacro:leg>
-  <xacro:leg name="RL" mirror="1" mirror_dae="True" front_hind="-1" front_hind_dae="False">
+  <xacro:leg name="RL" prefix="$(arg prefix)" mirror="1" mirror_dae="True" front_hind="-1" front_hind_dae="False">
     <origin rpy="0 0 0" xyz="${-leg_offset_x} ${leg_offset_y} 0"/>
   </xacro:leg>
 
   <xacro:include filename="$(find arena_robots)/robots/go1/urdf/base_hw/go1.ros2_control.urdf" />
-  <xacro:go1_base_hw_controller/>
+  <xacro:go1_base_hw_controller prefix="$(arg prefix)"/>
 
   <gazebo>
     <plugin filename="libgz_ros2_control-system.so" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
@@ -103,17 +103,17 @@
   </gazebo>
 
   <!-- Foot traction: legged stance needs high friction at the contact spheres. -->
-  <xacro:macro name="foot_friction" params="leg">
-    <gazebo reference="${leg}_foot">
+  <xacro:macro name="foot_friction" params="leg prefix">
+    <gazebo reference="${prefix}${leg}_foot">
       <mu1>0.8</mu1>
       <mu2>0.8</mu2>
       <kp>1000000.0</kp>
       <kd>100.0</kd>
     </gazebo>
   </xacro:macro>
-  <xacro:foot_friction leg="FL"/>
-  <xacro:foot_friction leg="FR"/>
-  <xacro:foot_friction leg="RL"/>
-  <xacro:foot_friction leg="RR"/>
+  <xacro:foot_friction leg="FL" prefix="$(arg prefix)"/>
+  <xacro:foot_friction leg="FR" prefix="$(arg prefix)"/>
+  <xacro:foot_friction leg="RL" prefix="$(arg prefix)"/>
+  <xacro:foot_friction leg="RR" prefix="$(arg prefix)"/>
 
 </robot>
