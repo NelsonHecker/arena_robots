@@ -17,3 +17,10 @@ sensors:
     topic: ${namespace}/imu/data
     frame: imu_link
     sensor: imu_sensor
+control:
+  mode: ros2_control
+  config: package://arena_robots/robots/WLP311D/control.yaml
+  controllers:
+    - joint_state_broadcaster
+    - wlp311d_velocity_controller
+  cmd_vel_topic: wlp311d_velocity_controller/cmd_vel
