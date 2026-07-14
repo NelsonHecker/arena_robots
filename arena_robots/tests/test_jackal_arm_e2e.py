@@ -1,4 +1,4 @@
-"""End-to-end arm-on-any-chassis (phase3 sec2.10, compose->transform->deliver): jackal
+"""End-to-end arm-on-any-chassis (compose->transform->deliver): jackal
 has no bespoke arm gate, yet ``jackal[top=arm/ur5e]`` must seat a ur5e on the new top
 plate and merge its ros2_control joints into jackal's own GazeboSimSystem tag via the
 loader's post-render injection. Exercises the whole chain: mount-centric grammar

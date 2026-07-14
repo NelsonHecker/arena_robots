@@ -26,7 +26,7 @@ declarations *say*, not how they get instantiated.
       ros__parameters: {...}   # templated verbatim
     caps:              # OPTIONAL; absent -> {}
       ...              # full caps/arm.yaml raw shape, templated verbatim (caps.py ArmSpec)
-    frames:            # OPTIONAL; absent -> {} (phase3b sec1, mount-on-part chaining)
+    frames:            # OPTIONAL; absent -> {} (mount-on-part chaining)
       <name>: <template>   # e.g. {top: "${prefix}${mount}_ewellix_lift_top_link"}
 
 Every string value in a ``sensor.gz`` entry is a template rendered per-placement through
@@ -103,7 +103,7 @@ class ComponentSpec:
     components with no caps contribution. Rendered by ``RobotCaps``/``effective_caps``
     (caps.py), not this module."""
     frames: dict[str, str] = attrs.field(factory=dict)
-    """Un-rendered ``frames`` templates (phase3b sec1): named frames this component
+    """Un-rendered ``frames`` templates: named frames this component
     exports, for another mount's ``Mount.parent`` to chain onto (e.g. a lift's
     ``top`` frame). Empty for components nothing else mounts onto. Resolved per
     placement by :func:`resolve_mount_parent`."""
@@ -244,7 +244,7 @@ def _frame_stem(mount: Mount) -> str:
 
 
 def resolve_mount_parent(resolved: ResolvedAssembly, catalog: Catalog, mount: Mount) -> str:
-    """Resolve a mount's ``parent`` for templating (phase3b sec2, chained mounts).
+    """Resolve a mount's ``parent`` for templating (chained mounts).
 
     An ordinary mount returns its literal parent frame name unchanged. A chained
     mount (``"@<mount>:<frame>"``) resolves to the referenced placement's rendered
@@ -300,11 +300,11 @@ def render_wrapper_xacro(view: RobotView, resolved: ResolvedAssembly, *, catalog
     (``mount``/``prefix``/``params``/``overrides``) plus xacro-side-only keys
     (``parent``, ``namespace``, ``gazebo_classic``, ``gazebo_ignition``) whose values are
     literal ``$(arg ...)`` references, left for the actual xacro run to resolve.
-    ``parent`` is resolved via :func:`resolve_mount_parent` (phase3b sec2): an ordinary
+    ``parent`` is resolved via :func:`resolve_mount_parent`: an ordinary
     mount's literal parent name passes through; a chained mount (``"@<mount>:<frame>"``)
     resolves to the referenced placement's rendered frame instead.
 
-    No ``ros2_control`` synthesis happens here (phase3 arm-on-any-chassis merge): the
+    No ``ros2_control`` synthesis happens here (arm-on-any-chassis merge): the
     chassis and every placement's component each render their own ``ros2_control`` tag
     (or none) exactly as their own xacro dictates, so the rendered document may carry
     MULTIPLE ``ros2_control`` tags. arena_simulation_setup's urdf loader
@@ -361,7 +361,7 @@ def render_wrapper_xacro(view: RobotView, resolved: ResolvedAssembly, *, catalog
 
 def render_control_joints(resolved: ResolvedAssembly, catalog: Catalog, *, prefix: str = 'robot_') -> list[dict[str, object]]:
     """Render every placement's ``ros2_control.joints`` templates into the robot's
-    control-joint patch (phase3 sec2.10, arm-on-any-chassis merge): the ``<joint>``
+    control-joint patch (arm-on-any-chassis merge): the ``<joint>``
     entries a joint-bearing part (e.g. an arm) contributes, for post-render injection
     into the chassis's own ``ros2_control`` tag (arena_simulation_setup's urdf loader,
     ``_inject_ros2_control_joints``). Unlike :func:`render_wrapper_xacro`'s xacro-side

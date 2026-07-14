@@ -28,8 +28,8 @@ class ControlSpec:
     Presence in the YAML opts the robot into the ros2_control path in
     Gazebo bringup: an in-process controller_manager (hosted by the URDF's
     gz_ros2_control plugin) plus a controller_manager/spawner per entry in
-    ``controllers``. Absence means the legacy gazebo_native path (PosePublisher
-    + pose_to_tf + bridged cmd_vel) runs unchanged.
+    ``controllers``. Absence means the gazebo_native path (PosePublisher
+    + pose_to_tf + bridged cmd_vel) runs instead.
     """
 
     mode: str
@@ -111,7 +111,7 @@ class ModelParams(dict[str, typing.Any]):
     @property
     def control(self) -> ControlSpec | None:
         """Typed view of the ``control:`` block in model_params.yaml. ``None``
-        when absent (legacy gazebo_native pipeline)."""
+        when absent (gazebo_native pipeline)."""
         raw = self.get('control')
         if raw is None:
             return None

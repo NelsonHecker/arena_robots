@@ -1,9 +1,9 @@
 """Tests for arena_robots.bringup.arm.moveit - MoveItArmBringup multi-instance
-contract (phase3 item10: N-instance launch loop, sole-arm namespace parity).
+contract (N-instance launch loop, consistent sole-arm namespacing).
 
-Uses the legacy static ``caps/arm.yaml`` (dict-keyed, multi-instance) path so
-these tests don't depend on the assembly/catalog rendering pipeline (item9,
-not yet landed) or on the installed share tree being rebuilt."""
+Uses the static ``caps/arm.yaml`` (dict-keyed, multi-instance) path so these tests
+don't depend on the assembly/catalog rendering pipeline or on the installed share
+tree being rebuilt."""
 
 from __future__ import annotations
 

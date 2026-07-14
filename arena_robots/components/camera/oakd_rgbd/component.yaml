@@ -7,8 +7,8 @@ xacro:
     model: "${model:-pro}"
   args:
     model: pro
-# Output order matches legacy model_params.yaml (imu before rgbd outputs):
-# TestEffectiveSensorsParity is order-sensitive.
+# Output order matches model_params.yaml (imu before rgbd outputs):
+# TestEffectiveSensorsMatchModelParams is order-sensitive.
 sensor:
   gz:
     - name: "${imu_name:-imu}"

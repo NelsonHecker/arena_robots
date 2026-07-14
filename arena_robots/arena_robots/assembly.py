@@ -21,7 +21,7 @@ _CHAINED_PARENT_RE = re.compile(r'^@(?P<mount>[^:]+):(?P<frame>.+)$')
 
 
 def parse_chained_parent(parent: str) -> tuple[str, str] | None:
-    """Parse a ``Mount.parent`` of the form ``"@<mount>:<frame>"`` (phase3b sec2):
+    """Parse a ``Mount.parent`` of the form ``"@<mount>:<frame>"``:
     a parent chained through another mount's component-exported frame, rather than
     a literal chassis link name. Returns ``(mount_name, frame_name)``, or ``None``
     for an ordinary literal-frame parent."""
@@ -40,7 +40,7 @@ class Mount:
     accepts: tuple[str, ...] = attrs.field(factory=tuple)
     """Accepted component types, in declared order: membership validates a placement,
     order is this socket's own preference among its accepted types, consulted only
-    under contention (sec2.6)."""
+    under contention."""
     frame: str | None = None
     """Identity stem substituted for ${mount} at render (frame+joint+sensor frame_id);
     None -> falls back to name. Decouples addressing (name) from the sim2real contract."""
@@ -77,7 +77,7 @@ class RequestPart:
 
 
 def _validate_mount_dag(mounts: dict[str, Mount]) -> None:
-    """Chained-parent references (phase3b sec2/3) must resolve to declared mounts
+    """Chained-parent references must resolve to declared mounts
     and form a DAG; raises :class:`AssemblyError` naming the unknown mount or the
     cycle otherwise. Purely structural: independent of which mounts end up placed."""
     state: dict[str, int] = {}
@@ -115,12 +115,12 @@ class AssemblySpec:
 
     @classmethod
     def parse(cls, data: dict[str, typing.Any]) -> AssemblySpec:
-        """Parse the ``assembly.yaml`` shape (mounts/defaults keys, sec2.5).
+        """Parse the ``assembly.yaml`` shape (mounts/defaults keys).
         Validates that a pinned default references a declared mount that accepts its
         type; raises :class:`AssemblyError` otherwise. Allocation preference among
         mounts accepting the same type follows mount declaration order (first-declared
         wins); preference among types at one mount follows ``accepts`` declaration
-        order (sec2.6)."""
+        order."""
         mounts_raw = data.get('mounts', {})
         if not isinstance(mounts_raw, dict):
             raise AssemblyError(f"assembly.yaml 'mounts' must be a mapping; got {type(mounts_raw).__name__}")
@@ -317,15 +317,15 @@ def resolve(
 ) -> ResolvedAssembly:
     """Resolve a per-type part request against ``spec`` into concrete placements.
 
-    Replace-on-touch (sec2.3): a default part ``d`` is dropped when ANY of: its socket
+    Replace-on-touch: a default part ``d`` is dropped when ANY of: its socket
     is in ``cleared_sockets``; its type is in ``cleared_types``; its socket is filled by
     a mount-centric request item (socket-scoped replace); or its type is named in the
     request by an unpinned (shorthand) item or an empty fill list (type-scoped replace).
     Surviving defaults keep their optional mount, joining the unpinned matching pool
-    alongside shorthand request items when ``mount`` is ``None``. Per-type gating (sec2.8): touching a type with no
+    alongside shorthand request items when ``mount`` is ``None``. Per-type gating: touching a type with no
     accepting mount anywhere is an error, except clearing it, which is a warning.
     Allocation is maximum bipartite matching over ALL parts of ALL types against ALL
-    mounts jointly (sec2.6): pins are fixed edges, checked first. ``cleared_sockets``/
+    mounts jointly: pins are fixed edges, checked first. ``cleared_sockets``/
     ``cleared_types`` default to empty so callers that already hold a type-keyed
     ``request`` (e.g. a fully-pinned reconstruction, or a direct fleet-def morphology
     dict) keep working unchanged.
@@ -431,7 +431,7 @@ def resolve(
 
 def apply_frame_overrides(resolved: ResolvedAssembly, frames: dict[str, str]) -> ResolvedAssembly:
     """Bake a per-deployment frame override (mount name -> identity stem) onto a
-    resolved assembly (sec2, sim2real frames block). Each matching placement's mount
+    resolved assembly (sim2real frames block). Each matching placement's mount
     gets its ``frame`` set to the override, winning over both the mount's declared
     ``frame`` and its addressing ``name``: ``catalog._frame_stem`` then substitutes the
     override for ``${mount}`` in every frame/joint/sensor/controller template. Keys

@@ -1,8 +1,8 @@
-"""Tests for the components/arm/ur family component (phase3 sec2.10.1, UR-family
-collapse). One templated `arm/ur` component serves the whole UR family via the catalog's
-`variants:` fallback; `${variant}` threads the ur_type into attach name, ur_description
-config dir, and the per-variant MoveIt joint_limits path. `effective_caps` (item5)
-consumes the `caps:` block via `RobotCaps`/`_substitute_keys`."""
+"""Tests for the components/arm/ur family component. One templated `arm/ur` component
+serves the whole UR family via the catalog's `variants:` fallback; `${variant}` threads
+the ur_type into attach name, ur_description config dir, and the per-variant MoveIt
+joint_limits path. `effective_caps` consumes the `caps:` block via
+`RobotCaps`/`_substitute_keys`."""
 
 from __future__ import annotations
 
@@ -87,7 +87,7 @@ class TestCatalogFamilyResolution:
 
 
 class TestRenderedCapsIsArmSpecCompatible:
-    """Rendering caps with a concrete mount/variant (as `effective_caps`, item5, does)
+    """Rendering caps with a concrete mount/variant (as `effective_caps` does)
     must produce a dict `ArmSpec` (caps.py) can front, including mount-substituted
     `named_poses` keys (`_substitute_keys` second pass over the value-rendered tree)."""
 
@@ -153,8 +153,9 @@ class TestJointLimits:
         assert limits["${prefix}${mount}_wrist_1_joint"]["max_velocity"] == pytest.approx(2 * math.pi)
 
     def test_ur10e_differs_from_ur5e(self) -> None:
-        """The prior fitsweep defect byte-copied ur5e's limits onto ur10e. The family must
-        not: ur10e shoulders are slower (120deg/s) and wrists are 180deg/s, not 360deg/s."""
+        """ur10e's shipped limits once byte-copied ur5e's, the family derives correct
+        per-variant values: ur10e shoulders are slower (120deg/s) and wrists are
+        180deg/s, not 360deg/s."""
         ur5e, ur10e = self._limits("ur5e"), self._limits("ur10e")
         assert ur5e != ur10e
         assert ur10e["${prefix}${mount}_shoulder_pan_joint"]["max_velocity"] == pytest.approx(math.radians(120))
@@ -166,11 +167,11 @@ class TestJointLimits:
         assert self._limits("ur5")["${prefix}${mount}_wrist_1_joint"]["max_velocity"] == pytest.approx(math.pi)
 
 
-class TestEffectiveCapsRbvoguiPlusParity:
-    """rbvogui_plus collapse checklist step4: `RobotCaps` rendering the ur5e variant at
-    mount='arm' must reproduce today's static robots/rbvogui_plus/caps/arm.yaml for every
-    field `effective_caps` (item5) owns. `moveit.srdf`/`moveit.joint_limits`/`planning_group`
-    are excluded: those correctly point at the component's own files/group naming."""
+class TestEffectiveCapsRbvoguiPlusMatchesStatic:
+    """`RobotCaps` rendering the ur5e variant at mount='arm' must reproduce the static
+    robots/rbvogui_plus/caps/arm.yaml for every field `effective_caps` owns.
+    `moveit.srdf`/`moveit.joint_limits`/`planning_group` are excluded: those correctly
+    point at the component's own files/group naming."""
 
     def test_matches_static_caps_for_owned_fields(self) -> None:
         from arena_robots.assembly import Mount, Placement, ResolvedAssembly

@@ -1,4 +1,4 @@
-"""Tests for components/gripper/robotiq_2f_85 (phase3b gripper-on-arm chaining): the
+"""Tests for components/gripper/robotiq_2f_85 (gripper-on-arm chaining): the
 gripper mounts onto an arm's exported `tip` frame via a chained mount (jackal's
 `top_tool`, parent "@top:tip"), its actuated knuckle joint merges into the chassis
 GazeboSimSystem tag alongside the arm's (mimic joints ride along as bare param

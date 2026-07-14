@@ -1,5 +1,5 @@
-"""Tests for RobotView.effective_caps and the effective_sensors migration guard
-(.claude/parametrized-robots-phase3.md, allocation-derived caps / owner decision 2)."""
+"""Tests for RobotView.effective_caps and the effective_sensors consistency guard
+(allocation-derived caps)."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def _write_robot(
     return rd
 
 
-class TestEffectiveCapsUnmigrated:
+class TestEffectiveCapsNoAssembly:
     def test_identity_when_no_assembly(self, tmp_path: Path):
         from arena_robots.Robot import RobotView
 
@@ -39,7 +39,7 @@ class TestEffectiveCapsUnmigrated:
 
 
 class TestEffectiveCapsRbtheron:
-    """rbtheron migrated its sensors (assembly.yaml) but declares no arm mount."""
+    """rbtheron declares sensors via assembly.yaml but declares no arm mount."""
 
     def test_available_unchanged_and_no_arm(self):
         from arena_robots.Robot import RobotIdentifier

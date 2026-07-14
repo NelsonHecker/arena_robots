@@ -1,6 +1,5 @@
-"""Tests for arena_robots.assembly, the pure parametrized-robots resolver
-(.claude/parametrized-robots.md sec2.3, sec2.5, sec2.6, sec2.8;
-parametrized-robots-fitsweep.md sec4)."""
+"""Tests for arena_robots.assembly, the pure mount-resolution engine that matches a
+robot's typed mounts + declared defaults against a per-type part request."""
 
 from __future__ import annotations
 
@@ -62,7 +61,7 @@ class TestResolveDefaults:
     def test_resolve_empty_request_and_omitted_clear_kwargs_are_equivalent(self):
         """``resolve(spec, {})`` (defaults-only) is unaffected by the new clear kwargs
         existing at all: omitting them must reproduce byte-identical output to passing
-        them explicitly empty (sec2.3 replace-on-touch untouched-defaults path)."""
+        them explicitly empty (replace-on-touch untouched-defaults path)."""
         from arena_robots.assembly import AssemblySpec, DefaultPart, resolve
 
         spec = AssemblySpec(
@@ -104,7 +103,7 @@ class TestResolveClear:
 
 
 class TestResolveClearKwargs:
-    """Mount-centric clear model (sec2.x): a default part is dropped when its socket is
+    """Mount-centric clear model: a default part is dropped when its socket is
     in ``cleared_sockets``, its type is in ``cleared_types``, its socket is filled by a
     mount-centric request item, or its (unpinned) type has a shorthand request item.
     Clearing/touching is per-socket, not all-or-nothing across a type's every mount."""
@@ -246,7 +245,7 @@ class TestResolveMatching:
 
 
 class TestPreferenceRanking:
-    """sec2.6: among maximum-cardinality assignments, ``_match`` must pick the unique
+    """Among maximum-cardinality assignments, ``_match`` must pick the unique
     minimum-summed-preference-rank one, not just whatever a naive first-declared-mount
     fit produces. accepts order is per-socket preference, consulted only under
     contention between mounts that could each take either item."""
@@ -385,7 +384,7 @@ class TestAssemblySpecParse:
 
 
 class TestDefaultPartOptionalMount:
-    """DefaultPart.mount is optional (sec2.x): an unpinned default joins the same
+    """DefaultPart.mount is optional: an unpinned default joins the same
     matching pool as an unpinned request item, forced onto the sole accepting mount
     when there is exactly one."""
 
@@ -426,7 +425,7 @@ class TestDefaultPartOptionalMount:
 
 
 class TestMountFrame:
-    """Mount.frame (sec2.x): identity stem decoupling addressing (name) from the
+    """Mount.frame: identity stem decoupling addressing (name) from the
     sim2real frame/joint/sensor identity contract."""
 
     def test_frame_parses_when_declared(self):
@@ -460,7 +459,7 @@ class TestMountFrame:
 
 
 class TestBuildRequest:
-    """LHS disambiguation (mount-centric addressing, sec2.x): a declared mount name is
+    """LHS disambiguation (mount-centric addressing): a declared mount name is
     MOUNT-CENTRIC (mount wins over a same-named type on collision); otherwise a known
     accepted type is SHORTHAND. ``/`` only separates type from variant."""
 
@@ -579,7 +578,7 @@ class TestBuildRequest:
 
 
 class TestChainedMounts:
-    """Phase3b sec2/3: a mount's ``parent`` may be ``"@<mount>:<frame>"``, chaining
+    """A mount's ``parent`` may be ``"@<mount>:<frame>"``, chaining
     through another mount's placed component's exported frame."""
 
     def test_parse_chained_parent(self):

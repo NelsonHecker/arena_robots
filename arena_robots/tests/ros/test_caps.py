@@ -222,7 +222,7 @@ class TestInstanceSpecs:
 
 
 class TestRobotCapsAllocationDerived:
-    """`resolved`/`catalog` (phase3 sec2.10): placement-derived caps alongside the
+    """`resolved`/`catalog`: placement-derived caps alongside the
     static caps/ file path."""
 
     def _catalog_with_arm(self, tmp_path: Path) -> Catalog:

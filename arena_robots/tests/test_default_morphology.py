@@ -1,6 +1,6 @@
-"""Stage M acceptance tests for WLP311D's sensor migration
-(.claude/parametrized-robots.md sec2.8, Stage M step 5): the default config must
-render identically pre- and post-migration."""
+"""Default-morphology snapshot tests: each robot's default assembly must render exactly
+the golden URDF (links, joints, gz sensors), and its effective sensors must match
+model_params.yaml, which robots_manager reads at runtime."""
 
 from __future__ import annotations
 
@@ -14,16 +14,19 @@ from arena_robots.assembly import resolve
 from arena_robots.catalog import render_wrapper_xacro
 from arena_robots.Robot import RobotIdentifier
 
-GOLDEN = Path(__file__).parent / "golden" / "WLP311D_premigration.urdf"
+GOLDEN_DIR = Path(__file__).parent / "golden"
+ROBOT_NAMES = sorted(p.name.removesuffix("_default.urdf") for p in GOLDEN_DIR.glob("*_default.urdf"))
 
 
-class TestEffectiveSensorsParity:
-    """The acceptance test (sec2.8): default-request resolution reproduces
-    model_params.yaml's legacy sensors list field-for-field, order-sensitive."""
+class TestEffectiveSensorsMatchModelParams:
+    """task_generator's robots_manager reads ``model_params.sensors`` at runtime, so a
+    robot's default-request sensor resolution must reproduce it field-for-field,
+    order-sensitive."""
 
-    def test_effective_sensors_matches_model_params(self) -> None:
-        view = RobotIdentifier("WLP311D").resolve_sync()
-        assert view.assembly is not None, "WLP311D must have migrated (assembly.yaml present)"
+    @pytest.mark.parametrize("robot_name", ROBOT_NAMES)
+    def test_effective_sensors_matches_model_params(self, robot_name: str) -> None:
+        view = RobotIdentifier(robot_name).resolve_sync()
+        assert view.assembly is not None, f"{robot_name} has no assembly.yaml"
         assert view.effective_sensors({}) == view.model_params.sensors
 
 
@@ -43,7 +46,7 @@ def _sensor_key(sensor: ET.Element) -> tuple[str | None, ...]:
         if horiz is None:
             return ()
         return (horiz.findtext("samples"), horiz.findtext("min_angle"), horiz.findtext("max_angle"))
-    if stype == "camera":
+    if stype in ("camera", "rgbd_camera"):
         cam = sensor.find("camera")
         return (cam.findtext("horizontal_fov"),) if cam is not None else ()
     return ()
@@ -51,7 +54,7 @@ def _sensor_key(sensor: ET.Element) -> tuple[str | None, ...]:
 
 def _canonical_urdf(path: Path) -> tuple[frozenset, frozenset, frozenset]:
     """(links, joints, gz sensors) canonicalized for order-insensitive comparison
-    (components append after the chassis, sec Stage M item 3)."""
+    (components append after the chassis)."""
     root = ET.parse(path).getroot()
     links = frozenset(link.get("name") for link in root.iter("link"))
     joints = frozenset(
@@ -76,22 +79,23 @@ _XACRO = shutil.which("xacro")
 
 
 @pytest.mark.skipif(_XACRO is None, reason="xacro CLI not on PATH; run under the Arena container (bash arena -c pytest)")
-class TestUrdfStructuralParity:
-    """Stage M step 5: the wrapper-rendered URDF and the pre-migration golden must
-    canonicalize to the same links/joints/gz-sensors; element order may legitimately
-    differ (components append after the chassis)."""
+class TestDefaultMorphologyMatchesGolden:
+    """The wrapper-rendered URDF for a robot's bare default request must canonicalize to
+    the same links/joints/gz-sensors as its golden snapshot; element order may
+    legitimately differ (components append after the chassis)."""
 
-    def test_wrapper_render_matches_golden(self, tmp_path: Path) -> None:
-        view = RobotIdentifier("WLP311D").resolve_sync()
+    @pytest.mark.parametrize("robot_name", ROBOT_NAMES)
+    def test_wrapper_render_matches_golden(self, robot_name: str, tmp_path: Path) -> None:
+        view = RobotIdentifier(robot_name).resolve_sync()
         resolved = resolve(view.assembly, {})
-        wrapper_path = tmp_path / "WLP311D_wrapper.urdf.xacro"
+        wrapper_path = tmp_path / f"{robot_name}_wrapper.urdf.xacro"
         wrapper_path.write_text(render_wrapper_xacro(view, resolved))
 
         rendered = subprocess.run([_XACRO, str(wrapper_path)], capture_output=True, text=True, check=True).stdout
-        rendered_path = tmp_path / "WLP311D_wrapper.urdf"
+        rendered_path = tmp_path / f"{robot_name}_wrapper.urdf"
         rendered_path.write_text(rendered)
 
-        golden_links, golden_joints, golden_sensors = _canonical_urdf(GOLDEN)
+        golden_links, golden_joints, golden_sensors = _canonical_urdf(GOLDEN_DIR / f"{robot_name}_default.urdf")
         wrapper_links, wrapper_joints, wrapper_sensors = _canonical_urdf(rendered_path)
         assert wrapper_links == golden_links
         assert wrapper_joints == golden_joints

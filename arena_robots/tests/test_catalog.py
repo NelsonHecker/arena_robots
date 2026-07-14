@@ -1,5 +1,5 @@
-"""Tests for arena_robots.catalog: component.yaml loading + sensor-template rendering
-(.claude/parametrized-robots.md sec2.5; parametrized-robots-fitsweep.md sec4)."""
+"""Tests for arena_robots.catalog: component.yaml loading + sensor-template
+rendering."""
 
 from __future__ import annotations
 
@@ -228,7 +228,7 @@ class TestComponentSpecFrames:
 
 
 class TestResolveMountParent:
-    """Phase3b sec2: ``resolve_mount_parent`` is the shared chained-parent resolver
+    """``resolve_mount_parent`` is the shared chained-parent resolver
     consumed by both ``render_wrapper_xacro`` (xacro ``parent`` attr) and
     ``caps.py``'s ``_instances`` (``${parent}`` in a caps template, e.g. arm
     ``base_link``)."""
@@ -391,7 +391,7 @@ class TestRenderWrapperXacroNoControlSynthesis:
         assert "<xacro:ur_robot " in wrapper
 
     def test_chained_mount_parent_renders_referenced_frame(self, tmp_path: Path):
-        """Phase3b sec2: arm0 chained onto lift0's `top` frame renders the wrapper's
+        """arm0 chained onto lift0's `top` frame renders the wrapper's
         `<xacro:ur_robot parent=...>` attr from the lift's rendered frame, not the
         literal `"@lift0:top"` chain string."""
         arm_component = {
@@ -437,7 +437,7 @@ class TestRenderWrapperXacroNoControlSynthesis:
 
 
 class TestRenderControlJoints:
-    """Phase3 arm-on-any-chassis merge: ``render_control_joints`` computes the
+    """Arm-on-any-chassis merge: ``render_control_joints`` computes the
     control-joint patch straight from ``resolved``/``catalog`` (no xacro involved),
     for arena_simulation_setup's urdf loader to inject post-render."""
 

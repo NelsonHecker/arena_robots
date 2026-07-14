@@ -53,8 +53,8 @@ variants: [...]           # family component: variant names this one dir serves,
   (the one whose plugin is `gz_ros2_control/GazeboSimSystem`), dropping every other
   `ros2_control` tag (an arm's own native one, superseded by the patch).
 - Per-instance tuning lives in `assembly.yaml defaults[].params/overrides`, never in the
-  request grammar (parametrized-robots spec sec4).
-- **Chained mounts** (phase3b): a mount's `parent` may be `"@<mount>:<frame>"`, resolved to
+  request grammar.
+- **Chained mounts**: a mount's `parent` may be `"@<mount>:<frame>"`, resolved to
   the referenced mount's placed component's `frames.<frame>` template (e.g. an arm parented
   on a lift's `top`). A placed part chained through an unpopulated mount is an
   `AssemblyError`; chained-parent references must form a DAG.

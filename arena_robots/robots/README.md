@@ -187,19 +187,19 @@ catalog-derivable sensor types (laserscan, pointcloud, imu, image, depth, camera
 are generated at runtime from `effective_sensors` and deduped against this file, so
 never duplicate them here.
 
-### `assembly.yaml` — migrated robots only
+### `assembly.yaml`: component-catalog robots only
 
 Sibling of `model_params.yaml` (deliberately not inside it: the existing scalar
-`priority:` field would collide). Its presence declares the robot fully migrated to the
-component catalog: sensors come from `components/` via mounts, and the chassis xacro
-carries no sensor invocations.
+`priority:` field would collide). Its presence declares the robot's sensors are sourced
+from the component catalog: sensors come from `components/` via mounts, and the
+chassis xacro carries no sensor invocations.
 
 ```yaml
 prefix: ""            # frame-prefix convention; omit for the Robotnik "robot_" default
 mounts:
-  front_laser:        # mount names adopt the legacy frame names
+  front_laser:        # mount names adopt the chassis xacro's own frame names
     parent: chassis_link
-    xyz: [0.53, 0.33, 0.1145]     # verbatim from the pre-migration xacro invocation
+    xyz: [0.53, 0.33, 0.1145]     # verbatim from the chassis xacro's sensor invocation
     rpy: [3.141592653589793, 0, 0.7853981633974483]
     accepts: [lidar]              # a set: a mount may accept more than one part type
 defaults:
@@ -222,11 +222,11 @@ semantics; see the grammar section in
 A sensor that is physically present but deliberately left unbridged (e.g. a GPS/navsat
 mast) stays inline in the robot's own xacro; it gets no mount or component entry here.
 
-### Migrating a robot (Stage M)
+### Moving a robot's sensors to the component catalog
 
-1. **Golden capture first**: render the pre-migration URDF via xacro in-container and
-   save to `tests/golden/<name>_premigration.urdf` (strip the container wrapper's
-   non-XML stdout prefix; verify it parses).
+1. **Golden capture first**: render the robot's current URDF via xacro in-container and
+   save to `tests/golden/<name>_default.urdf` (strip the container wrapper's non-XML
+   stdout prefix; verify it parses).
 2. Author/reuse `components/` entries (see [components/README.md](../components/README.md)).
 3. Write `assembly.yaml` with mount origins copied verbatim from the xacro invocations
    (verify each sensor's actual parent link; robots differ).
@@ -234,11 +234,12 @@ mast) stays inline in the robot's own xacro; it gets no mount or component entry
    leaving no comment behind; never delete macro files, other robots may include
    them. Ensure
    the wrapper-contract args exist (`namespace`, `prefix`, `gazebo_classic`,
-   `gazebo_ignition`) with defaults preserving legacy values.
-5. Add `tests/test_<name>_parity.py`: effective-sensors parity
-   (`effective_sensors({}) == model_params.sensors`) + canonicalized URDF structural
-   parity against the golden.
-6. Parity reproduces known drift byte-identically; migration is not a bug-fix
+   `gazebo_ignition`) with defaults preserving the chassis's existing values.
+5. `tests/test_default_morphology.py` parametrizes over every `tests/golden/*_default.urdf`
+   automatically, so the robot is now covered: effective-sensors consistency
+   (`effective_sensors({}) == model_params.sensors`) and canonicalized URDF
+   structural comparison against the golden from step 1.
+6. The golden reproduces known drift byte-identically; this move is not a bug-fix
    opportunity. Dead (env-gated Gazebo-Classic) blocks stay untouched.
 
 ## Optional files
@@ -267,8 +268,8 @@ their URDFs reference `package://jackal_description/…` etc., supplied by
 3. Write `caps/mobile.yaml` (every robot has a mobile base). Add `caps/arm.yaml`
    and/or `caps/lift.yaml` if the robot has those subsystems.
 4. (Optional) add `urdf/<name>.urdf.xacro` and/or a `meshes/` submodule.
-   For catalog-migrated sensors, add `assembly.yaml` + parity tests (see
-   "Migrating a robot (Stage M)" above).
+   For component-catalog sensors, add `assembly.yaml` + a golden (see "Moving a
+   robot's sensors to the component catalog" above).
 5. If the robot ships an upstream ROS package, add it as a submodule with
    `robot = <name>` (and `update = none`) in `.gitmodules`.
 6. `arena feature robots add <name>` to fetch any submodules.

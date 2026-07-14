@@ -1,7 +1,6 @@
-"""Tests for arena_robots.moveit_factory's instance parameter (phase3 item8:
-`build_moveit_params` gains `instance: str | None`, sibling to the bringup/adapter
-`len(arms) != 1` guard removal) and the allocation-derived rendering gate (phase3a
-rbvogui_plus collapse checklist items 6/7: SRDF composition + joint_limits parity)."""
+"""Tests for arena_robots.moveit_factory's `instance: str | None` parameter on
+`build_moveit_params` and the allocation-derived rendering gate against rbvogui_plus
+(SRDF composition + joint_limits agreement)."""
 
 from __future__ import annotations
 
@@ -45,7 +44,7 @@ class TestSelectArm:
             _select_arm("robot", arms, "bogus")
 
 
-class TestBuildMoveitParamsInstanceParity:
+class TestBuildMoveitParamsInstanceAgreement:
     """rbvogui_plus is single-arm (author key "arm"): instance=None and the
     explicit instance="arm" must build byte-identical params."""
 
@@ -66,8 +65,8 @@ class TestBuildMoveitParamsInstanceParity:
 
 def _norm(value: str) -> str:
     """The documented rename map: the mount-specific group name renames wholesale
-    (arm0_manipulator has no `arm_`-substring counterpart in the legacy naming,
-    it's ur_manipulator), everything else just drops the mount digit."""
+    (arm0_manipulator has no `arm_`-substring counterpart in rbvogui_plus's static
+    naming, it's ur_manipulator), everything else just drops the mount digit."""
     if value == "arm0_manipulator":
         return "ur_manipulator"
     return value.replace("arm0_", "arm_")
@@ -94,11 +93,10 @@ def _arm_link_names(urdf_text: str) -> frozenset:
 
 
 @pytest.mark.skipif(_XACRO is None, reason="xacro CLI not on PATH; run under the Arena container (bash arena -c pytest)")
-class TestBuildMoveitParamsAllocationParity:
-    """Phase3a gate (parametrized-robots-phase3.md, rbvogui_plus collapse checklist
-    items 6/7): moveit params for the allocation-derived rbvogui[arm=ur5e] must match
-    rbvogui_plus's hand-authored ones, modulo the documented rename map (arm0_ -> arm_,
-    group arm0_manipulator -> ur_manipulator)."""
+class TestBuildMoveitParamsAllocationMatchesPlus:
+    """Moveit params for the allocation-derived rbvogui[arm=ur5e] must match
+    rbvogui_plus's hand-authored ones, modulo the documented rename map
+    (arm0_ -> arm_, group arm0_manipulator -> ur_manipulator)."""
 
     @pytest.fixture(scope="class")
     def params_pair(self) -> tuple[dict, dict]:
@@ -111,27 +109,27 @@ class TestBuildMoveitParamsAllocationParity:
         assert plus is not None
         return mine, plus
 
-    def test_srdf_semantic_parity(self, params_pair: tuple[dict, dict]) -> None:
+    def test_srdf_semantic_matches(self, params_pair: tuple[dict, dict]) -> None:
         mine, plus = params_pair
         assert _canon_srdf(mine["robot_description_semantic"]) == _canon_srdf(plus["robot_description_semantic"])
 
-    def test_joint_limits_parity(self, params_pair: tuple[dict, dict]) -> None:
+    def test_joint_limits_match(self, params_pair: tuple[dict, dict]) -> None:
         mine, plus = params_pair
         mine_jl = mine["robot_description_planning"]["joint_limits"]
         plus_jl = plus["robot_description_planning"]["joint_limits"]
         assert {_norm(k): v for k, v in mine_jl.items()} == {_norm(k): v for k, v in plus_jl.items()}
 
-    def test_robot_description_arm_link_set_parity(self, params_pair: tuple[dict, dict]) -> None:
+    def test_robot_description_arm_link_set_matches(self, params_pair: tuple[dict, dict]) -> None:
         mine, plus = params_pair
         assert _arm_link_names(mine["robot_description"]) == _arm_link_names(plus["robot_description"])
 
-    def test_legacy_path_unchanged(self, params_pair: tuple[dict, dict]) -> None:
+    def test_static_path_unchanged(self, params_pair: tuple[dict, dict]) -> None:
         """rbvogui_plus's own output must be untouched by the allocation-derived
         rendering: its SRDF keeps the ur_manipulator group + swerve-corner DCs, and
         its robot_description still comes from the static chassis xacro, not a
         wrapper render (evidenced by the hand-spliced ros2_control tag name,
         "rbvogui_plus_arm", from urdf/base_hw/rbvogui_plus.ros2_control.urdf, rather
-        than a migrated chassis's own tag name, e.g. "vogui")."""
+        than an assembled chassis's own tag name, e.g. "vogui")."""
         _, plus = params_pair
         root = ET.fromstring(plus["robot_description_semantic"])
         assert "ur_manipulator" in {g.get("name") for g in root.iter("group")}
@@ -178,7 +176,7 @@ class TestBuildMoveitParamsZeroPrefixChassis:
 
 @pytest.mark.skipif(_XACRO is None, reason="xacro CLI not on PATH; run under the Arena container (bash arena -c pytest)")
 class TestBuildMoveitParamsWithGripper:
-    """A gripper chained onto the arm's tip (jackal ``top_tool``, phase3b) merges its
+    """A gripper chained onto the arm's tip (jackal ``top_tool``) merges its
     SRDF fragment into the composed document: gripper group + end_effector + collision
     disables, all referencing links that exist in the wrapper-rendered URDF."""
 

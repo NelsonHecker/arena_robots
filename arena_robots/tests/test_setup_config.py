@@ -1,5 +1,5 @@
-"""Tests for arena_robots.SetupFile.Config.parse against the parametrized-robot grammar
-(.claude/parametrized-robots.md sec2.1-2.3): mount-centric addressing."""
+"""Tests for arena_robots.SetupFile.Config.parse against the parametrized-robot grammar:
+mount-centric addressing."""
 
 from __future__ import annotations
 

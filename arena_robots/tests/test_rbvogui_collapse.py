@@ -1,8 +1,8 @@
-"""Phase 3a collapse gate (parametrized-robots-phase3.md, rbvogui_plus checklist):
-``rbvogui[arm=ur5e]`` must reproduce rbvogui_plus's arm subtree and merged
-ros2_control tag. Sensor placement/FOV drift between the pair (lasers parented at
-chassis_link vs base_link, FOV 2.2689 vs 2.1) is a documented owner decision, same
-bucket as rbkairos, and deliberately outside this gate."""
+"""Composing ``rbvogui[arm=ur5e]`` must reproduce the factory-integrated rbvogui_plus
+variant's arm subtree and merged ros2_control tag. Sensor placement/FOV drift between
+the pair (lasers parented at chassis_link vs base_link, FOV 2.2689 vs 2.1) is a
+documented owner decision, same bucket as rbkairos, and deliberately outside this
+gate."""
 
 from __future__ import annotations
 
@@ -58,7 +58,7 @@ def _arm_elements(root: ET.Element) -> dict[tuple[str, str], dict]:
 
 
 @pytest.mark.skipif(_XACRO is None, reason="xacro CLI not on PATH; run under the Arena container (bash arena -c pytest)")
-class TestRbvoguiArmCollapseParity:
+class TestRbvoguiArmCollapseMatchesPlus:
     @pytest.fixture(scope="class")
     def rendered(self, tmp_path_factory: pytest.TempPathFactory) -> tuple[ET.Element, ET.Element]:
         view = RobotIdentifier("rbvogui").resolve_sync()
