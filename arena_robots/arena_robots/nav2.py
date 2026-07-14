@@ -29,6 +29,7 @@ def compile_sensors_to_nav2(
     obstacle_range_margin: float = 1.0,
     max_obstacle_height: float = 2.0,
     pointcloud_min_obstacle_height: float = 0.1,
+    laserscan_min_obstacle_height: float = 0.05,
     clearing: bool = True,
     marking: bool = True,
     inf_is_valid: bool = True,
@@ -41,8 +42,10 @@ def compile_sensors_to_nav2(
     below it: Isaac's 3D lidar emits phantom max-range points for missed rays, and a
     margin keeps those from leaking into the costmap as concentric arcs that no later
     raytrace ever clears. `inf_is_valid` lets no-return beams clear out to `max_range`.
-    `pointcloud_min_obstacle_height` is a height floor applied to 3D cloud sources only,
-    so their ground returns are dropped instead of marked.
+    `pointcloud_min_obstacle_height` is a height floor for 3D cloud sources, so their
+    ground returns are dropped instead of marked. `laserscan_min_obstacle_height` is a
+    lower floor for 2D scans: level returns always sit at beam height, so it only drops
+    the ground strikes swept by a momentarily tilted robot (spawn bounce, door sills).
     `extra_per_source` is merged onto every emitted source last, letting callers layer
     layer-specific tunables (e.g. `observation_persistence` for the global costmap).
     """
@@ -65,6 +68,8 @@ def compile_sensors_to_nav2(
         }
         if data_type == "PointCloud2":
             source["min_obstacle_height"] = pointcloud_min_obstacle_height
+        elif data_type == "LaserScan":
+            source["min_obstacle_height"] = laserscan_min_obstacle_height
         if extra_per_source:
             source.update(extra_per_source)
         out[spec.name] = source
