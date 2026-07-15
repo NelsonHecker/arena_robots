@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-_ROS_SKIP_REASON = "ROS2 not discoverable — source install/setup.bash to enable"
+_ROS_SKIP_REASON = "ROS2 not discoverable, source install/setup.bash to enable"
 
 
 def _ros_available() -> bool:

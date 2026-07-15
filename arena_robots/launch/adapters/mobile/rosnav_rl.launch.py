@@ -1,4 +1,4 @@
-"""rosnav_rl adapter launch — single inference node, no nav2."""
+"""rosnav_rl adapter launch: single inference node, no nav2."""
 
 from arena_bringup.substitutions import LaunchArgument
 from launch_ros.actions import Node

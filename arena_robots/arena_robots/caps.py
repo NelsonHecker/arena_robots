@@ -4,13 +4,13 @@ Each YAML under caps/ declares one capability the robot advertises. File
 presence is the advertisement: `caps/arm.yaml` means the robot has `arm`.
 
 Shape convention:
-    caps/mobile.yaml  — flat primitives + adapter sub-blocks (nav2, rl, ...)
-    caps/arm.yaml     — dict of named instances (single-arm is one entry named "arm")
-    caps/lift.yaml    — dict of named instances
-    caps/gripper.yaml — dict of named instances, with per-entry `arm:` back-ref
+    caps/mobile.yaml:  flat primitives + adapter sub-blocks (nav2, rl, ...)
+    caps/arm.yaml:     dict of named instances (single-arm is one entry named "arm")
+    caps/lift.yaml:    dict of named instances
+    caps/gripper.yaml: dict of named instances, with per-entry `arm:` back-ref
 
 Adapter-specific sub-blocks (moveit, drl_grasp, nav2, rl) are raw dicts inside
-each entry / at top level — read only by their matching runtime-selected adapter.
+each entry / at top level, read only by their matching runtime-selected adapter.
 """
 
 from __future__ import annotations
@@ -244,7 +244,7 @@ class LaserAngle:
 
 @attrs.define(slots=False)
 class LaserSpec:
-    """Laser scanner geometry — consumed by both nav2 AMCL and RL observation stacks."""
+    """Laser scanner geometry, consumed by both nav2 AMCL and RL observation stacks."""
 
     angle: LaserAngle
     num_beams: int
@@ -642,8 +642,8 @@ def _substitute_keys(obj: object, context: dict[str, typing.Any]) -> object:
 def _parse_srdf_group(srdf_ref: str, group_name: str) -> dict[str, typing.Any]:
     """Resolve a `$(find …)/…srdf[.xacro]` ref and extract a <group>'s primitives.
 
-    Returns a dict with `base_link`, `tip_link`, and — if the group enumerates
-    joints via <joints> or the URDF walk succeeds — `chain`.
+    Returns a dict with `base_link`, `tip_link`, and, if the group enumerates
+    joints via <joints> or the URDF walk succeeds, `chain`.
     """
     src_path = _resolve_find_ref(srdf_ref)
     if src_path.suffix == '.xacro':

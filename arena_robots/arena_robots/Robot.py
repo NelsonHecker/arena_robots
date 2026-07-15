@@ -166,7 +166,7 @@ class RobotView(PathView):
     @property
     def caps(self) -> RobotCaps:
         """Lazy view over robots/<name>/caps/, equivalent to
-        ``self.model_params.caps`` — exposed directly on ``RobotView`` for
+        ``self.model_params.caps``, exposed directly on ``RobotView`` for
         readability."""
         return self.model_params.caps
 

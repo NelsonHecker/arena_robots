@@ -12,7 +12,7 @@ that `(TaskKind, bringup_kind)` pair.
 
 | File | Role |
 |---|---|
-| [`task_kinds.py`](../task_kinds.py) | `TaskKind` enum, `PUBLIC_SUFFIX`, `action_type()`, `endpoint()` — the only place these are defined |
+| [`task_kinds.py`](../task_kinds.py) | `TaskKind` enum, `PUBLIC_SUFFIX`, `action_type()`, `endpoint()`, the only place these are defined |
 | `task_server_handlers/__init__.py` | `TaskHandler` ABC + `_executor_sleep` helper. No registry: handler ownership lives on the Bringup subclass. |
 | `task_server_handlers/<kind>/__init__.py` | exports the per-`TaskKind` handler type alias (e.g. `GotoPoseHandler`) for handler implementations |
 | `task_server_handlers/<kind>/<bringup>.py` | the `TaskHandler` implementation for that `(kind, bringup)` pair |
