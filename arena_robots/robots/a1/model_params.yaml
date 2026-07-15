@@ -6,17 +6,17 @@ sensors:
   - name: camera_face_image
     type: image
     topic: ${namespace}/camera_face/image
-    frame: camera_optical_face
+    frame: camera_face
     sensor: camera_face
   - name: camera_face_info
     type: camera_info
     topic: ${namespace}/camera_face/camera_info
-    frame: camera_optical_face
+    frame: camera_face
     sensor: camera_face
   - name: camera_face_points
     type: pointcloud
     topic: ${namespace}/camera_face/points
-    frame: camera_optical_face
+    frame: camera_face
     sensor: camera_face
   - name: lidar
     type: laserscan

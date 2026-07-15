@@ -1,33 +1,33 @@
 <?xml version="1.0"?>
 <robot name="go1" xmlns:xacro="http://ros.org/wiki/xacro">
 
-  <xacro:macro name="go1_leg_control" params="leg">
-    <joint name="${leg}_hip_joint">
+  <xacro:macro name="go1_leg_control" params="leg prefix">
+    <joint name="${prefix}${leg}_hip_joint">
       <command_interface name="position"/>
       <state_interface name="position"/>
       <state_interface name="velocity"/>
     </joint>
-    <joint name="${leg}_thigh_joint">
+    <joint name="${prefix}${leg}_thigh_joint">
       <command_interface name="position"/>
       <state_interface name="position"/>
       <state_interface name="velocity"/>
     </joint>
-    <joint name="${leg}_calf_joint">
+    <joint name="${prefix}${leg}_calf_joint">
       <command_interface name="position"/>
       <state_interface name="position"/>
       <state_interface name="velocity"/>
     </joint>
   </xacro:macro>
 
-  <xacro:macro name="go1_base_hw_controller">
+  <xacro:macro name="go1_base_hw_controller" params="prefix">
     <ros2_control name="go1_system" type="system">
       <hardware>
         <plugin>gz_ros2_control/GazeboSimSystem</plugin>
       </hardware>
-      <xacro:go1_leg_control leg="FL"/>
-      <xacro:go1_leg_control leg="FR"/>
-      <xacro:go1_leg_control leg="RL"/>
-      <xacro:go1_leg_control leg="RR"/>
+      <xacro:go1_leg_control leg="FL" prefix="${prefix}"/>
+      <xacro:go1_leg_control leg="FR" prefix="${prefix}"/>
+      <xacro:go1_leg_control leg="RL" prefix="${prefix}"/>
+      <xacro:go1_leg_control leg="RR" prefix="${prefix}"/>
     </ros2_control>
   </xacro:macro>
 

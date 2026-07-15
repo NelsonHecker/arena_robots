@@ -101,22 +101,31 @@ class PlayGestureHandlerMoveIt(TaskHandler[PlayGesture.Goal, PlayGesture.Feedbac
         del tf_buffer
         self._bringup = bringup
         self._node = node
-        self._mg_action = str(bringup.namespace("move_action"))
-        self._mg_client = ActionClient(node, MoveGroup, self._mg_action)
+        self._mg_clients: dict[str, ActionClient] = {
+            mount: ActionClient(node, MoveGroup, str(bringup.arm_namespace(mount)("move_action"))) for mount in bringup.arms()
+        }
 
     async def execute(self, goal_handle: object) -> PlayGesture.Result:
         arena_goal: PlayGesture.Goal = goal_handle.request
         result = PlayGesture.Result()
 
-        arms = self._bringup.robot.caps.arm
-        if arms is None:
-            raise ValueError(f"{self._bringup.robot.name}: arm cap required but absent")
-        if len(arms) != 1:
-            result.status = PlayGesture.Result.STATUS_ABORTED
-            result.reason = f"expected exactly 1 arm cap, got {len(arms)}"
-            goal_handle.abort()
-            return result
-        (arm,) = arms.values()
+        arms = self._bringup.arms()
+        if arena_goal.instance:
+            if arena_goal.instance not in arms:
+                result.status = PlayGesture.Result.STATUS_ABORTED
+                result.reason = f"unknown arm instance {arena_goal.instance!r}; available: {sorted(arms)}"
+                goal_handle.abort()
+                return result
+            mount = arena_goal.instance
+        else:
+            if len(arms) != 1:
+                result.status = PlayGesture.Result.STATUS_ABORTED
+                result.reason = f"'instance' required; multiple arms available: {sorted(arms)}"
+                goal_handle.abort()
+                return result
+            (mount,) = arms
+        arm = arms[mount]
+        mg_client = self._mg_clients[mount]
 
         gesture: GestureSpec | None = arm.gestures.get(arena_goal.gesture)
         if gesture is None:
@@ -138,14 +147,14 @@ class PlayGestureHandlerMoveIt(TaskHandler[PlayGesture.Goal, PlayGesture.Feedbac
         first_kf_joints = arm.named_poses[gesture.keyframes[0].pose]
         mg_goal = _build_movegroup_goal(arm, first_kf_joints)
 
-        while not self._mg_client.server_is_ready():
+        while not mg_client.server_is_ready():
             if not goal_handle.is_active:
                 result.status = PlayGesture.Result.STATUS_CANCELED
                 result.reason = "goal canceled by client"
                 return result
             await _executor_sleep(self._node, 0.1, wall=True)
 
-        mg_handle = await self._mg_client.send_goal_async(mg_goal)
+        mg_handle = await mg_client.send_goal_async(mg_goal)
         if not mg_handle.accepted:
             goal_handle.abort()
             result.status = PlayGesture.Result.STATUS_ABORTED
@@ -176,7 +185,7 @@ class PlayGestureHandlerMoveIt(TaskHandler[PlayGesture.Goal, PlayGesture.Feedbac
 
         traj = _build_trajectory(gesture, arm)
 
-        fjt_action = str(self._bringup.namespace(arm.controller, "follow_joint_trajectory"))
+        fjt_action = str(self._bringup.arm_namespace(mount)(arm.controller, "follow_joint_trajectory"))
         fjt_client: ActionClient = ActionClient(self._node, FollowJointTrajectory, fjt_action)
 
         while not fjt_client.server_is_ready():

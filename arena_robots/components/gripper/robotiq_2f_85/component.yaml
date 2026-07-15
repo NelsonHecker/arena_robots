@@ -1,0 +1,52 @@
+# Known jazzy gz limitation: mimic joints stay limp in sim, only the actuated knuckle moves.
+# See components/README.md "Gripper components" for the full explanation.
+xacro:
+  include: "$(find robotiq_description)/urdf/robotiq_2f_85_macro.urdf.xacro"
+  macro: robotiq_gripper
+  attach:
+    name: "${mount}"
+    prefix: "${prefix}${mount}_"
+    parent: "${prefix}${parent}"
+    include_ros2_control: "false"
+    sim_ignition: "${gazebo_ignition}"
+
+ros2_control:
+  joints:
+    - name: "${prefix}${mount}_robotiq_85_left_knuckle_joint"
+      command_interfaces: [position]
+      state_interfaces: [position, velocity]
+    - name: "${prefix}${mount}_robotiq_85_right_knuckle_joint"
+      state_interfaces: [position, velocity]
+      mimic: true
+    - name: "${prefix}${mount}_robotiq_85_left_inner_knuckle_joint"
+      state_interfaces: [position, velocity]
+      mimic: true
+    - name: "${prefix}${mount}_robotiq_85_right_inner_knuckle_joint"
+      state_interfaces: [position, velocity]
+      mimic: true
+    - name: "${prefix}${mount}_robotiq_85_left_finger_tip_joint"
+      state_interfaces: [position, velocity]
+      mimic: true
+    - name: "${prefix}${mount}_robotiq_85_right_finger_tip_joint"
+      state_interfaces: [position, velocity]
+      mimic: true
+
+control:
+  controller: "${mount}_controller"
+  type: position_controllers/GripperActionController
+  ros__parameters:
+    joint: "${prefix}${mount}_robotiq_85_left_knuckle_joint"
+    action_monitor_rate: 20.0
+    goal_tolerance: 0.01
+    allow_stalling: true
+
+caps:
+  joint: "${prefix}${mount}_robotiq_85_left_knuckle_joint"
+  controller: "${mount}_controller"
+  positions:
+    open: 0.0
+    close: 0.8
+  moveit:
+    srdf:
+      package: arena_robots
+      path: components/gripper/robotiq_2f_85/srdf/robotiq_2f_85.srdf.xacro

@@ -1,33 +1,33 @@
 <?xml version="1.0"?>
 <robot name="a1" xmlns:xacro="http://ros.org/wiki/xacro">
 
-  <xacro:macro name="a1_leg_control" params="leg">
-    <joint name="${leg}_hip_joint">
+  <xacro:macro name="a1_leg_control" params="leg prefix">
+    <joint name="${prefix}${leg}_hip_joint">
       <command_interface name="position"/>
       <state_interface name="position"/>
       <state_interface name="velocity"/>
     </joint>
-    <joint name="${leg}_thigh_joint">
+    <joint name="${prefix}${leg}_thigh_joint">
       <command_interface name="position"/>
       <state_interface name="position"/>
       <state_interface name="velocity"/>
     </joint>
-    <joint name="${leg}_calf_joint">
+    <joint name="${prefix}${leg}_calf_joint">
       <command_interface name="position"/>
       <state_interface name="position"/>
       <state_interface name="velocity"/>
     </joint>
   </xacro:macro>
 
-  <xacro:macro name="a1_base_hw_controller">
+  <xacro:macro name="a1_base_hw_controller" params="prefix">
     <ros2_control name="a1_system" type="system">
       <hardware>
         <plugin>gz_ros2_control/GazeboSimSystem</plugin>
       </hardware>
-      <xacro:a1_leg_control leg="FL"/>
-      <xacro:a1_leg_control leg="FR"/>
-      <xacro:a1_leg_control leg="RL"/>
-      <xacro:a1_leg_control leg="RR"/>
+      <xacro:a1_leg_control leg="FL" prefix="${prefix}"/>
+      <xacro:a1_leg_control leg="FR" prefix="${prefix}"/>
+      <xacro:a1_leg_control leg="RL" prefix="${prefix}"/>
+      <xacro:a1_leg_control leg="RR" prefix="${prefix}"/>
     </ros2_control>
   </xacro:macro>
 

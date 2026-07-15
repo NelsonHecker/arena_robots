@@ -1,0 +1,22 @@
+# joint_name override avoids the "${frame}_joint" default (would render "lidar_link_joint");
+# jackal's joint is named "lidar_joint".
+xacro:
+  include: "$(find arena_robots)/components/lidar/jackal_default/lidar.urdf.xacro"
+  macro: jackal_lidar_mount
+  attach:
+    parent_link: "${prefix}${parent}"
+    frame: "${prefix}${mount}_link"
+    joint_name: "${mount}_joint"
+  args: {}
+sensor:
+  gz:
+    - name: "${name:-lidar}"
+      type: laserscan
+      topic: "${topic:-lidar}"
+      frame: "${prefix}${mount}_link"
+      sensor: gpu_lidar
+    - name: "${name:-lidar}_points"
+      type: pointcloud
+      topic: "${topic:-lidar}/points"
+      frame: "${prefix}${mount}_link"
+      sensor: gpu_lidar

@@ -1,4 +1,5 @@
 import functools
+import sys
 import typing
 from pathlib import Path
 
@@ -12,8 +13,12 @@ from arena_simulation_setup.utils.models.model_loader import (
     ModelProvider_USD,
 )
 
+from arena_robots import assembly as assembly_mod
 from arena_robots.caps import MobileSpec, RobotCaps
+from arena_robots.catalog import Catalog, render_effective_sensors
 from arena_robots.Sensor import SensorSpec
+
+_CATALOG = Catalog()
 
 
 @attrs.frozen
@@ -23,8 +28,8 @@ class ControlSpec:
     Presence in the YAML opts the robot into the ros2_control path in
     Gazebo bringup: an in-process controller_manager (hosted by the URDF's
     gz_ros2_control plugin) plus a controller_manager/spawner per entry in
-    ``controllers``. Absence means the legacy gazebo_native path (PosePublisher
-    + pose_to_tf + bridged cmd_vel) runs unchanged.
+    ``controllers``. Absence means the gazebo_native path (PosePublisher
+    + pose_to_tf + bridged cmd_vel) runs instead.
     """
 
     mode: str
@@ -106,7 +111,7 @@ class ModelParams(dict[str, typing.Any]):
     @property
     def control(self) -> ControlSpec | None:
         """Typed view of the ``control:`` block in model_params.yaml. ``None``
-        when absent (legacy gazebo_native pipeline)."""
+        when absent (gazebo_native pipeline)."""
         raw = self.get('control')
         if raw is None:
             return None
@@ -155,11 +160,13 @@ class RobotView(PathView):
         super().__init__(*args, **kwargs)
         self._cached_params: ModelParams | None = None
         self._cached_control: dict | None = None
+        self._cached_assembly: assembly_mod.AssemblySpec | None = None
+        self._assembly_loaded: bool = False
 
     @property
     def caps(self) -> RobotCaps:
         """Lazy view over robots/<name>/caps/, equivalent to
-        ``self.model_params.caps`` — exposed directly on ``RobotView`` for
+        ``self.model_params.caps``, exposed directly on ``RobotView`` for
         readability."""
         return self.model_params.caps
 
@@ -199,6 +206,67 @@ class RobotView(PathView):
                     raise ValueError(f"Control file {control_path} must contain a dictionary at the top level.")
                 self._cached_control = mapping
         return self._cached_control
+
+    @property
+    def assembly(self) -> assembly_mod.AssemblySpec | None:
+        """Lazy view over robots/<name>/assembly.yaml, or ``None`` for robots that don't
+        declare one (they resolve directly from model_params.yaml instead)."""
+        if not self._assembly_loaded:
+            path = self.path / 'assembly.yaml'
+            if path.is_file():
+                with open(path) as f:
+                    data = yaml.safe_load(f)
+                self._cached_assembly = assembly_mod.AssemblySpec.parse(data if isinstance(data, dict) else {})
+            else:
+                self._cached_assembly = None
+            self._assembly_loaded = True
+        return self._cached_assembly
+
+    def _resolved(self, parts: dict[str, list[assembly_mod.RequestPart]]) -> assembly_mod.ResolvedAssembly | None:
+        """Shared resolve step for :meth:`effective_sensors`/:meth:`effective_caps`.
+        ``None`` iff the robot has no assembly.yaml."""
+        spec = self.assembly
+        if spec is None:
+            return None
+        return assembly_mod.resolve(spec, parts)
+
+    def effective_sensors(self, parts: dict[str, list[assembly_mod.RequestPart]], *, frames: dict[str, str] | None = None) -> list[SensorSpec]:
+        """The robot's full effective ``SensorSpec`` list for a parts request (``{}``
+        for pure defaults). Robots with no assembly.yaml (``assembly`` is ``None``)
+        return ``model_params.sensors`` unchanged. Robots with an assembly.yaml
+        resolve ``parts`` against the declared assembly and render it through the
+        shared component catalog. No per-request caching: ``RobotView`` is a
+        per-model singleton, but resolution is per-request.
+
+        Consistency guard: warns on stderr, once per call, if ``model_params.sensors``
+        declares a name absent from the assembly's own DEFAULTS render, i.e. the
+        assembly's defaults must render every sensor model_params.yaml declares."""
+        resolved = self._resolved(parts)
+        if resolved is None:
+            return self.model_params.sensors
+        resolved = assembly_mod.apply_frame_overrides(resolved, frames or {})
+        prefix = self.assembly.prefix
+        rendered = render_effective_sensors(resolved, _CATALOG, prefix=prefix)
+        defaults_rendered = rendered if not parts else render_effective_sensors(self._resolved({}), _CATALOG, prefix=prefix)
+        missing = {s.name for s in self.model_params.sensors} - {s.name for s in defaults_rendered}
+        if missing:
+            print(
+                f"assembly.yaml incomplete? model_params declares sensors absent from assembly defaults: {sorted(missing)}",
+                file=sys.stderr,
+            )
+        return rendered
+
+    def effective_caps(self, parts: dict[str, list[assembly_mod.RequestPart]], *, frames: dict[str, str] | None = None) -> RobotCaps:
+        """The robot's effective :class:`RobotCaps` for a parts request (``{}`` for
+        pure defaults), mirroring :meth:`effective_sensors`. Robots with no
+        assembly.yaml return ``self.caps`` unchanged; robots with an assembly.yaml get
+        a ``RobotCaps`` with ``resolved``/``catalog`` set so `.available`/instances see
+        placement-derived caps."""
+        resolved = self._resolved(parts)
+        if resolved is None:
+            return self.caps
+        resolved = assembly_mod.apply_frame_overrides(resolved, frames or {})
+        return RobotCaps(self.caps.caps_dir, resolved=resolved, catalog=_CATALOG, prefix=self.assembly.prefix)
 
     @property
     def model(self) -> ModelWrapper:

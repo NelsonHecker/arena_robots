@@ -7,7 +7,7 @@
        ros2_control block which uses an unavailable plugin on Jazzy/Harmonic;
        we provide our own block via base_hw/ridgeback_plus.ros2_control.urdf.
        is_sim stays false so r100's generic gazebo.urdf.xacro (with mismatched
-       PosePublisher + legacy ign_ros2_control plugin) is skipped too. -->
+       PosePublisher + superseded ign_ros2_control plugin) is skipped too. -->
   <xacro:arg name="use_platform_controllers" default="false"/>
   <xacro:include filename="$(find clearpath_platform_description)/urdf/common.urdf.xacro"/>
   <xacro:include filename="$(find clearpath_platform_description)/urdf/r100/r100.urdf.xacro"/>

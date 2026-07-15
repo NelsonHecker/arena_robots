@@ -16,31 +16,27 @@ sensors:
   - name: imu
     type: imu
     topic: ${namespace}/imu/data
-    frame: imu_sensor
+    frame: oakd_imu_frame
     sensor: imu_sensor
-  - name: bumper_contact
-    type: contact
-    topic: ${namespace}/bumper/contact
-    frame: bumper_contact_sensor
   - name: rgbd_camera_info
     type: camera_info
     topic: ${namespace}/rgbd_camera/camera_info
-    frame: rgbd_camera
+    frame: oakd_rgb_camera_frame
     sensor: rgbd_camera
   - name: rgbd_camera_depth
     type: depth
     topic: ${namespace}/rgbd_camera/depth_image
-    frame: rgbd_camera
+    frame: oakd_rgb_camera_frame
     sensor: rgbd_camera
   - name: rgbd_camera_image
     type: image
     topic: ${namespace}/rgbd_camera/image
-    frame: rgbd_camera
+    frame: oakd_rgb_camera_frame
     sensor: rgbd_camera
   - name: rgbd_camera_points
     type: pointcloud
     topic: ${namespace}/rgbd_camera/points
-    frame: rgbd_camera
+    frame: oakd_rgb_camera_frame
     sensor: rgbd_camera
 control:
   mode: ros2_control

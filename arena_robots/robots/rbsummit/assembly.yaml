@@ -1,0 +1,31 @@
+prefix: "robot_"
+mounts:
+  top:
+    parent: base_link
+    xyz: [-0.01924, 0.0, 0.27642]
+    rpy: [0, 0, 0]
+    accepts: [lidar]
+    frame: top_3d_laser
+  imu:
+    parent: base_link
+    xyz: [0.0385, 0.132, 0.158]
+    rpy: [0, 0, 0]
+    accepts: [imu]
+    frame: vectornav
+  front_cam:
+    parent: base_link
+    xyz: [0.324, 0.012, 0.172]
+    rpy: [0, 0, 0]
+    accepts: [camera]
+    frame: front_rgbd_camera
+defaults:
+  lidar:
+    - variant: robosense_helios_16p
+      mount: top
+  imu:
+    - variant: vectornav
+      mount: imu
+  camera:
+    - variant: d435_color
+      mount: front_cam
+      overrides: {name: rgbd_camera, topic: rgbd_camera, node_name: front_camera}

@@ -368,11 +368,10 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
     <xacro:outdoornav_sensors outdoornav_configuration="$(arg outdoornav_configuration)" />
   </xacro:if>
 
-  <!-- gz-sim sensors; imu_link is already used for the kinematic frame -->
-  <xacro:arg name="sim_path" default=""/>
-  <xacro:include filename="$(find arena_robots)/config/urdf/sensors/default.xacro"/>
-  <xacro:arena_default_lidar parent_link="base_link"/>
-  <xacro:arena_default_imu parent_link="base_link" frame="imu_sensor_link"/>
+  <xacro:arg name="namespace" default=""/>
+  <xacro:arg name="prefix" default=""/>
+  <xacro:arg name="gazebo_classic" default="false"/>
+  <xacro:arg name="gazebo_ignition" default="true"/>
 
   <xacro:husky_base_hw_controller/>
 

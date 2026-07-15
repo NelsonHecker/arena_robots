@@ -1,0 +1,35 @@
+# MoveIt planning joint_limits for arm/ur variant ur30. max_velocity from
+# ur_description config/ur30 (the URDF/controller limits); max_acceleration is
+# the family's uniform planning cap (UR publishes no accel limits). Keys templated
+# ${prefix}${mount}_*, re-keyed per placement by moveit_factory.py.
+joint_limits:
+  "${prefix}${mount}_shoulder_pan_joint":
+    has_velocity_limits: true
+    max_velocity: 2.0943951023931953
+    has_acceleration_limits: true
+    max_acceleration: 15.0
+  "${prefix}${mount}_shoulder_lift_joint":
+    has_velocity_limits: true
+    max_velocity: 2.0943951023931953
+    has_acceleration_limits: true
+    max_acceleration: 15.0
+  "${prefix}${mount}_elbow_joint":
+    has_velocity_limits: true
+    max_velocity: 2.6179938779914944
+    has_acceleration_limits: true
+    max_acceleration: 15.0
+  "${prefix}${mount}_wrist_1_joint":
+    has_velocity_limits: true
+    max_velocity: 3.6651914291880923
+    has_acceleration_limits: true
+    max_acceleration: 15.0
+  "${prefix}${mount}_wrist_2_joint":
+    has_velocity_limits: true
+    max_velocity: 3.6651914291880923
+    has_acceleration_limits: true
+    max_acceleration: 15.0
+  "${prefix}${mount}_wrist_3_joint":
+    has_velocity_limits: true
+    max_velocity: 3.6651914291880923
+    has_acceleration_limits: true
+    max_acceleration: 15.0

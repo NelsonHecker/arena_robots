@@ -1,0 +1,23 @@
+xacro:
+  include: 2d_lidar/sick_microscan3.urdf.xacro
+  macro: sensor_sick_microscan3
+  attach:
+    frame_prefix: "${prefix}${mount}_"
+    parent: "${prefix}${parent}"
+    node_name: "${mount}"
+    node_namespace: "${namespace}"
+    gazebo_classic: "${gazebo_classic}"
+    gazebo_ignition: "${gazebo_ignition}"
+  args: {}
+sensor:
+  gz:
+    - name: "${name:-lidar}"
+      type: laserscan
+      topic: "${topic:-scan}"
+      frame: "${prefix}${mount}_link"
+      sensor: "${mount}"
+    - name: "${name:-lidar}_points"
+      type: pointcloud
+      topic: "${topic:-scan}/points"
+      frame: "${prefix}${mount}_link"
+      sensor: "${mount}"

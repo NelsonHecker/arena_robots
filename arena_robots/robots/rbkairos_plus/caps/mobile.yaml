@@ -1,5 +1,5 @@
 odom_frame: odom
-sensor_frame: lidar
+sensor_frame: robot_front_laser_link
 radius: 0.4
 is_holonomic: true
 

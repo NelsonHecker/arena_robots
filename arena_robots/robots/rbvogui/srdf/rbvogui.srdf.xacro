@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<!-- rbvogui chassis-residual SRDF fragment:
+     the chassis-stack + 4WIS swerve-corner disable_collisions extracted verbatim from
+     robots/rbvogui_plus/srdf/rbvogui_plus.srdf.xacro lines 37-52. Plain robot element:
+     no arm/mount templating needed, so no xacro:arg surface. Composed alongside the
+     placed arm component's SRDF fragment by moveit_factory.py's allocation-derived path. -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="rbvogui">
+
+  <!-- chassis stack (all fixed-jointed off chassis_link) -->
+  <disable_collisions link1="robot_base_link" link2="robot_chassis_link" reason="Adjacent"/>
+  <disable_collisions link1="robot_chassis_link" link2="robot_battery_link" reason="Adjacent"/>
+  <disable_collisions link1="robot_chassis_link" link2="robot_contactors_link" reason="Adjacent"/>
+  <disable_collisions link1="robot_chassis_link" link2="robot_base_logos_link" reason="Adjacent"/>
+  <disable_collisions link1="robot_chassis_link" link2="robot_leds_link" reason="Adjacent"/>
+
+  <!-- 4WIS swerve corners: base_link -> steering_joint -> base_wheel -> rubber wheel -->
+  <disable_collisions link1="robot_base_link" link2="robot_front_right_base_wheel" reason="Adjacent"/>
+  <disable_collisions link1="robot_front_right_base_wheel" link2="robot_front_right_wheel" reason="Adjacent"/>
+  <disable_collisions link1="robot_base_link" link2="robot_front_left_base_wheel" reason="Adjacent"/>
+  <disable_collisions link1="robot_front_left_base_wheel" link2="robot_front_left_wheel" reason="Adjacent"/>
+  <disable_collisions link1="robot_base_link" link2="robot_back_left_base_wheel" reason="Adjacent"/>
+  <disable_collisions link1="robot_back_left_base_wheel" link2="robot_back_left_wheel" reason="Adjacent"/>
+  <disable_collisions link1="robot_base_link" link2="robot_back_right_base_wheel" reason="Adjacent"/>
+  <disable_collisions link1="robot_back_right_base_wheel" link2="robot_back_right_wheel" reason="Adjacent"/>
+
+</robot>

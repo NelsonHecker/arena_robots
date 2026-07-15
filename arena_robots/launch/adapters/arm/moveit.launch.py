@@ -2,6 +2,7 @@
 
 import json
 
+from arena_robots.assembly import RequestPart
 from arena_robots.moveit_factory import build_moveit_params
 from launch import LaunchDescription
 from launch.actions import OpaqueFunction
@@ -20,6 +21,8 @@ def generate_launch_description():
     use_sim_time = LaunchArgument("use_sim_time")
     arm_controller = LaunchArgument("arm_controller")
     arm_joints_json = LaunchArgument("arm_joints_json")
+    parts_json = LaunchArgument("parts_json", default_value="{}")
+    instance = LaunchArgument("instance", default_value="")
 
     def launch_setup(context, *args, **kwargs):
         ns = namespace.substitution.perform(context)
@@ -27,10 +30,15 @@ def generate_launch_description():
         sim = use_sim_time.substitution.perform(context).lower() == "true"
         controller_name = arm_controller.substitution.perform(context)
         joints = json.loads(arm_joints_json.substitution.perform(context))
+        parts = {
+            t: [RequestPart(variant=i["variant"], mount=i.get("mount")) for i in items]
+            for t, items in json.loads(parts_json.substitution.perform(context)).items()
+        }
+        instance_name = instance.substitution.perform(context) or None
 
         tf_prefix = frame.substitution.perform(context)
 
-        moveit_params = build_moveit_params(robot_name, tf_prefix=tf_prefix)
+        moveit_params = build_moveit_params(robot_name, tf_prefix=tf_prefix, parts=parts, instance=instance_name)
         if moveit_params is None:
             raise ValueError(f"{robot_name}: missing 'arm' cap or moveit.package; cannot launch moveit adapter")
 

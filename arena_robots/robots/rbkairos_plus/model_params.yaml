@@ -5,37 +5,37 @@ sensors:
   - name: lidar
     type: laserscan
     topic: ${namespace}/lidar
-    frame: lidar
+    frame: robot_front_laser_link
     sensor: front_laser
   - name: lidar_points
     type: pointcloud
     topic: ${namespace}/lidar/points
-    frame: lidar
+    frame: robot_front_laser_link
     sensor: front_laser
   - name: lidar_rear
     type: laserscan
     topic: ${namespace}/lidar/rear
-    frame: rear_laser
+    frame: robot_rear_laser_link
     sensor: rear_laser
   - name: lidar_rear_points
     type: pointcloud
     topic: ${namespace}/lidar/rear/points
-    frame: rear_laser
+    frame: robot_rear_laser_link
     sensor: rear_laser
   - name: imu
     type: imu
     topic: ${namespace}/imu/data
-    frame: imu_sensor
+    frame: robot_vectornav_link
     sensor: imu_sensor
   - name: rgbd_camera_image
     type: image
     topic: ${namespace}/rgbd_camera/image
-    frame: front_camera_color
+    frame: robot_front_rgbd_camera_color_frame
     sensor: front_camera_color
   - name: rgbd_camera_info
     type: camera_info
     topic: ${namespace}/rgbd_camera/camera_info
-    frame: front_camera_color
+    frame: robot_front_rgbd_camera_color_frame
     sensor: front_camera_color
 control:
   mode: ros2_control

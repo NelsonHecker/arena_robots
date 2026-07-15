@@ -2,7 +2,7 @@
 
 A robot setup file (`config/setup/<name>.yaml`) is a YAML list declaring which
 robot instances to spawn for a given scenario. Resolved at runtime by
-[`RobotSetupIdentifier`](../../arena_robots/SetupFile.py) — `RobotSetupIdentifier('demo')`
+[`RobotSetupIdentifier`](../../arena_robots/SetupFile.py): `RobotSetupIdentifier('demo')`
 loads `demo.yaml` and returns a flat `list[Config]` (one per instance, with
 `count` already expanded).
 
@@ -11,7 +11,7 @@ loads `demo.yaml` and returns a flat `list[Config]` (one per instance, with
 Each list entry is either a **string** (shorthand) or a **dict** (full form).
 Both resolve into one or more [`Config`](../../arena_robots/SetupFile.py) objects.
 
-### Shorthand — one instance of the named robot
+### Shorthand: one instance of the named robot
 
 ```yaml
 - jackal
@@ -21,7 +21,7 @@ Both resolve into one or more [`Config`](../../arena_robots/SetupFile.py) object
 Equivalent to `{ robot: jackal, name: jackal }` followed by
 `{ robot: turtlebot, name: turtlebot }`.
 
-### Dict form — full control
+### Dict form: full control
 
 ```yaml
 - robot: jackal        # required: directory name under robots/<robot>/
@@ -37,12 +37,12 @@ Equivalent to `{ robot: jackal, name: jackal }` followed by
 ```
 
 `count` is consumed during parsing and never appears on the resulting
-`Config` — set `count: 3` and you get three identical instances, each with
+`Config`: set `count: 3` and you get three identical instances, each with
 the same `name` field. If you need distinct names per instance, emit
 multiple list entries instead of using `count`.
 
 ## Examples shipped with arena_robots
 
-- [`all_robots.yaml`](all_robots.yaml) — one of each known robot using
+- [`all_robots.yaml`](all_robots.yaml): one of each known robot using
   shorthand; useful for smoke-testing every URDF and mapping file.
-- [`demo.yaml`](demo.yaml) — three jackals via `count: 3`.
+- [`demo.yaml`](demo.yaml): three jackals via `count: 3`.

@@ -42,24 +42,26 @@ class TestConfigParse:
             with pytest.raises((AttributeError, KeyError)):
                 _ = c.__dict__["count"]
 
-    def test_parse_dict_extra_fields(self):
+    def test_parse_dict_unknown_bare_keys_are_morphology(self):
         from arena_robots.SetupFile import Config
 
         configs = Config.parse({"robot": "tb3", "planner": "NavFn", "controller": "DWB"})
-        assert len(configs) == 1
-        assert configs[0].extra == {"planner": "NavFn", "controller": "DWB"}
+        assert configs[0].parts == {
+            "planner": ["NavFn"],
+            "controller": ["DWB"],
+        }
 
-    def test_parse_dict_mobile_field(self):
+    def test_parse_dict_mobile_adapter_key(self):
         from arena_robots.SetupFile import Config
 
-        configs = Config.parse({"robot": "tb3", "mobile": "rl"})
-        assert configs[0].mobile == "rl"
+        configs = Config.parse({"robot": "tb3", "mobile.adapter": "rl"})
+        assert configs[0].adapters == {"mobile": "rl"}
 
-    def test_parse_dict_arm_field(self):
+    def test_parse_dict_arm_adapter_key(self):
         from arena_robots.SetupFile import Config
 
-        configs = Config.parse({"robot": "tb3", "arm": "moveit"})
-        assert configs[0].arm == "moveit"
+        configs = Config.parse({"robot": "tb3", "arm.adapter": "moveit"})
+        assert configs[0].adapters == {"arm": "moveit"}
 
     def test_parse_deepcopy_count_isolation(self):
         from arena_robots.SetupFile import Config

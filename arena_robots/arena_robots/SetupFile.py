@@ -12,6 +12,11 @@ from arena_simulation_setup.tree import Identifier, ResolverBase
 
 from arena_robots import ARENA_ROBOTS_DIR
 
+# Config fields a morphology directive must not shadow.
+_RESERVED_TYPES = frozenset({'robot', 'name', 'count', 'parts', 'frames', 'adapters', 'extra'})
+# Bare keys routed straight to extra (identity-lane, consumed by Robot.parse).
+_EXTRA_KEYS = frozenset({'pos', 'record_data_dir'})
+
 
 @attrs.define()
 class Config:
@@ -19,29 +24,79 @@ class Config:
 
     robot: str  # name of robot
     name: str | None = None  # name or name prefix
-    mobile: str | None = None  # mobile adapter kind (overrides robot.mobile_adapter)
-    arm: str | None = None  # arm adapter kind (overrides robot.arm_adapter)
-
+    parts: dict[str, list[str]] = attrs.field(factory=dict)  # lhs (mount or type) -> raw value strings
+    frames: dict[str, str] = attrs.field(factory=dict)  # mount -> frame stem override
+    adapters: dict[str, str] = attrs.field(factory=dict)  # cap -> adapter kind
     extra: dict[str, typing.Any] = attrs.field(factory=dict)  # extra arbitrary data
 
     @classmethod
     def parse(cls, data: str | dict[str, typing.Any]) -> Sequence[Config]:
-        """Parse a configuration from the given data."""
+        """Parse a configuration from the given data.
+
+        Dict keys route by grammar, not a registry: ``robot``/``name`` are fields,
+        ``count`` expands instances, ``pos``/``record_data_dir`` are identity extras,
+        ``adapters`` (dict value) and ``<cap>.adapter`` set adapter kinds, ``frames``
+        (dict value) sets mount frame-stem overrides, any other dotted key is rejected
+        (the dot is the adapter lane), and remaining bare keys are morphology
+        directives (``mount=type/variant``, ``mount=variant``, ``type=variant``,
+        ``lhs=none``). Directives are grammar-collected here as raw strings only;
+        mount-vs-type disambiguation and realization happen later, per-robot, at
+        ``Robot.parse``/``assembly.build_request`` resolution time.
+        """
         if isinstance(data, str):
             return (cls(robot=data, name=data),)
+
         count = data.get('count', 1)
-        known = {f.name for f in attrs.fields(cls)}
         fields: dict[str, typing.Any] = {}
         extra: dict[str, typing.Any] = {}
+        adapters: dict[str, str] = {}
+        frames: dict[str, str] = {}
+        parts: dict[str, list[str]] = {}
+
         for k, v in data.items():
             if k == 'count':
                 continue
-            if k in known:
+            if k in ('robot', 'name'):
                 fields[k] = v
-            else:
+                continue
+            if k in _EXTRA_KEYS:
                 extra[k] = v
+                continue
+            if k == 'adapters':
+                if not isinstance(v, dict):
+                    raise RuntimeError(f"'adapters': expected a mapping of cap -> adapter kind, got {v!r}")
+                adapters.update({str(ck): str(cv) for ck, cv in v.items()})
+                continue
+            if k == 'frames':
+                if not isinstance(v, dict):
+                    raise RuntimeError(f"'frames': expected a mapping of mount -> frame, got {v!r}")
+                frames.update({str(ck): str(cv) for ck, cv in v.items()})
+                continue
+            if k == 'extra':
+                if not isinstance(v, dict):
+                    raise RuntimeError(f"'extra': expected a mapping, got {v!r}")
+                extra.update(v)
+                continue
+            if '.' in k:
+                cap, _, tail = k.partition('.')
+                if tail != 'adapter':
+                    raise RuntimeError(
+                        f"'{k}': the only dotted key is '<cap>.adapter=<kind>'; "
+                        "tuning belongs on the planner:= / task-config channel"
+                    )
+                adapters[cap] = str(v)
+                continue
+
+            # remaining bare keys are morphology directives, collected as raw values
+            if k in _RESERVED_TYPES:
+                raise RuntimeError(f"'{k}' is a reserved Config field name; cannot be used as a morphology key")
+            parts[k] = [str(x) for x in v] if isinstance(v, list) else [str(v)]
+
+        fields['parts'] = parts
+        fields['frames'] = frames
+        fields['adapters'] = adapters
         if extra:
-            fields['extra'] = {**fields.get('extra', {}), **extra}
+            fields['extra'] = extra
         return tuple(cls(**copy.deepcopy(fields)) for _ in range(count))
 
 

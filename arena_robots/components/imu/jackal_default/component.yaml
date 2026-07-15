@@ -1,0 +1,17 @@
+# joint_name override avoids the "${frame}_joint" default (would render "imu_link_joint");
+# jackal's joint is named "imu_joint".
+xacro:
+  include: "$(find arena_robots)/components/imu/jackal_default/imu.urdf.xacro"
+  macro: jackal_imu_mount
+  attach:
+    parent_link: "${prefix}${parent}"
+    frame: "${prefix}${mount}_link"
+    joint_name: "${mount}_joint"
+  args: {}
+sensor:
+  gz:
+    - name: "${name:-imu}"
+      type: imu
+      topic: "${topic:-imu/data}"
+      frame: "${prefix}${mount}_link"
+      sensor: imu_sensor

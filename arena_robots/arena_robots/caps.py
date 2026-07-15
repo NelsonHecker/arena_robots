@@ -4,18 +4,19 @@ Each YAML under caps/ declares one capability the robot advertises. File
 presence is the advertisement: `caps/arm.yaml` means the robot has `arm`.
 
 Shape convention:
-    caps/mobile.yaml  — flat primitives + adapter sub-blocks (nav2, rl, ...)
-    caps/arm.yaml     — dict of named instances (single-arm is one entry named "arm")
-    caps/lift.yaml    — dict of named instances
-    caps/gripper.yaml — dict of named instances, with per-entry `arm:` back-ref
+    caps/mobile.yaml:  flat primitives + adapter sub-blocks (nav2, rl, ...)
+    caps/arm.yaml:     dict of named instances (single-arm is one entry named "arm")
+    caps/lift.yaml:    dict of named instances
+    caps/gripper.yaml: dict of named instances, with per-entry `arm:` back-ref
 
 Adapter-specific sub-blocks (moveit, drl_grasp, nav2, rl) are raw dicts inside
-each entry / at top level — read only by their matching runtime-selected adapter.
+each entry / at top level, read only by their matching runtime-selected adapter.
 """
 
 from __future__ import annotations
 
 import ast
+import copy
 import subprocess
 import typing
 import xml.etree.ElementTree as ET
@@ -24,7 +25,15 @@ from typing import Literal
 
 import attrs
 import yaml
+from arena_rclpy_mixins.yaml_replace import YAMLReplacer
 from arena_simulation_setup.tree.Gesture import GestureSpec
+
+from arena_robots.catalog import _frame_stem, resolve_mount_parent
+
+_CAPS_PREFIX = 'robot_'
+"""Frame-templating prefix for placement-rendered caps; matches
+``catalog.render_effective_sensors``'s default so cap frame names (e.g. arm
+base_link/tip_link) line up with the sensor frames on the same robot."""
 
 _POLYGON_TYPES: frozenset[str] = frozenset({'polygon', 'circle'})
 _ACTION_TYPES: frozenset[str] = frozenset({'stop', 'slowdown', 'approach', 'limit'})
@@ -235,7 +244,7 @@ class LaserAngle:
 
 @attrs.define(slots=False)
 class LaserSpec:
-    """Laser scanner geometry — consumed by both nav2 AMCL and RL observation stacks."""
+    """Laser scanner geometry, consumed by both nav2 AMCL and RL observation stacks."""
 
     angle: LaserAngle
     num_beams: int
@@ -522,18 +531,35 @@ class RobotCaps:
     File presence → cap advertisement. Typed accessors front the cap files;
     the generic `raw(<cap>)` exposes adapter-sub-blocks authored on a cap
     Arena doesn't model as a first-class spec yet.
+
+    ``resolved``/``catalog`` (optional, allocation-derived caps): when set,
+    a placement whose component declares a `caps:` block advertises that cap even
+    without a static `caps/<type>.yaml` file, and instances render one spec per
+    placement instead of reading the static file. Leaving both `None` (the
+    default) reproduces the file-only behavior byte-identically.
     """
 
     caps_dir: Path
+    resolved: object | None = None
+    catalog: object | None = None
+    # chassis assembly prefix (${prefix}); robots with no prefix convention (jackal) pass ""
+    prefix: str = _CAPS_PREFIX
 
     _cached: dict[str, typing.Any] = attrs.field(factory=dict, init=False)
 
     @property
     def available(self) -> frozenset[str]:
-        """Cap names present as `caps/<name>.yaml`. Empty if no caps/ dir."""
-        if not self.caps_dir.is_dir():
-            return frozenset()
-        return frozenset(p.stem for p in self.caps_dir.glob('*.yaml'))
+        """Cap names present as `caps/<name>.yaml`, unioned with placement types
+        whose component declares a `caps:` block when `resolved` is set."""
+        file_stems = frozenset(p.stem for p in self.caps_dir.glob('*.yaml')) if self.caps_dir.is_dir() else frozenset()
+        if self.resolved is None:
+            return file_stems
+        placed = frozenset(
+            placement.type
+            for placement in self.resolved.placements
+            if self.catalog.get(placement.type, placement.variant).caps
+        )
+        return file_stems | placed
 
     def _load_cap_file(self, cap: str) -> dict[str, typing.Any]:
         if cap in self._cached:
@@ -570,11 +596,30 @@ class RobotCaps:
         cap: str,
         cls: type[InstanceSpec],
     ) -> dict[str, typing.Any] | None:
+        placements = [p for p in self.resolved.placements if p.type == cap] if self.resolved is not None else []
+        if placements:
+            path = self.caps_dir / f'{cap}.yaml'
+            out: dict[str, typing.Any] = {}
+            for placement in placements:
+                component = self.catalog.get(placement.type, placement.variant)
+                context: dict[str, typing.Any] = {
+                    'mount': _frame_stem(placement.mount),
+                    'variant': placement.variant,
+                    'parent': resolve_mount_parent(self.resolved, self.catalog, placement.mount),
+                    'prefix': self.prefix,
+                    **placement.params,
+                    **placement.overrides,
+                }
+                rendered = YAMLReplacer(context).replace(copy.deepcopy(component.caps))
+                rendered = _substitute_keys(rendered, context)
+                out[placement.mount.name] = cls(path=path, raw=rendered, name=placement.mount.name)
+            return out
+
         if cap not in self.available:
             return None
         data = self._load_cap_file(cap)
         path = self.caps_dir / f'{cap}.yaml'
-        out: dict[str, typing.Any] = {}
+        out = {}
         for name, entry in data.items():
             if not isinstance(entry, dict):
                 raise ValueError(f"{path}: '{name}' must be a mapping (dict-keyed instance); got {type(entry).__name__}. See robots/README.md on the uniform dict-keyed shape for multi-instance caps.")
@@ -582,11 +627,23 @@ class RobotCaps:
         return out
 
 
+def _substitute_keys(obj: object, context: dict[str, typing.Any]) -> object:
+    """`YAMLReplacer.replace` only substitutes dict VALUES (and `**spread` keys);
+    a plain `${...}` dict key (e.g. caps `named_poses.<pose>.joints`, keyed by
+    templated joint name) passes through unresolved. Walk an already-value-rendered
+    structure and substitute those keys too, with the same context."""
+    if isinstance(obj, dict):
+        return {(YAMLReplacer(context).replace(k) if isinstance(k, str) else k): _substitute_keys(v, context) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_substitute_keys(v, context) for v in obj]
+    return obj
+
+
 def _parse_srdf_group(srdf_ref: str, group_name: str) -> dict[str, typing.Any]:
     """Resolve a `$(find …)/…srdf[.xacro]` ref and extract a <group>'s primitives.
 
-    Returns a dict with `base_link`, `tip_link`, and — if the group enumerates
-    joints via <joints> or the URDF walk succeeds — `chain`.
+    Returns a dict with `base_link`, `tip_link`, and, if the group enumerates
+    joints via <joints> or the URDF walk succeeds, `chain`.
     """
     src_path = _resolve_find_ref(srdf_ref)
     if src_path.suffix == '.xacro':

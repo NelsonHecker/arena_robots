@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <!-- Mount-aware wrapper around arena_default_imu (config/urdf/sensors/default.xacro):
+       see lidar/arena_default/lidar.urdf.xacro for why a shim is needed instead of
+       invoking the shared macro directly. Body copied verbatim from arena_default_imu;
+       config/urdf/sensors/default.xacro stays untouched since husky/dingo/WLP311D/
+       WLP311E/ridgeback_plus/boxer still call it directly. -->
+  <xacro:arg name="sim_path" default=""/>
+
+  <xacro:macro name="arena_default_imu_mount" params="parent_link *origin frame:=imu_link
+                                                       update_rate:=100">
+    <link name="${frame}"/>
+
+    <joint name="${frame}_joint" type="fixed">
+      <xacro:insert_block name="origin"/>
+      <parent link="${parent_link}"/>
+      <child link="${frame}"/>
+    </joint>
+
+    <gazebo reference="${frame}">
+      <sensor name="imu_sensor" type="imu">
+        <update_rate>${update_rate}</update_rate>
+        <always_on>true</always_on>
+        <gz_frame_id>$(arg sim_path)/${frame}</gz_frame_id>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+</robot>

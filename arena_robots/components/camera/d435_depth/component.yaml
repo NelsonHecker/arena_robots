@@ -1,0 +1,26 @@
+xacro:
+  include: "$(find arena_robots)/components/camera/d435_depth/d435_depth.urdf.xacro"
+  macro: d435_depth
+  attach:
+    name: "${camera:-${mount}}"
+    parent_link: "${prefix}${parent}"
+    frame: "${prefix}${mount}"
+    topic: "${topic:-rgbd_camera}"
+  args: {}
+sensor:
+  gz:
+    - name: "${name:-rgbd_camera}_info"
+      type: camera_info
+      topic: "${topic:-rgbd_camera}/camera_info"
+      frame: "${prefix}${camera:-${mount}}_link"
+      sensor: "${camera:-${mount}}"
+    - name: "${name:-rgbd_camera}_depth"
+      type: depth
+      topic: "${topic:-rgbd_camera}/depth_image"
+      frame: "${prefix}${camera:-${mount}}_link"
+      sensor: "${camera:-${mount}}"
+    - name: "${name:-rgbd_camera}_points"
+      type: pointcloud
+      topic: "${topic:-rgbd_camera}/depth_image/points"
+      frame: "${prefix}${camera:-${mount}}_link"
+      sensor: "${camera:-${mount}}"

@@ -46,7 +46,7 @@
     <sensor name="gpu_lidar" type="gpu_lidar">
       <pose>0 0 0 0 0 0</pose>
       <update_rate>10</update_rate>
-      <gz_frame_id>$(arg name)/${name}_link</gz_frame_id>
+      <gz_frame_id>$(arg sim_path)/${name}_link</gz_frame_id>
       <lidar>
         <scan>
           <horizontal>

@@ -1,5 +1,6 @@
 """Nav2 launch helpers."""
 
+import json
 import tempfile
 import typing
 from pathlib import Path
@@ -28,6 +29,7 @@ def compile_sensors_to_nav2(
     obstacle_range_margin: float = 1.0,
     max_obstacle_height: float = 2.0,
     pointcloud_min_obstacle_height: float = 0.1,
+    laserscan_min_obstacle_height: float = 0.05,
     clearing: bool = True,
     marking: bool = True,
     inf_is_valid: bool = True,
@@ -40,8 +42,10 @@ def compile_sensors_to_nav2(
     below it: Isaac's 3D lidar emits phantom max-range points for missed rays, and a
     margin keeps those from leaking into the costmap as concentric arcs that no later
     raytrace ever clears. `inf_is_valid` lets no-return beams clear out to `max_range`.
-    `pointcloud_min_obstacle_height` is a height floor applied to 3D cloud sources only,
-    so their ground returns are dropped instead of marked.
+    `pointcloud_min_obstacle_height` is a height floor for 3D cloud sources, so their
+    ground returns are dropped instead of marked. `laserscan_min_obstacle_height` is a
+    lower floor for 2D scans: level returns always sit at beam height, so it only drops
+    the ground strikes swept by a momentarily tilted robot (spawn bounce, door sills).
     `extra_per_source` is merged onto every emitted source last, letting callers layer
     layer-specific tunables (e.g. `observation_persistence` for the global costmap).
     """
@@ -64,6 +68,8 @@ def compile_sensors_to_nav2(
         }
         if data_type == "PointCloud2":
             source["min_obstacle_height"] = pointcloud_min_obstacle_height
+        elif data_type == "LaserScan":
+            source["min_obstacle_height"] = laserscan_min_obstacle_height
         if extra_per_source:
             source.update(extra_per_source)
         out[spec.name] = source
@@ -95,17 +101,24 @@ class SensorsDerivedYAML(YAMLFileSubstitution):
         self,
         model_params_path: launch.SomeSubstitutionsType,
         mobile_path: launch.SomeSubstitutionsType,
+        sensors_json: launch.SomeSubstitutionsType = '',
     ):
         super().__init__(path=[], default={}, substitute=False)
         self._path = launch.utilities.normalize_to_list_of_substitutions(model_params_path)
         self._mobile_path = launch.utilities.normalize_to_list_of_substitutions(mobile_path)
+        self._sensors_json = launch.utilities.normalize_to_list_of_substitutions(sensors_json)
 
     def perform(self, context: launch.LaunchContext) -> str:
-        path_str = launch.utilities.perform_substitutions(context, self._path)
         mobile_str = launch.utilities.perform_substitutions(context, self._mobile_path)
-        sensors = ModelParams.from_yaml(path_str).sensors
         mobile = _load_mobile(mobile_str)
         max_range = mobile.laser.range if mobile.laser is not None else _DEFAULT_LIDAR_RANGE
+
+        sensors_json_str = launch.utilities.perform_substitutions(context, self._sensors_json)
+        if sensors_json_str:
+            sensors = [SensorSpec(name=d['name'], type=d['type'], topic=d['topic'], frame='') for d in json.loads(sensors_json_str)]
+        else:
+            path_str = launch.utilities.perform_substitutions(context, self._path)
+            sensors = ModelParams.from_yaml(path_str).sensors
 
         local_sources = compile_sensors_to_nav2(sensors, max_range=max_range)
 

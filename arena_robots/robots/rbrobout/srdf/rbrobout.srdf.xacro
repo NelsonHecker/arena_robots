@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!-- rbrobout chassis-residual SRDF fragment (mirroring
+     robots/rbvogui/srdf/rbvogui.srdf.xacro): the base_link<->lift/wheel adjacency
+     disable_collisions extracted verbatim (link renamed lift_->lift0_) from
+     robots/rbrobout_plus/srdf/rbrobout_plus.srdf.xacro. Plain robot element: no
+     mount templating needed. Composed alongside the placed arm component's SRDF
+     fragment by moveit_factory.py's allocation-derived path. -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="rbrobout">
+
+  <!-- ewellix lift stack: base_link -> lift0_base -> lift0_top -> arm0 -->
+  <disable_collisions link1="robot_base_link" link2="robot_lift0_ewellix_lift_base_link" reason="Adjacent"/>
+  <disable_collisions link1="robot_lift0_ewellix_lift_base_link" link2="robot_lift0_ewellix_lift_top_link" reason="Adjacent"/>
+
+  <!-- mecanum drive wheels (continuous wheel_joint off base_link) -->
+  <disable_collisions link1="robot_base_link" link2="robot_front_right_wheel_link" reason="Adjacent"/>
+  <disable_collisions link1="robot_base_link" link2="robot_front_left_wheel_link" reason="Adjacent"/>
+  <disable_collisions link1="robot_base_link" link2="robot_back_left_wheel_link" reason="Adjacent"/>
+  <disable_collisions link1="robot_base_link" link2="robot_back_right_wheel_link" reason="Adjacent"/>
+
+</robot>

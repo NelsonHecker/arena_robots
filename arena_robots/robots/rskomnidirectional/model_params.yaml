@@ -1,6 +1,6 @@
 robot_model: rskomnidirectional
 base_frame: base
-z_offset: 0.37
+z_offset: 0.05
 sensors:
   - name: lidar
     type: laserscan
@@ -15,7 +15,7 @@ sensors:
   - name: imu
     type: imu
     topic: ${namespace}/imu/data
-    frame: imu_sensor
+    frame: imu_link
     sensor: imu_sensor
 control:
   mode: ros2_control

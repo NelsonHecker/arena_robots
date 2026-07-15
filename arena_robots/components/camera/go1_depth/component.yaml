@@ -1,0 +1,28 @@
+# camID selects go1's physical camera slot (1=face..5=rearDown, upstream go1_description
+# numbering); only face is wired via assembly.yaml. No depth output bridged despite the
+# backing rgbd_camera sensor emitting one: matches the model_params.yaml declaration.
+xacro:
+  include: include/depthcamera.xacro
+  macro: go1_depth_camera
+  attach:
+    camID: "${camID}"
+    name: "${mount}"
+  args:
+    camID: 1
+sensor:
+  gz:
+    - name: "camera_${mount}_image"
+      type: image
+      topic: "camera_${mount}/image"
+      frame: "camera_${mount}"
+      sensor: "camera_${mount}"
+    - name: "camera_${mount}_info"
+      type: camera_info
+      topic: "camera_${mount}/camera_info"
+      frame: "camera_${mount}"
+      sensor: "camera_${mount}"
+    - name: "camera_${mount}_points"
+      type: pointcloud
+      topic: "camera_${mount}/points"
+      frame: "camera_${mount}"
+      sensor: "camera_${mount}"

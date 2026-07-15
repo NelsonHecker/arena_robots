@@ -2,8 +2,11 @@
 <robot name="mpo700" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
   <xacro:arg name="namespace" default=""/>
+  <xacro:arg name="prefix" default=""/>
   <xacro:arg name="sim_path" default=""/>
   <xacro:arg name="gazebo_controllers" default=""/>
+  <xacro:arg name="gazebo_classic" default="false"/>
+  <xacro:arg name="gazebo_ignition" default="true"/>
 
   <xacro:property name="ODM_joint_type" value="continuous"/>
 
@@ -12,29 +15,8 @@
   <xacro:include filename="$(find arena_robots)/robots/mpo700/urdf/mpo700.gazebo"/>
 
   <xacro:include filename="$(find arena_robots)/robots/rbvogui/urdf/utils/inertia.urdf.xacro"/>
-  <xacro:include filename="$(find arena_robots)/robots/rbvogui/urdf/2d_lidar/sick_s300.urdf.xacro"/>
 
   <xacro:mpo_700_body/>
-
-  <xacro:sensor_sick_s300
-    frame_prefix="front_laser_"
-    parent="base_footprint"
-    node_namespace="$(arg namespace)"
-    node_name="front_laser"
-    gazebo_classic="false"
-    gazebo_ignition="true">
-    <origin xyz="0.338 0.288 0.223" rpy="3.14 0 0.79"/>
-  </xacro:sensor_sick_s300>
-
-  <xacro:sensor_sick_s300
-    frame_prefix="rear_laser_"
-    parent="base_footprint"
-    node_namespace="$(arg namespace)"
-    node_name="rear_laser"
-    gazebo_classic="false"
-    gazebo_ignition="true">
-    <origin xyz="-0.338 -0.288 0.223" rpy="3.14 0 3.93"/>
-  </xacro:sensor_sick_s300>
 
   <xacro:mpo700_base_hw_controller/>
 

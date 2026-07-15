@@ -1,0 +1,53 @@
+mounts:
+  front:
+    parent: chassis_link
+    xyz: [0.53, 0.33, 0.1145]
+    rpy: [3.141592653589793, 0, 0.7853981633974483]
+    accepts: [lidar]
+    frame: front_laser
+  rear:
+    parent: chassis_link
+    xyz: [-0.53, -0.33, 0.1145]
+    rpy: [3.141592653589793, 0, -2.356194490192345]
+    accepts: [lidar]
+    frame: rear_laser
+  imu:
+    parent: chassis_link
+    xyz: [0.3, -0.3, 0.0725]
+    rpy: [0, 0, 0]
+    accepts: [imu]
+    frame: vectornav
+  front_cam:
+    parent: base_link
+    xyz: [0.46462, 0.0, 0.18258]
+    rpy: [0, 0, 0]
+    accepts: [camera]
+    frame: front_rgbd_camera
+  rear_cam:
+    parent: base_link
+    xyz: [-0.503, 0.0, 0.29]
+    rpy: [0, 0, -3.141592653589793]
+    accepts: [camera]
+    frame: rear_rgbd_camera
+  arm0:
+    parent: chassis_link
+    xyz: [0, 0, 0.235]
+    rpy: [0, 0, 0]
+    accepts: [arm]
+defaults:
+  lidar:
+    - variant: sick_s300
+      mount: front
+    - variant: sick_s300
+      mount: rear
+      overrides: {name: lidar_rear, topic: scan/rear}
+  imu:
+    - variant: vectornav
+      mount: imu
+  camera:
+    - variant: d435_color
+      mount: front_cam
+      overrides: {name: front_rgbd_camera, topic: front_rgbd_camera/color, image_suffix: /image_raw, node_name: front_camera}
+    - variant: d435_color
+      mount: rear_cam
+      overrides: {name: rear_rgbd_camera, topic: rear_rgbd_camera/color, image_suffix: /image_raw, node_name: rear_camera}

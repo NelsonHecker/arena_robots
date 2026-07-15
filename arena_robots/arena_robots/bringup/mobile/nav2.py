@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import ClassVar
 
 from launch import Action
@@ -9,6 +10,7 @@ from launch.substitutions import PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
 
 from arena_robots.bringup import Bringup, BringupMeta
+from arena_robots.Sensor import SensorSpec, SensorType
 from arena_robots.task_kinds import TaskKind
 
 
@@ -42,6 +44,7 @@ class Nav2Bringup(Bringup):
         train_mode: bool = False,
         task_generator_node: str = "",
         env_namespace: str = "",
+        sensors: list[SensorSpec] | None = None,
         **_: object,
     ) -> list[Action]:
         launch_file = PathJoinSubstitution(
@@ -53,20 +56,32 @@ class Nav2Bringup(Bringup):
                 "nav2.launch.py",
             ]
         )
+        launch_arguments = {
+            "robot": self.robot.name,
+            "namespace": self.namespace,
+            "use_sim_time": str(use_sim_time).lower(),
+            "frame": frame,
+            "global_planner": global_planner,
+            "local_planner": local_planner,
+            "inter_planner": inter_planner,
+            "train_mode": str(train_mode).lower(),
+            "task_generator_node": task_generator_node,
+            "env_namespace": env_namespace,
+        }
+        if sensors is not None:
+            launch_arguments["sensors_json"] = json.dumps(
+                [
+                    {
+                        "name": s.name,
+                        "type": s.type.value if isinstance(s.type, SensorType) else str(s.type),
+                        "topic": s.topic,
+                    }
+                    for s in sensors
+                ]
+            )
         return [
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(launch_file),
-                launch_arguments={
-                    "robot": self.robot.name,
-                    "namespace": self.namespace,
-                    "use_sim_time": str(use_sim_time).lower(),
-                    "frame": frame,
-                    "global_planner": global_planner,
-                    "local_planner": local_planner,
-                    "inter_planner": inter_planner,
-                    "train_mode": str(train_mode).lower(),
-                    "task_generator_node": task_generator_node,
-                    "env_namespace": env_namespace,
-                }.items(),
+                launch_arguments=launch_arguments.items(),
             )
         ]

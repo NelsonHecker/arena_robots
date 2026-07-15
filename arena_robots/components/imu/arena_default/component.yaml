@@ -1,0 +1,19 @@
+# frame default "imu_link" fits rskomnidirectional/WLP311D/E; dingo/husky/ridgeback
+# override it to "imu_sensor_link" since their own imu_link is already the kinematic frame.
+xacro:
+  include: "$(find arena_robots)/components/imu/arena_default/imu.urdf.xacro"
+  macro: arena_default_imu_mount
+  attach:
+    parent_link: "${parent}"
+    frame: "${frame:-imu_link}"
+    update_rate: "${update_rate:-100}"
+  args:
+    frame: imu_link
+    update_rate: 100
+sensor:
+  gz:
+    - name: "${name:-imu}"
+      type: imu
+      topic: "${topic:-imu/data}"
+      frame: "${frame:-imu_link}"
+      sensor: imu_sensor

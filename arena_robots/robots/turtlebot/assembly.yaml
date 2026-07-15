@@ -1,0 +1,20 @@
+prefix: ""
+mounts:
+  rplidar:
+    parent: shell_link
+    xyz: [-0.04, 0.0, 0.098715]
+    rpy: [0, 0, 1.5707963267948966]
+    accepts: [lidar]
+  front:
+    parent: oakd_camera_bracket
+    xyz: [0.0584, 0.0, 0.09676]
+    rpy: [0, 0, 0]
+    accepts: [camera]
+    frame: oakd
+defaults:
+  lidar:
+    - variant: rplidar
+      mount: rplidar
+  camera:
+    - variant: oakd_rgbd
+      mount: front

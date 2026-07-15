@@ -1,6 +1,9 @@
 <?xml version="1.0"?>
 <robot name="kairos" xmlns:xacro="http://ros.org/wiki/xacro">
 
+  <!-- Chassis ros2_control tag (gz_ros2_control/GazeboSimSystem). An arm placement's
+       joints are injected into this tag post-render by arena_simulation_setup's urdf
+       loader (_inject_ros2_control_joints), fed by arena_robots.catalog.render_control_joints. -->
   <xacro:macro name="rbkairos_base_hw_controller">
     <ros2_control name="kairos" type="system">
       <hardware>

@@ -5,11 +5,17 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
+import xacro
+import yaml
 from ament_index_python.packages import get_package_share_directory
+from arena_rclpy_mixins.yaml_replace import YAMLReplacer
 from moveit_configs_utils import MoveItConfigsBuilder
 
 import arena_robots.Robot
+from arena_robots.caps import _substitute_keys
+from arena_robots.catalog import render_wrapper_xacro
 
 
 def _prefix_urdf_links(urdf_xml: str, tf_prefix: str) -> str:
@@ -64,10 +70,101 @@ def _prefix_srdf_links(srdf_xml: str, tf_prefix: str) -> str:
         v = vj.get("child_link")
         if v:
             vj.set("child_link", tf_prefix + v)
+    for ee in root.iter("end_effector"):
+        v = ee.get("parent_link")
+        if v:
+            ee.set("parent_link", tf_prefix + v)
     return ET.tostring(root, encoding="unicode")
 
 
-def build_moveit_params(robot_name: str, tf_prefix: str = "") -> dict[str, object] | None:
+def _select_arm(robot_name: str, arms: dict[str, object], instance: str | None) -> tuple[str, object]:
+    """Pick one ``(key, entry)`` pair out of ``arms`` (``RobotCaps.arm``-shaped).
+    ``None`` selects the sole entry, or raises ``ValueError`` (listing available
+    instances) when there are several; an unknown ``instance`` raises ``KeyError``.
+    The key is the mount name for allocation-derived caps (author key for robots
+    without assembly.yaml), needed to render the SRDF/joint_limits per placement."""
+    if instance is None:
+        if len(arms) != 1:
+            raise ValueError(f"{robot_name}: multiple arm instances {sorted(arms)}; 'instance' is required")
+        ((key, arm),) = arms.items()
+        return key, arm
+    if instance not in arms:
+        raise KeyError(f"{robot_name}: arm instance {instance!r} not found; available: {sorted(arms)}")
+    return instance, arms[instance]
+
+
+def _compose_srdf(
+    robot: arena_robots.Robot.RobotView,
+    fragment_path: Path,
+    context: dict[str, str],
+    extras: list[tuple[Path, dict[str, str]]] | None = None,
+) -> Path:
+    """Xacro-render the placed arm component's SRDF fragment with ``context``
+    (prefix/mount/parent), then merge it with the chassis's residual SRDF fragment
+    (``robots/<robot>/srdf/<robot>.srdf.xacro``, if declared) and any ``extras``
+    (per-placement ``(fragment, context)`` pairs, e.g. a gripper chained onto the arm)
+    under one ``<robot>`` element. Returns the path to a temp file holding the
+    composed document."""
+    fragment_xml = xacro.process_file(str(fragment_path), mappings={k: str(v) for k, v in context.items()}).toxml()
+    merged = ET.Element("robot", {"name": robot.name})
+    merged.extend(list(ET.fromstring(fragment_xml)))
+
+    for extra_path, extra_context in extras or []:
+        extra_xml = xacro.process_file(str(extra_path), mappings={k: str(v) for k, v in extra_context.items()}).toxml()
+        merged.extend(list(ET.fromstring(extra_xml)))
+
+    base_srdf = robot.path / "srdf" / f"{robot.name}.srdf.xacro"
+    if base_srdf.is_file():
+        base_xml = xacro.process_file(str(base_srdf)).toxml()
+        merged.extend(list(ET.fromstring(base_xml)))
+
+    with NamedTemporaryFile(mode="w", suffix=".srdf", delete=False) as f:
+        f.write(ET.tostring(merged, encoding="unicode"))
+        return Path(f.name)
+
+
+def _gripper_srdf_extras(resolved: object, arm_mount: str, prefix: str) -> list[tuple[Path, dict[str, str]]]:
+    """``(fragment, context)`` per gripper placement chained onto ``arm_mount`` whose
+    component caps declare a ``moveit.srdf`` fragment. The context adds ``arm`` (the
+    carrying arm's frame stem) beside the usual prefix/mount, for the fragment's
+    end_effector parent link/group and the wrist adjacency disable."""
+    from arena_robots.catalog import Catalog, _frame_stem
+
+    arm_placement = next((p for p in resolved.placements if p.type == "arm" and p.mount.name == arm_mount), None)
+    if arm_placement is None:
+        return []
+    catalog = Catalog()
+    extras: list[tuple[Path, dict[str, str]]] = []
+    for placement in resolved.placements:
+        if placement.type != "gripper":
+            continue
+        chained = placement.mount.chained_parent
+        if chained is None or chained[0] != arm_mount:
+            continue
+        mv = (catalog.get(placement.type, placement.variant).caps or {}).get("moveit") or {}
+        srdf_ref = mv.get("srdf") or {}
+        if "path" not in srdf_ref:
+            continue
+        fragment = Path(get_package_share_directory(srdf_ref.get("package", "arena_robots"))) / srdf_ref["path"]
+        extras.append((fragment, {"prefix": prefix, "mount": _frame_stem(placement.mount), "arm": _frame_stem(arm_placement.mount)}))
+    return extras
+
+
+def _render_joint_limits(jl_path: Path, context: dict[str, str]) -> Path:
+    """Re-key a component ``joint_limits.yaml``'s ``${prefix}${mount}_*`` joint
+    names for one placement. Files with no ``${`` token pass through untouched."""
+    text = jl_path.read_text()
+    if "${" not in text:
+        return jl_path
+    data = yaml.safe_load(text)
+    rendered = YAMLReplacer(context).replace(data)
+    rendered = _substitute_keys(rendered, context)
+    with NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+        yaml.safe_dump(rendered, f)
+        return Path(f.name)
+
+
+def build_moveit_params(robot_name: str, tf_prefix: str = "", parts: dict[str, list] | None = None, instance: str | None = None) -> dict[str, object] | None:
     """Return a flat parameter dict (URDF, SRDF, kinematics, joint limits)
     for ``robot_name`` if it advertises ``arm``; ``None`` otherwise.
 
@@ -75,17 +172,35 @@ def build_moveit_params(robot_name: str, tf_prefix: str = "") -> dict[str, objec
     link reference in the URDF/SRDF gets the prefix prepended, so MoveIt's
     planning-scene monitor looks up the same frame ids that
     robot_state_publisher publishes.
+
+    ``parts`` is the robot's morphology request (allocation-derived
+    caps); ``None``/``{}`` resolves defaults only. Both current callers
+    (moveit.launch.py, rviz_config.py) run across a launch/process boundary
+    from the task_generator entity that holds the real request and can't
+    supply it yet, so they get defaults.
+
+    ``instance`` selects which arm cap instance to build for (dict key from
+    ``RobotCaps.arm``). ``None`` selects the sole instance when there is
+    exactly one, and raises ``ValueError`` (listing available instances)
+    when there are several; an unknown ``instance`` raises ``KeyError``.
+
+    For allocation-derived robots (an ``assembly.yaml`` resolves ``parts``) the chassis
+    xacro alone has no arm and no sensors, so ``robot_description`` is rendered through
+    the full wrapper (:func:`catalog.render_wrapper_xacro`) instead of the bare chassis
+    file, and ``robot_description_semantic``/joint_limits are composed/re-keyed per
+    placement (mount/prefix/parent, from the placement's rendered ``caps.moveit.args``).
+    Robots with no ``assembly.yaml`` (e.g. rbvogui_plus) take the static-path route
+    unchanged: static chassis/SRDF/joint_limits paths.
     """
     robot = arena_robots.Robot.RobotIdentifier(robot_name).resolve_sync()
-    if "arm" not in robot.caps.available:
+    caps = robot.effective_caps(parts or {})
+    if "arm" not in caps.available:
         return None
 
-    arms = robot.caps.arm
+    arms = caps.arm
     if arms is None:
         raise ValueError(f"{robot_name}: arm cap required but absent")
-    if len(arms) != 1:
-        raise NotImplementedError(f"{robot_name}: multi-arm not yet supported")
-    (arm,) = arms.values()
+    arm_key, arm = _select_arm(robot_name, arms, instance)
 
     mv = arm.raw.get("moveit") or {}
     pkg = mv.get("package")
@@ -96,7 +211,15 @@ def build_moveit_params(robot_name: str, tf_prefix: str = "") -> dict[str, objec
     mappings = {k: (str(v).lower() if isinstance(v, bool) else str(v)) for k, v in args_dict.items()}
     mappings.setdefault("name", mappings.get("ur_type", "ur5e"))
 
-    urdf_abs = Path(get_package_share_directory("arena_robots")) / "robots" / robot_name / "urdf" / f"{robot_name}.urdf.xacro"
+    resolved = robot._resolved(parts or {})
+
+    if resolved is not None:
+        wrapper_xml = render_wrapper_xacro(robot, resolved)
+        with NamedTemporaryFile(mode="w", suffix=".urdf.xacro", delete=False) as wf:
+            wf.write(wrapper_xml)
+        urdf_abs = Path(wf.name)
+    else:
+        urdf_abs = Path(get_package_share_directory("arena_robots")) / "robots" / robot_name / "urdf" / f"{robot_name}.urdf.xacro"
 
     srdf_ref = mv.get("srdf") or {}
     srdf_pkg = srdf_ref.get("package", pkg)
@@ -107,6 +230,12 @@ def build_moveit_params(robot_name: str, tf_prefix: str = "") -> dict[str, objec
     jl_pkg = jl_ref.get("package", pkg)
     jl_rel = jl_ref.get("path", "config/joint_limits.yaml")
     jl_abs = Path(get_package_share_directory(jl_pkg)) / jl_rel
+
+    if resolved is not None:
+        placement_context = {k: mappings[k] for k in ("prefix", "mount", "parent") if k in mappings}
+        extras = _gripper_srdf_extras(resolved, arm_key, placement_context.get("prefix", ""))
+        srdf_abs = _compose_srdf(robot, srdf_abs, placement_context, extras)
+        jl_abs = _render_joint_limits(jl_abs, placement_context)
 
     moveit_config = MoveItConfigsBuilder(robot_name="ur", package_name=pkg).robot_description(file_path=str(urdf_abs), mappings=mappings).robot_description_semantic(srdf_abs, mappings=mappings).joint_limits(jl_abs).to_moveit_configs()
     params = moveit_config.to_dict()

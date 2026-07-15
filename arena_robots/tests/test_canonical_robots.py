@@ -56,5 +56,5 @@ def test_priority_uniqueness_informational(capsys: pytest.CaptureFixture[str]) -
         if len(top) > 1:
             print(
                 f"priority tie: holonomic={sig[0]} sensors={sorted(sig[1])}"
-                f" — robots with max priority {max_p}: {sorted(top)}"
+                f", robots with max priority {max_p}: {sorted(top)}"
             )

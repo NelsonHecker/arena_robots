@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- Boxer's own rear safety lidar: a second, different bespoke gpu_lidar model from
+       the front one (different mesh, narrower FOV, fewer samples, shorter range:
+       upstream never specified the real hardware, kept as-is). Body copied
+       verbatim from sensors.urdf.xacro, same <ray>/classic-plugin caveats as
+       lidar/boxer_front. frame has no "_link" suffix: the link/joint names are
+       "rear_sensor"/"rear_sensor_joint" verbatim, matching the mount name; the gz
+       sensor itself is named "rear_laser" (link and sensor names differ upstream). -->
+  <xacro:arg name="sim_path" default=""/>
+
+  <xacro:macro name="boxer_rear_lidar_mount" params="parent_link *origin frame:=rear_sensor">
+    <link name="${frame}">
+      <visual>
+        <geometry>
+          <mesh filename="package://arena_robots/robots/boxer/meshes/rear_sensor.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+        <origin xyz="0 0 0" rpy="0 0 ${pi}"/>
+        <material name="Boxer_Black"/>
+      </visual>
+    </link>
+
+    <joint name="${frame}_joint" type="fixed">
+      <xacro:insert_block name="origin"/>
+      <parent link="${parent_link}"/>
+      <child link="${frame}"/>
+    </joint>
+
+    <gazebo reference="${frame}">
+      <material>Gazebo/Black</material>
+      <turnGravityOff>true</turnGravityOff>
+      <sensor name="rear_laser" type="gpu_lidar">
+        <gz_frame_id>$(arg sim_path)/${frame}</gz_frame_id>
+        <pose>0 0 0 0 0 0</pose>
+        <visualize>false</visualize>
+        <update_rate>33</update_rate>
+        <ray>
+          <scan>
+            <horizontal>
+              <samples>90</samples>
+              <resolution>1</resolution>
+              <min_angle>0.785398163397</min_angle>
+              <max_angle>-0.785398163397</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.1</min>
+            <max>5</max>
+            <resolution>0.01</resolution>
+          </range>
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.001</stddev>
+          </noise>
+        </ray>
+        <plugin name="gazebo_ros_laser" filename="libgazebo_ros_laser.so">
+          <topicName>rear/scan</topicName>
+          <frameName>rear_sensor</frameName>
+          <robotNamespace>/</robotNamespace>
+        </plugin>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+</robot>

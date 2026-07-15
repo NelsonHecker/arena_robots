@@ -1,7 +1,7 @@
 # Bringup adapter launch files
 
 This directory contains per-bringup-kind launch files. They are implementation
-details of `arena_robots.bringup.*` classes — not public entry points.
+details of `arena_robots.bringup.*` classes, not public entry points.
 
 The public entry point is [`launch/bringup.launch.py`](../bringup.launch.py).
 Users invoke that file; it selects and includes the appropriate file here based

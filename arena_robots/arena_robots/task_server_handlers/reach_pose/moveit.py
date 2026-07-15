@@ -45,22 +45,30 @@ class ReachPoseHandlerMoveIt(TaskHandler[ReachPose.Goal, ReachPose.Feedback, Rea
         self._bringup = bringup
         self._tf_buffer = tf_buffer
         self._node = node
-        action_name = bringup.namespace("move_action")
-        self._native_client = ActionClient(node, MoveGroup, str(action_name))
         self._tf_prefix = bringup.frame
+        self._native_clients: dict[str, ActionClient] = {
+            mount: ActionClient(node, MoveGroup, str(bringup.arm_namespace(mount)("move_action"))) for mount in bringup.arms()
+        }
 
     async def execute(self, goal_handle: object) -> ReachPose.Result:
         arena_goal: ReachPose.Goal = goal_handle.request
         result = ReachPose.Result()
 
-        arms = self._bringup.robot.caps.arm
-        if arms is None:
-            raise ValueError(f"{self._bringup.robot.name}: arm cap required but absent")
-        if len(arms) != 1:
-            result.status = ReachPose.Result.STATUS_ABORTED
-            result.reason = f"expected exactly 1 arm cap, got {len(arms)}"
-            return result
-        (arm,) = arms.values()
+        arms = self._bringup.arms()
+        if arena_goal.instance:
+            if arena_goal.instance not in arms:
+                result.status = ReachPose.Result.STATUS_ABORTED
+                result.reason = f"unknown arm instance {arena_goal.instance!r}; available: {sorted(arms)}"
+                return result
+            mount = arena_goal.instance
+        else:
+            if len(arms) != 1:
+                result.status = ReachPose.Result.STATUS_ABORTED
+                result.reason = f"'instance' required; multiple arms available: {sorted(arms)}"
+                return result
+            (mount,) = arms
+        arm = arms[mount]
+        native_client = self._native_clients[mount]
 
         mg_goal = self._build_goal(arena_goal, arm)
         if mg_goal is None:
@@ -69,7 +77,7 @@ class ReachPoseHandlerMoveIt(TaskHandler[ReachPose.Goal, ReachPose.Feedback, Rea
             result.reason = f"named pose {arena_goal.named_target!r} not in caps/arm.yaml.named_poses"
             return result
 
-        while not self._native_client.server_is_ready():
+        while not native_client.server_is_ready():
             if not goal_handle.is_active:
                 result.status = ReachPose.Result.STATUS_CANCELED
                 result.reason = "goal canceled by client"
@@ -82,7 +90,7 @@ class ReachPoseHandlerMoveIt(TaskHandler[ReachPose.Goal, ReachPose.Feedback, Rea
             result.reason = "goal canceled by client"
             return result
 
-        send_future = self._native_client.send_goal_async(mg_goal)
+        send_future = native_client.send_goal_async(mg_goal)
         native_handle = await send_future
 
         if not native_handle.accepted:

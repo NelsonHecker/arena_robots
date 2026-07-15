@@ -5,8 +5,22 @@
 <!-- =================================================================================== -->
 <robot name="WLP311D" xmlns:xacro="http://wiki.ros.org/xacro">
     <xacro:arg name="namespace" default=""/>
-    <xacro:include filename="$(find arena_robots)/config/urdf/sensors/default.xacro"/>
-    <xacro:arena_default_nav_sensors parent_link="base"/>
+    <xacro:arg name="prefix" default=""/>
+    <xacro:arg name="gazebo_controllers" default=""/>
+    <xacro:arg name="gazebo_classic" default="false"/>
+    <xacro:arg name="gazebo_ignition" default="true"/>
+
+    <xacro:include filename="$(find arena_robots)/robots/WLP311D/urdf/base_hw/WLP311D.ros2_control.urdf"/>
+    <xacro:wlp311d_base_hw_controller/>
+
+    <gazebo>
+        <plugin filename="libgz_ros2_control-system.so" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+            <parameters>$(arg gazebo_controllers)</parameters>
+            <ros>
+                <namespace>$(arg namespace)</namespace>
+            </ros>
+        </plugin>
+    </gazebo>
 
     <material name="black">
         <color rgba="0.0 0.0 0.0 1.0" />
@@ -68,8 +82,9 @@
         <self_collide>1</self_collide>
     </gazebo>
     <gazebo reference="LF_wheel">
-        <mu1>0.6</mu1>
-        <mu2>0.6</mu2>
+        <mu1>0.35</mu1>
+        <mu2>1.0</mu2>
+        <fdir1>0 0 1</fdir1>
         <self_collide>1</self_collide>
         <material>Gazebo/DarkGrey</material>
         <kp value="1000000.0" />
@@ -103,8 +118,9 @@
         <self_collide>1</self_collide>
     </gazebo>
     <gazebo reference="RF_wheel">
-        <mu1>0.6</mu1>
-        <mu2>0.6</mu2>
+        <mu1>0.35</mu1>
+        <mu2>1.0</mu2>
+        <fdir1>0 0 1</fdir1>
         <self_collide>1</self_collide>
         <material>Gazebo/DarkGrey</material>
         <kp value="1000000.0" />
@@ -138,8 +154,9 @@
         <self_collide>1</self_collide>
     </gazebo>
     <gazebo reference="LH_wheel">
-        <mu1>0.6</mu1>
-        <mu2>0.6</mu2>
+        <mu1>0.35</mu1>
+        <mu2>1.0</mu2>
+        <fdir1>0 0 1</fdir1>
         <self_collide>1</self_collide>
         <material>Gazebo/DarkGrey</material>
         <kp value="1000000.0" />
@@ -173,8 +190,9 @@
         <self_collide>1</self_collide>
     </gazebo>
     <gazebo reference="RH_wheel">
-        <mu1>0.6</mu1>
-        <mu2>0.6</mu2>
+        <mu1>0.35</mu1>
+        <mu2>1.0</mu2>
+        <fdir1>0 0 1</fdir1>
         <self_collide>1</self_collide>
         <material>Gazebo/DarkGrey</material>
         <kp value="1000000.0" />
@@ -326,12 +344,12 @@
                 iyz="0.000130699" izz="0.008429207" />
         </inertial>
     </link>
-    <joint name="LF_WHL" type="revolute">
+    <joint name="LF_WHL" type="continuous">
         <origin rpy="0 0 0" xyz="0.21449 0.03434 -0.17998" />
         <parent link="LF_calf" />
         <child link="LF_wheel" />
         <axis xyz="0 1 0" />
-        <limit effort="40" lower="-1000" upper="1000" velocity="20" />
+        <limit effort="40" velocity="20" />
         <dynamics friction="1" />
     </joint>
     <link name="LF_wheel">
@@ -504,12 +522,12 @@
                 iyz="-0.000130699" izz="0.008429207" />
         </inertial>
     </link>
-    <joint name="RF_WHL" type="revolute">
+    <joint name="RF_WHL" type="continuous">
         <origin rpy="0 0 0" xyz="0.21449 -0.03434 -0.17998" />
         <parent link="RF_calf" />
         <child link="RF_wheel" />
         <axis xyz="0 1 0" />
-        <limit effort="40" lower="-1000" upper="1000" velocity="20" />
+        <limit effort="40" velocity="20" />
         <dynamics friction="1" />
     </joint>
     <link name="RF_wheel">
@@ -682,12 +700,12 @@
                 iyz="0.000130699" izz="0.008429207" />
         </inertial>
     </link>
-    <joint name="LH_WHL" type="revolute">
+    <joint name="LH_WHL" type="continuous">
         <origin rpy="0 0 0" xyz="0.21449 0.03434 -0.17998" />
         <parent link="LH_calf" />
         <child link="LH_wheel" />
         <axis xyz="0 1 0" />
-        <limit effort="40" lower="-1000" upper="1000" velocity="20" />
+        <limit effort="40" velocity="20" />
         <dynamics friction="1" />
     </joint>
     <link name="LH_wheel">
@@ -860,12 +878,12 @@
                 iyz="-0.000130699" izz="0.008429207" />
         </inertial>
     </link>
-    <joint name="RH_WHL" type="revolute">
+    <joint name="RH_WHL" type="continuous">
         <origin rpy="0 0 0" xyz="0.21449 -0.03434 -0.17998" />
         <parent link="RH_calf" />
         <child link="RH_wheel" />
         <axis xyz="0 1 0" />
-        <limit effort="40" lower="-1000" upper="1000" velocity="20" />
+        <limit effort="40" velocity="20" />
         <dynamics friction="1" />
     </joint>
     <link name="RH_wheel">

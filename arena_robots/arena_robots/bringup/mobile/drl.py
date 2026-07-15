@@ -20,13 +20,13 @@ def _load_goto_pose_drl() -> type:
 #
 #   drl:
 #     planner: str            # required, planner name, e.g. drlvo
-#     observations: dict      # optional, default {} — free-form obs pipeline overrides
+#     observations: dict      # optional, default {}, free-form obs pipeline overrides
 #       aliases: dict[str, str]
-#     rate: float             # optional, default 10.0 — per-tick obs rate in Hz
-#     obs_policy: str         # optional, default "lossless" — "lossless" | "latest_only"
+#     rate: float             # optional, default 10.0, per-tick obs rate in Hz
+#     obs_policy: str         # optional, default "lossless", "lossless" | "latest_only"
 #     goal_topic: str         # optional, default ~/goal_pose
 #     cmd_vel_topic: str      # optional, default ~/cmd_vel
-#     global_planner: str     # optional, default "nav2/navfn" — "<family>/<kind>" or "none"
+#     global_planner: str     # optional, default "nav2/navfn", "<family>/<kind>" or "none"
 #     namespace: str          # optional, default ""
 #     use_sim_time: bool      # optional, default true
 #

@@ -1,5 +1,5 @@
 odom_frame: odom
-sensor_frame: trunk
+sensor_frame: lidar
 radius: 0.30
 is_holonomic: true
 
