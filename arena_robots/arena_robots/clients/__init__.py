@@ -2,7 +2,7 @@
 
 Two surfaces, one shared state machine:
 - Awaitable: ``send_goal`` + ``await_result``, suited for notebooks and
-  remote tooling where the caller can simply await the full round-trip.
+  remote tooling where the caller can await the full round-trip.
 - Polling: ``is_done`` / ``status`` / ``feedback``, suited for
   task_generator's tick-based loop that cannot block awaiting a future.
 

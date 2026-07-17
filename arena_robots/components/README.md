@@ -41,7 +41,7 @@ variants: [...]           # family component: variant names this one dir serves,
 - **Multi-output components**: `sensor.gz` is a list, one macro may contribute several
   sensors (e.g. an RGBD camera bundling an IMU).
 - **Sim-only sensors** (rendered under gz but unbridged, e.g. GPS/navsat): the macro renders
-  them, `sensor.gz` simply omits them; no SensorSpec, no bridge row.
+  them, `sensor.gz` omits them; no SensorSpec, no bridge row.
 - **No-prefix components** (`lidar/arena_default`, `imu/arena_default`): omit `${prefix}`
   templating entirely since none of their placing robots use a frame-prefix convention.
 - **Arm components** contribute four artifacts (`xacro`, `ros2_control.joints`, `control`,

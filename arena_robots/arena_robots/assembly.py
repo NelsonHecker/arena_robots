@@ -150,10 +150,7 @@ class AssemblySpec:
                     if mount_name not in mounts:
                         raise AssemblyError(f"defaults['{t}']: unknown mount '{mount_name}'; declared mounts: {sorted(mounts)}")
                     if t not in mounts[mount_name].accepts:
-                        raise AssemblyError(
-                            f"defaults['{t}']: mount '{mount_name}' does not accept '{t}' "
-                            f"(accepts: {sorted(mounts[mount_name].accepts)})"
-                        )
+                        raise AssemblyError(f"defaults['{t}']: mount '{mount_name}' does not accept '{t}' (accepts: {sorted(mounts[mount_name].accepts)})")
                 parts.append(
                     DefaultPart(
                         variant=str(entry['variant']),
@@ -198,9 +195,7 @@ class _Item:
     overrides: dict[str, str] = attrs.field(factory=dict)
 
 
-def build_request(
-    spec: AssemblySpec, directives: dict[str, list[str]]
-) -> tuple[dict[str, list[RequestPart]], frozenset[str], frozenset[str]]:
+def build_request(spec: AssemblySpec, directives: dict[str, list[str]]) -> tuple[dict[str, list[RequestPart]], frozenset[str], frozenset[str]]:
     """Disambiguate raw setup-grammar directives (``lhs -> raw value strings``) into a
     type-keyed request plus cleared-socket/cleared-type sets (mount-centric addressing).
 
@@ -337,19 +332,9 @@ def resolve(
     type_touched = {t for t, items in request.items() if not items or any(r.mount is None for r in items)}
 
     for t, default_parts in spec.defaults.items():
-        survivors = [
-            p
-            for p in default_parts
-            if p.mount not in cleared_sockets
-            and t not in cleared_types
-            and p.mount not in socket_touched
-            and t not in type_touched
-        ]
+        survivors = [p for p in default_parts if p.mount not in cleared_sockets and t not in cleared_types and p.mount not in socket_touched and t not in type_touched]
         if survivors:
-            effective.setdefault(t, []).extend(
-                _Item(type=t, variant=p.variant, mount=p.mount, params=p.params, overrides=p.overrides, local_index=i)
-                for i, p in enumerate(survivors)
-            )
+            effective.setdefault(t, []).extend(_Item(type=t, variant=p.variant, mount=p.mount, params=p.params, overrides=p.overrides, local_index=i) for i, p in enumerate(survivors))
 
     for t in cleared_types:
         if t not in request and not _mounts_accepting(spec, t):
@@ -439,10 +424,7 @@ def apply_frame_overrides(resolved: ResolvedAssembly, frames: dict[str, str]) ->
     empty."""
     if not frames:
         return resolved
-    placements = [
-        attrs.evolve(p, mount=attrs.evolve(p.mount, frame=frames[p.mount.name])) if p.mount.name in frames else p
-        for p in resolved.placements
-    ]
+    placements = [attrs.evolve(p, mount=attrs.evolve(p.mount, frame=frames[p.mount.name])) if p.mount.name in frames else p for p in resolved.placements]
     return ResolvedAssembly(placements=placements, warnings=list(resolved.warnings))
 
 

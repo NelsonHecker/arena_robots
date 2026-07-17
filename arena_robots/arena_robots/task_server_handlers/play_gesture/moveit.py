@@ -101,9 +101,7 @@ class PlayGestureHandlerMoveIt(TaskHandler[PlayGesture.Goal, PlayGesture.Feedbac
         del tf_buffer
         self._bringup = bringup
         self._node = node
-        self._mg_clients: dict[str, ActionClient] = {
-            mount: ActionClient(node, MoveGroup, str(bringup.arm_namespace(mount)("move_action"))) for mount in bringup.arms()
-        }
+        self._mg_clients: dict[str, ActionClient] = {mount: ActionClient(node, MoveGroup, str(bringup.arm_namespace(mount)("move_action"))) for mount in bringup.arms()}
 
     async def execute(self, goal_handle: object) -> PlayGesture.Result:
         arena_goal: PlayGesture.Goal = goal_handle.request

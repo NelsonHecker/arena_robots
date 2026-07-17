@@ -58,9 +58,8 @@ variant of `caps/arm.yaml`.
 
 A robot has exactly one mobile base by construction. All robot-physical
 primitives live at top level; adapter sub-blocks are reserved for
-adapter-specific wiring only. The `rl:` sub-block is retired, its former
-contents (`actions`, `laser`) are now top-level fields. The `nav2:` sub-block
-carries only planner plugin wiring.
+adapter-specific wiring only. `actions` and `laser` are top-level fields. The
+`nav2:` sub-block carries only planner plugin wiring.
 
 ```yaml
 odom_frame: odom

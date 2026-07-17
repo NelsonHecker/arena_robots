@@ -24,10 +24,7 @@ class TaskServerNode(Node):
         bringup_caps = cast(list[str], self.declare_parameter("bringup_caps", Parameter.Type.STRING_ARRAY).value)
         bringup_kinds = cast(list[str], self.declare_parameter("bringup_kinds", Parameter.Type.STRING_ARRAY).value)
         frame = cast(str, self.declare_parameter("frame", "").value)
-        parts = {
-            t: [RequestPart(variant=i["variant"], mount=i.get("mount")) for i in items]
-            for t, items in json.loads(cast(str, self.declare_parameter("parts_json", "{}").value)).items()
-        }
+        parts = {t: [RequestPart(variant=i["variant"], mount=i.get("mount")) for i in items] for t, items in json.loads(cast(str, self.declare_parameter("parts_json", "{}").value)).items()}
 
         if not robot_name:
             raise RuntimeError("Parameter 'robot_name' is required")

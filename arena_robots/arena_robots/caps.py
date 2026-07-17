@@ -554,11 +554,7 @@ class RobotCaps:
         file_stems = frozenset(p.stem for p in self.caps_dir.glob('*.yaml')) if self.caps_dir.is_dir() else frozenset()
         if self.resolved is None:
             return file_stems
-        placed = frozenset(
-            placement.type
-            for placement in self.resolved.placements
-            if self.catalog.get(placement.type, placement.variant).caps
-        )
+        placed = frozenset(placement.type for placement in self.resolved.placements if self.catalog.get(placement.type, placement.variant).caps)
         return file_stems | placed
 
     def _load_cap_file(self, cap: str) -> dict[str, typing.Any]:

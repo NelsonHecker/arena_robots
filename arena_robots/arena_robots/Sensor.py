@@ -41,12 +41,12 @@ _NAMESPACE_PLACEHOLDER = '${namespace}'
 
 # ros/gz message types for the gz_ros_bridge, keyed by SensorSpec type. Direction is always gz->ros.
 BRIDGE_TYPES: dict[str, tuple[str, str]] = {
-    'laserscan':  ('sensor_msgs/msg/LaserScan',   'gz.msgs.LaserScan'),
+    'laserscan': ('sensor_msgs/msg/LaserScan', 'gz.msgs.LaserScan'),
     'pointcloud': ('sensor_msgs/msg/PointCloud2', 'gz.msgs.PointCloudPacked'),
-    'imu':        ('sensor_msgs/msg/Imu',         'gz.msgs.IMU'),
-    'image':      ('sensor_msgs/msg/Image',       'gz.msgs.Image'),
-    'depth':      ('sensor_msgs/msg/Image',       'gz.msgs.Image'),
-    'camera_info':('sensor_msgs/msg/CameraInfo',  'gz.msgs.CameraInfo'),
+    'imu': ('sensor_msgs/msg/Imu', 'gz.msgs.IMU'),
+    'image': ('sensor_msgs/msg/Image', 'gz.msgs.Image'),
+    'depth': ('sensor_msgs/msg/Image', 'gz.msgs.Image'),
+    'camera_info': ('sensor_msgs/msg/CameraInfo', 'gz.msgs.CameraInfo'),
 }
 
 
