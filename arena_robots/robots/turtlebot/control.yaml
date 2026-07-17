@@ -16,9 +16,9 @@ turtlebot_velocity_controller:
     left_wheel_names: [ "left_wheel_joint" ]
     right_wheel_names: [ "right_wheel_joint" ]
 
-    wheel_separation: 0.24
+    wheel_separation: 0.233
     wheels_per_side: 1
-    wheel_radius: 0.098
+    wheel_radius: 0.036
 
     wheel_separation_multiplier: 1.0
     left_wheel_radius_multiplier: 1.0
