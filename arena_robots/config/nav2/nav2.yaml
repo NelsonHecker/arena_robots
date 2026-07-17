@@ -259,8 +259,8 @@ collision_monitor:
   ros__parameters:
     enabled: true
 
-    observation_sources: ${observation_sources}
-    ${**observation_sources_dict}: ''
+    observation_sources: ${collision_sources}
+    ${**collision_sources_dict}: ''
     polygons: ${polygons}
     ${**polygons_dict}: ''
 
