@@ -260,10 +260,7 @@ def resolve_mount_parent(resolved: ResolvedAssembly, catalog: Catalog, mount: Mo
         raise RuntimeError(f"mount '{mount.name}' parent references unpopulated mount '{ref_mount_name}'")
     component = catalog.get(ref.type, ref.variant)
     if frame_name not in component.frames:
-        raise RuntimeError(
-            f"component '{ref.type}/{ref.variant}' (mount '{ref_mount_name}') does not export frame "
-            f"'{frame_name}'; declared frames: {sorted(component.frames)}"
-        )
+        raise RuntimeError(f"component '{ref.type}/{ref.variant}' (mount '{ref_mount_name}') does not export frame '{frame_name}'; declared frames: {sorted(component.frames)}")
     context: dict[str, typing.Any] = {'mount': _frame_stem(ref.mount), 'variant': ref.variant, 'prefix': '', **ref.params, **ref.overrides}
     return YAMLReplacer(context).replace(component.frames[frame_name])
 
@@ -385,9 +382,7 @@ def render_control_joints(resolved: ResolvedAssembly, catalog: Catalog, *, prefi
     return out
 
 
-def render_effective_control(
-    resolved: ResolvedAssembly, base_control: dict, catalog: Catalog, *, prefix: str = 'robot_'
-) -> tuple[dict, list[str]]:
+def render_effective_control(resolved: ResolvedAssembly, base_control: dict, catalog: Catalog, *, prefix: str = 'robot_') -> tuple[dict, list[str]]:
     """Deep-merge every placement's rendered ``control`` block into a copy of the
     chassis's ``control.yaml`` (control synthesis): one
     ``controller_manager.ros__parameters.<controller>: {type: ...}`` entry plus one

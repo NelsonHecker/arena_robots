@@ -46,9 +46,7 @@ class ReachPoseHandlerMoveIt(TaskHandler[ReachPose.Goal, ReachPose.Feedback, Rea
         self._tf_buffer = tf_buffer
         self._node = node
         self._tf_prefix = bringup.frame
-        self._native_clients: dict[str, ActionClient] = {
-            mount: ActionClient(node, MoveGroup, str(bringup.arm_namespace(mount)("move_action"))) for mount in bringup.arms()
-        }
+        self._native_clients: dict[str, ActionClient] = {mount: ActionClient(node, MoveGroup, str(bringup.arm_namespace(mount)("move_action"))) for mount in bringup.arms()}
 
     async def execute(self, goal_handle: object) -> ReachPose.Result:
         arena_goal: ReachPose.Goal = goal_handle.request

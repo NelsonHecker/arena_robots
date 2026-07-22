@@ -3,7 +3,7 @@ boxer_description
 
 This package contains the URDF files and STLs that make up the Boxer 2.4's description.
 
-Note that Boxer 2.4's description can be customized using the following environment variables:
+Boxer 2.4's description can be customized using the following environment variables:
 
 | Variable             | Default Value | Description                                                              |
 |----------------------|---------------|--------------------------------------------------------------------------|

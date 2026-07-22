@@ -4,7 +4,7 @@
 
 `arena_robots` exposes a single launch entry point (`bringup.launch.py`) that
 brings up a nav stack + a `task_server` node in a given namespace. The
-`task_server` advertises arena IDL action servers — one per `TaskKind` the
+`task_server` advertises arena IDL action servers, one per `TaskKind` the
 chosen bringup supports. Clients send goals to those endpoints; the
 `task_server` translates them to the underlying nav stack. `task_generator`
 is one consumer of this surface; any ROS 2 process or CLI can be another.
@@ -21,7 +21,7 @@ ros2 launch arena_robots bringup.launch.py \
 
 | Arg | Meaning |
 |---|---|
-| `robot` | Robot name — must match a directory under `arena_robots/robots/` |
+| `robot` | Robot name, must match a directory under `arena_robots/robots/` |
 | `namespace` | ROS namespace for all nodes and action endpoints |
 | `bringup` | Nav stack to bring up: `nav2`, `none`, or `external` |
 | `use_sim_time` | Pass `true` when using Gazebo sim time; `false` for a real-time clock |

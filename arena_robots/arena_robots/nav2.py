@@ -76,6 +76,33 @@ def compile_sensors_to_nav2(
     return out
 
 
+def compile_sensors_to_collision_monitor(
+    sensors: list[SensorSpec],
+    *,
+    pointcloud_min_height: float = 0.1,
+    pointcloud_max_height: float = 2.0,
+) -> dict[str, dict[str, typing.Any]]:
+    """Compile SensorSpec entries into collision_monitor source shape.
+
+    Unlike costmap observation sources (`data_type: LaserScan|PointCloud2`), collision
+    monitor sources declare `type: scan|pointcloud` and fall back to scan when the key
+    is missing, silently subscribing pointcloud topics with the wrong message type.
+    """
+    out: dict[str, dict[str, typing.Any]] = {}
+    for spec in sensors:
+        type_str = spec.type.value if isinstance(spec.type, SensorType) else str(spec.type)
+        if type_str == SensorType.LASERSCAN.value:
+            out[spec.name] = {"type": "scan", "topic": spec.topic}
+        elif type_str == SensorType.POINTCLOUD.value:
+            out[spec.name] = {
+                "type": "pointcloud",
+                "topic": spec.topic,
+                "min_height": pointcloud_min_height,
+                "max_height": pointcloud_max_height,
+            }
+    return out
+
+
 def _load_mobile(path_str: str) -> MobileSpec:
     with open(path_str) as f:
         data = yaml.safe_load(f) or {}
@@ -85,7 +112,8 @@ def _load_mobile(path_str: str) -> MobileSpec:
 
 
 class SensorsDerivedYAML(YAMLFileSubstitution):
-    """Emit `observation_sources{,_string,_dict,_dict_global}` from sensors+laser range.
+    """Emit `observation_sources{,_string,_dict,_dict_global}` and
+    `collision_sources{,_dict}` from sensors+laser range.
 
     Local uses the full lidar range; global uses shorter capped ranges and pulls per-source
     overrides (`raytrace_max_range`, `obstacle_max_range`, `observation_persistence`) from
@@ -142,11 +170,15 @@ class SensorsDerivedYAML(YAMLFileSubstitution):
             extra_per_source={'observation_persistence': g_persistence},
         )
 
+        collision_sources = compile_sensors_to_collision_monitor(sensors)
+
         derived = {
             'observation_sources_string': ' '.join(local_sources.keys()),
             'observation_sources': list(local_sources.keys()),
             'observation_sources_dict': local_sources,
             'observation_sources_dict_global': global_sources,
+            'collision_sources': list(collision_sources.keys()),
+            'collision_sources_dict': collision_sources,
         }
         tmp = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.yaml')
         yaml.dump(derived, tmp)

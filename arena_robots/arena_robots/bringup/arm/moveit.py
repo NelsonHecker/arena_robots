@@ -78,9 +78,7 @@ class MoveItArmBringup(Bringup):
                         "use_sim_time": str(use_sim_time).lower(),
                         "arm_controller": arm.controller,
                         "arm_joints_json": json.dumps(list(arm.chain)),
-                        "parts_json": json.dumps(
-                            {t: [{"variant": p.variant, "mount": p.mount} for p in ps] for t, ps in self.parts.items()}
-                        ),
+                        "parts_json": json.dumps({t: [{"variant": p.variant, "mount": p.mount} for p in ps] for t, ps in self.parts.items()}),
                         "instance": "" if single else mount,
                     }.items(),
                 ),
