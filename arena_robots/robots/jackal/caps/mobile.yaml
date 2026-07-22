@@ -3,12 +3,12 @@ sensor_frame: lidar_link
 radius: 0.267
 is_holonomic: false
 
-footprint: [[0.1, 0.1], [0.1, -0.1], [-0.1, -0.1], [-0.1, 0.1]]
+footprint: [[0.21, 0.155], [0.21, -0.155], [-0.21, -0.155], [-0.21, 0.155]]
 
 polygons_dict:
   StopPolygon:
     type: polygon
-    points: [[0.3, 0.3], [0.3, -0.3], [-0.3, -0.3], [-0.3, 0.3]]
+    points: [[0.2, 0.2], [0.2, -0.2], [-0.2, -0.2], [-0.2, 0.2]]
     action_type: stop
     min_points: 4
     visualize: true
@@ -16,7 +16,7 @@ polygons_dict:
     enabled: true
   SlowPolygon:
     type: circle
-    radius: 1.0
+    radius: 0.25
     action_type: slowdown
     slowdown_ratio: 0.5
     min_points: 4
