@@ -268,6 +268,20 @@ class RobotView(PathView):
         resolved = assembly_mod.apply_frame_overrides(resolved, frames or {})
         return RobotCaps(self.caps.caps_dir, resolved=resolved, catalog=_CATALOG, prefix=self.assembly.prefix)
 
+    def effective_static_power(self, parts: dict[str, list[assembly_mod.RequestPart]]) -> float:
+        """The robot's effective static power for a parts request. Robots with no
+        assembly.yaml return 0.0. Robots with an assembly.yaml aggregate static_power_w
+        from resolved components."""
+        resolved = self._resolved(parts)
+        if resolved is None:
+            return 0.0
+        
+        total_w = 0.0
+        for placement in resolved.placements:
+            component = _CATALOG.get(placement.type, placement.variant)
+            total_w += float(component.power.get('static_power_w', 0.0))
+        return total_w
+
     @property
     def model(self) -> ModelWrapper:
         return ModelWrapper(

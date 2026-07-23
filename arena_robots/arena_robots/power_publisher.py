@@ -25,10 +25,6 @@ class PowerPublisher(Node):
         if not config_path:
             self.get_logger().fatal("'config_path' parameter is required")
             raise SystemExit(1)
-        active_sensors_param: list[str] = list(
-            self.declare_parameter("active_sensors", [""]).value
-        )
-        active_sensors_param = [s for s in active_sensors_param if s]
 
         config_file = Path(config_path)
         if not config_file.is_file():
@@ -49,33 +45,17 @@ class PowerPublisher(Node):
         static_cfg = cfg["static_power_w"]
         self._compute_core_w: float = float(static_cfg["compute_core"])
         self._idle_motors_w: float = float(static_cfg["idle_motors"])
-        self._sensor_power_map: dict[str, float] = {
-            str(k): float(v) for k, v in static_cfg.get("sensors", {}).items()
-        }
 
-        if active_sensors_param:
-            active_sensors = active_sensors_param
-            unknown = set(active_sensors) - set(self._sensor_power_map)
-            if unknown:
-                self.get_logger().warning(
-                    f"active_sensors keys not found in config: {sorted(unknown)}"
-                )
-        else:
-            active_sensors = list(self._sensor_power_map.keys())
+        components_static_power = float(self.declare_parameter("components_static_power_w", 0.0).value)
 
         # Compute static power once 
-        sensor_power_sum = sum(
-            self._sensor_power_map[s]
-            for s in active_sensors
-            if s in self._sensor_power_map
-        )
         self._static_power_w: float = (
-            self._compute_core_w + self._idle_motors_w + sensor_power_sum
+            self._compute_core_w + self._idle_motors_w + components_static_power
         )
 
         # State for energy integration 
         self._last_time: float | None = None
-        self._total_energy_consumed_j: float = 0.0
+        self._total_energy_consumed_wh: float = 0.0
         self._warned_empty_effort: bool = False
 
         # Publishers 
@@ -89,8 +69,7 @@ class PowerPublisher(Node):
         self.get_logger().info(
             f"PowerPublisher ready — static={self._static_power_w:.1f} W, "
             f"η={self._efficiency}, c_h={self._heating_coeff}, "
-            f"battery={self._battery_capacity_wh} Wh, "
-            f"active_sensors={active_sensors}"
+            f"battery={self._battery_capacity_wh} Wh"
         )
 
     def _on_joint_state(self, msg: JointState) -> None:
@@ -133,12 +112,11 @@ class PowerPublisher(Node):
         if self._last_time is not None:
             dt = current_time - self._last_time
             if dt > 0.0:
-                self._total_energy_consumed_j += total_power * dt
+                self._total_energy_consumed_wh += (total_power * dt) / 3600.0
         self._last_time = current_time
 
-        energy_wh = self._total_energy_consumed_j / 3600.0
         if self._battery_capacity_wh > 0.0:
-            soc = (1.0 - energy_wh / self._battery_capacity_wh) * 100.0
+            soc = (1.0 - self._total_energy_consumed_wh / self._battery_capacity_wh) * 100.0
         else:
             soc = 0.0
 
@@ -158,8 +136,7 @@ class PowerPublisher(Node):
         # Publish Energy 
         energy_msg = Energy()
         energy_msg.header = msg.header
-        energy_msg.total_energy_consumed_j = self._total_energy_consumed_j
-        energy_msg.total_energy_consumed_wh = energy_wh
+        energy_msg.total_energy_consumed_wh = self._total_energy_consumed_wh
         energy_msg.battery_soc_percent = soc
         self._energy_pub.publish(energy_msg)
 

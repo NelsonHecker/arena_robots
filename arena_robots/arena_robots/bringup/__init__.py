@@ -67,7 +67,7 @@ class Bringup(ABC):
         **launch_args: object,
     ) -> list[Action]: ...
 
-    def telemetry_actions(self, active_sensors: list[str] | None = None) -> list[Action]:
+    def telemetry_actions(self) -> list[Action]:
         from ament_index_python.packages import get_package_share_directory as get_share
         from launch_ros.actions import Node
         import os
@@ -77,7 +77,7 @@ class Bringup(ABC):
             return []
             
         params = {'config_path': yaml_path}
-        if active_sensors: params['active_sensors'] = active_sensors
+        params['components_static_power_w'] = self.robot.effective_static_power(self.parts)
             
         return [Node(
             package='arena_robots', executable='power_publisher', name='power_publisher',
