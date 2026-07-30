@@ -15,7 +15,7 @@ from sensor_msgs.msg import JointState
 
 
 class AcousticsPublisher(Node):
-    """ROS 2 node that computes M4 acoustic ego-noise level from joint states."""
+    """ROS 2 node that computes acoustic ego-noise level from joint states."""
 
     def __init__(self, **kwargs) -> None:
         super().__init__("acoustics_publisher", **kwargs)
@@ -75,9 +75,11 @@ class AcousticsPublisher(Node):
 
         topic_param = str(self.declare_parameter("topic", "/acoustics").value)
 
-        # State tracking for acceleration
+        # State tracking for acceleration and IEC 61672-1 Fast time weighting (tau_F = 0.125s)
         self._last_time: float | None = None
         self._last_omega_eq: float | None = None
+        self._ema_p_drive: float = 0.0
+        self._ema_p_scrub: float = 0.0
         self._warned_empty_effort: bool = False
 
         qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE)
@@ -122,20 +124,21 @@ class AcousticsPublisher(Node):
         else:
             lambda_omega = 1.0 if omega_eq >= self._omega_active else 0.0
 
-        # 4. Acceleration a_eq
+        # 4. Acceleration a_eq (clamped to dt_min=0.01s and a_max=10.0 rad/s^2)
+        dt = 0.0
         if self._last_time is not None and self._last_omega_eq is not None:
             dt = current_time - self._last_time
-            dt_safe = max(dt, 0.001)
+            dt_safe = max(dt, 0.01)
             delta_omega_eq = omega_eq - self._last_omega_eq
-            a_eq = min(abs(delta_omega_eq / dt_safe), 50.0)
+            a_eq = min(abs(delta_omega_eq / dt_safe), 10.0)
         else:
             a_eq = 0.0
 
         self._last_time = current_time
         self._last_omega_eq = omega_eq
 
-        # 5. Drivetrain Acoustic Power P_drive
-        p_drive = (
+        # 5. Drivetrain Acoustic Power P_drive (raw)
+        p_drive_raw = (
             lambda_omega
             * (10.0 ** (self._beta_0 / 10.0))
             * ((max(omega_eq, self._omega_active) / self._omega_ref) ** (self._beta_1 / 10.0))
@@ -143,7 +146,7 @@ class AcousticsPublisher(Node):
             * (10.0 ** (self._beta_3 * a_eq / 10.0))
         )
 
-        # 6. Scrubbing term P_scrub
+        # 6. Scrubbing term P_scrub (raw - uses signed arithmetic mean for left/right wheel groups)
         left_vels: list[float] = []
         right_vels: list[float] = []
         if has_velocity:
@@ -176,8 +179,8 @@ class AcousticsPublisher(Node):
                 right_vels = list(msg.velocity[half:])
 
         if left_vels and right_vels:
-            omega_left = math.sqrt(sum(w**2 for w in left_vels) / len(left_vels))
-            omega_right = math.sqrt(sum(w**2 for w in right_vels) / len(right_vels))
+            omega_left = sum(left_vels) / len(left_vels)
+            omega_right = sum(right_vels) / len(right_vels)
             delta_omega_lr = abs(omega_left - omega_right)
         else:
             delta_omega_lr = 0.0
@@ -187,13 +190,26 @@ class AcousticsPublisher(Node):
         else:
             lambda_scrub = 1.0 if delta_omega_lr >= self._omega_active else 0.0
 
-        p_scrub = (
+        p_scrub_raw = (
             lambda_scrub
             * (10.0 ** (self._beta_scrub_0 / 10.0))
             * ((max(delta_omega_lr, self._omega_active) / self._omega_ref) ** (self._beta_scrub_1 / 10.0))
         )
 
-        # 7. Total Power and Sound Levels
+        # 7. IEC 61672-1 Fast Time Weighting EMA (tau_F = 125ms = 0.125s)
+        TAU_FAST = 0.125
+        if dt > 0.0:
+            alpha = 1.0 - math.exp(-dt / TAU_FAST)
+            self._ema_p_drive = (1.0 - alpha) * self._ema_p_drive + alpha * p_drive_raw
+            self._ema_p_scrub = (1.0 - alpha) * self._ema_p_scrub + alpha * p_scrub_raw
+        else:
+            self._ema_p_drive = p_drive_raw
+            self._ema_p_scrub = p_scrub_raw
+
+        p_drive = self._ema_p_drive
+        p_scrub = self._ema_p_scrub
+
+        # 8. Total Power and Sound Levels
         p_total = self._P_base + p_drive + p_scrub
         l_1m = 10.0 * math.log10(p_total) if p_total > 0.0 else 0.0
 
