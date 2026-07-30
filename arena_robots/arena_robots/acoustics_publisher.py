@@ -73,7 +73,7 @@ class AcousticsPublisher(Node):
         # Precompute baseline acoustic power
         self._P_base: float = 10.0 ** (self._L_base_0 / 10.0)
 
-        topic_param = str(self.declare_parameter("topic", "/acoustics").value)
+        topic_param = str(self.declare_parameter("topic", "acoustics").value)
 
         # State tracking for acceleration and IEC 61672-1 Fast time weighting (tau_F = 0.125s)
         self._last_time: float | None = None
@@ -85,7 +85,7 @@ class AcousticsPublisher(Node):
         qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE)
         self._acoustics_pub = self.create_publisher(Acoustics, topic_param, qos)
 
-        self.create_subscription(JointState, "/joint_states", self._on_joint_state, qos)
+        self.create_subscription(JointState, "joint_states", self._on_joint_state, qos)
 
         self.get_logger().info(
             f"AcousticsPublisher ready — profile={profile_file}, topic={topic_param}, L_base_0={self._L_base_0} dBA"

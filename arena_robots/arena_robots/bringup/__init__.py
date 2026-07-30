@@ -72,17 +72,31 @@ class Bringup(ABC):
         from launch_ros.actions import Node
         import os
         
+        nodes = []
+        
         yaml_path = os.path.join(get_share('arena_robots'), 'robots', self.robot.name, 'telemetry', 'power.yaml')
-        if not os.path.isfile(yaml_path):
-            return []
-            
-        params = {'config_path': yaml_path}
-        params['components_static_power_w'] = self.robot.effective_static_power(self.parts)
-            
-        return [Node(
-            package='arena_robots', executable='power_publisher', name='power_publisher',
-            namespace=str(self.namespace), parameters=[params], output='screen'
-        )]
+        if os.path.isfile(yaml_path):
+            params = {'config_path': yaml_path}
+            params['components_static_power_w'] = self.robot.effective_static_power(self.parts)
+                
+            nodes.append(Node(
+                package='arena_robots', executable='power_publisher', name='power_publisher',
+                namespace=str(self.namespace), parameters=[params], output='screen',
+                remappings=[('joint_states', 'joint_states')]
+            ))
+
+        acoustics_yaml = os.path.join(get_share('arena_robots'), 'robots', self.robot.name, 'acoustic_profile.yaml')
+        fallback_yaml = os.path.join(get_share('arena_robots'), 'config', 'acoustic_profile.yaml')
+        
+        if os.path.isfile(acoustics_yaml) or os.path.isfile(fallback_yaml):
+            used_yaml = acoustics_yaml if os.path.isfile(acoustics_yaml) else fallback_yaml
+            nodes.append(Node(
+                package='arena_robots', executable='acoustics_publisher', name='acoustics_publisher',
+                namespace=str(self.namespace), parameters=[{'robot_name': self.robot.name, 'profile_path': used_yaml}], output='screen',
+                remappings=[('joint_states', 'joint_states')]
+            ))
+
+        return nodes
 
     @property
     def requires(self) -> frozenset[str]:
