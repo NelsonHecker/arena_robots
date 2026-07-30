@@ -20,23 +20,36 @@ class AcousticsPublisher(Node):
     def __init__(self, **kwargs) -> None:
         super().__init__("acoustics_publisher", **kwargs)
 
-        profile_path_param = str(
-            self.declare_parameter("profile_path", "config/acoustic_profile.yaml").value
-        )
-        profile_file = Path(profile_path_param)
-        if not profile_file.is_file():
+        robot_name_param = str(self.declare_parameter("robot_name", "jackal").value)
+        profile_path_param = str(self.declare_parameter("profile_path", "").value)
+
+        profile_file: Path | None = None
+        if profile_path_param:
+            p = Path(profile_path_param)
+            if p.is_file():
+                profile_file = p
+
+        if profile_file is None:
             try:
                 from ament_index_python.packages import get_package_share_directory
 
                 share_dir = Path(get_package_share_directory("arena_robots"))
-                candidate = share_dir / profile_path_param
-                if candidate.is_file():
-                    profile_file = candidate
+                candidates = [
+                    share_dir / "robots" / robot_name_param / "acoustic_profile.yaml",
+                    share_dir / "config" / "acoustic_profile.yaml",
+                    Path(r"u:\src\Arena\arena_robots\arena_robots\robots") / robot_name_param / "acoustic_profile.yaml",
+                ]
+                for cand in candidates:
+                    if cand.is_file():
+                        profile_file = cand
+                        break
             except Exception:
                 pass
 
-        if not profile_file.is_file():
-            self.get_logger().fatal(f"Acoustic profile file not found: {profile_path_param}")
+        if profile_file is None or not profile_file.is_file():
+            self.get_logger().fatal(
+                f"Acoustic profile file not found for robot '{robot_name_param}' (path: {profile_path_param})"
+            )
             raise SystemExit(1)
 
         with open(profile_file) as f:
