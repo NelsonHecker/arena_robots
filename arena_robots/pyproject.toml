@@ -6,3 +6,7 @@ markers = [
     "ros: requires a sourced ROS2 environment",
     "slow: long-running tests",
 ]
+
+[project.scripts]
+acoustics_publisher = "arena_robots.acoustics_publisher:main"
+

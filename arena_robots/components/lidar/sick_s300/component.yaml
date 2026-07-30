@@ -26,3 +26,5 @@ sensor:
       topic: "${topic:-scan}/points"
       frame: "${prefix}${mount}_link"
       sensor: "${mount}"
+power:
+  static_power_w: 7.0

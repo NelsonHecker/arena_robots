@@ -17,3 +17,5 @@ sensor:
       topic: "${topic:-imu/data}"
       frame: "${prefix}${mount}_link"
       sensor: imu_sensor
+power:
+  static_power_w: 1.2

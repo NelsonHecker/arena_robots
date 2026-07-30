@@ -17,3 +17,5 @@ sensor:
       topic: "${topic:-rear_laser}/points"
       frame: "${prefix}${mount}"
       sensor: rear_laser
+power:
+  static_power_w: 7.0

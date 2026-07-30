@@ -21,3 +21,5 @@ sensor:
       topic: "${topic:-lidar}/points"
       frame: "${prefix}${mount}"
       sensor: gpu_lidar
+power:
+  static_power_w: 10.0

@@ -6,3 +6,5 @@ xacro:
   attach:
     prefix: "${prefix}"
     parent: "${prefix}${parent}"
+power:
+  static_power_w: 0.0

@@ -36,3 +36,5 @@ sensor:
       topic: "${topic:-rgbd_camera}/points"
       frame: "${prefix}${mount}_rgb_camera_frame"
       sensor: rgbd_camera
+power:
+  static_power_w: 3.5

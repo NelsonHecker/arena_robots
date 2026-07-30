@@ -17,3 +17,5 @@ sensor:
       topic: "${topic:-front_laser}/points"
       frame: "${prefix}${mount}"
       sensor: front_laser
+power:
+  static_power_w: 7.0

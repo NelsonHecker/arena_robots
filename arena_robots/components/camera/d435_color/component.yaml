@@ -21,3 +21,5 @@ sensor:
       topic: "${topic:-${mount}}${info_suffix:-/camera_info}"
       frame: "${prefix}${mount}_color_frame"
       sensor: "${node_name:-${name:-${mount}}}_color"
+power:
+  static_power_w: 2.0

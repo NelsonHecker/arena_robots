@@ -50,3 +50,5 @@ caps:
     srdf:
       package: arena_robots
       path: components/gripper/robotiq_2f_85/srdf/robotiq_2f_85.srdf.xacro
+power:
+  static_power_w: 3.0

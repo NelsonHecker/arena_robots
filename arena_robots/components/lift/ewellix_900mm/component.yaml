@@ -24,3 +24,5 @@ control:
 caps:
   joint: "${prefix}${mount}_ewellix_lift_top_joint"
   controller: "${mount}_controller"
+power:
+  static_power_w: 2.0
