@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 from launch import Action
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, LogInfo
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 from arena_robots.bringup import Bringup, BringupMeta
@@ -39,7 +39,7 @@ class ExternalBringup(Bringup):
 
     @property
     def launch_file(self) -> str:
-        return self._cfg["launch_file"]
+        return str(self._cfg.get("launch_file", ""))
 
     @property
     def extra(self) -> dict:
@@ -50,8 +50,12 @@ class ExternalBringup(Bringup):
         *,
         use_sim_time: bool = True,
         frame: str = "",
+        launch_file: str = "",
         **_: object,
     ) -> list[Action]:
+        target = launch_file or self.launch_file
+        if not target:
+            return [LogInfo(msg=f"robot {self.robot.name!r}: mobile adapter 'external' has no launch_file, starting no navstack. Drive {self.cmd_vel_topic} yourself or set mobile.launch_file:=<path>.")]
         args: dict[str, str] = {
             "goal_topic": self.goal_topic,
             "cmd_vel_topic": self.cmd_vel_topic,
@@ -62,7 +66,7 @@ class ExternalBringup(Bringup):
         }
         return [
             IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(self.launch_file),
+                PythonLaunchDescriptionSource(target),
                 launch_arguments=args.items(),
             )
         ]
