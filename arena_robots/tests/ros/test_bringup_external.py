@@ -46,13 +46,30 @@ class TestExternalBringupCfg:
         b = ExternalBringup(robot=robot, namespace="/ns")
         assert b.launch_file == "/my/launch.py"
 
-    def test_launch_file_missing_raises_key_error(self):
+    def test_launch_file_missing_is_empty(self):
         from arena_robots.bringup.mobile.external import ExternalBringup
 
         robot = _make_robot({})
         b = ExternalBringup(robot=robot, namespace="/ns")
-        with pytest.raises(KeyError):
-            _ = b.launch_file
+        assert b.launch_file == ""
+
+    def test_launch_actions_without_launch_file_starts_nothing(self):
+        from launch.actions import IncludeLaunchDescription, LogInfo
+
+        from arena_robots.bringup.mobile.external import ExternalBringup
+
+        robot = _make_robot({})
+        b = ExternalBringup(robot=robot, namespace="/ns")
+        actions = b._launch_actions()
+        assert not any(isinstance(a, IncludeLaunchDescription) for a in actions)
+        assert all(isinstance(a, LogInfo) for a in actions)
+
+    def test_launch_file_kwarg_satisfies_requirement(self):
+        from arena_robots.bringup.mobile.external import ExternalBringup
+
+        robot = _make_robot({})
+        b = ExternalBringup(robot=robot, namespace="/ns")
+        assert len(b._launch_actions(launch_file="/from/cli.py")) == 1
 
     def test_requires_from_cfg(self):
         from arena_robots.bringup.mobile.external import ExternalBringup
