@@ -234,8 +234,8 @@ class AcousticsPublisher(Node):
         # 10. Publish message
         out_msg = Acoustics()
         out_msg.header = msg.header
-        out_msg.total_level_aeq_dba = float(l_1m)
-        out_msg.total_level_zeq_db = float("nan")  # Broadband proxy only supports A-weighted dBA
+        out_msg.total_level_af_dba = float(l_1m)
+        out_msg.total_level_zf_db = float("nan")  # Broadband proxy only supports A-weighted dBA
         out_msg.baseline_level_dba = float(l_base)
         out_msg.drivetrain_level_dba = float(l_drivetrain)
         out_msg.uncertainty_1sigma_dba = float(sigma_total)
