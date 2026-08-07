@@ -3,12 +3,10 @@
 `planner_server` only publishes `/plan` as a side effect of the
 `compute_path_to_pose` action. When we run nav2 in `planner_only` mode there is
 no `bt_navigator` calling it, so this node bridges PoseStamped goals to the
-action.
+action and re-issues them so `/plan` tracks the robot as it moves.
 """
 
 from __future__ import annotations
-
-import math
 
 import rclpy
 from arena_rclpy_mixins.spin import spin_node
@@ -18,15 +16,6 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 
-_DEDUPE_POS_TOL: float = 0.05
-_DEDUPE_YAW_TOL: float = 0.05
-
-
-def _yaw_from_quat(q: object) -> float:
-    siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
-    cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
-    return math.atan2(siny_cosp, cosy_cosp)
-
 
 class GoalToPlanBridge(Node):
     def __init__(self) -> None:
@@ -34,35 +23,35 @@ class GoalToPlanBridge(Node):
 
         goal_topic = self.declare_parameter("goal_topic", "goal_pose").value
         action_name = self.declare_parameter("action_name", "compute_path_to_pose").value
+        replan_period = float(self.declare_parameter("replan_period", 1.0).value)
         self._planner_id = self.declare_parameter("planner_id", "").value
 
-        self._last_goal: PoseStamped | None = None
+        self._goal: PoseStamped | None = None
+        self._in_flight: bool = False
         self._client: ActionClient = ActionClient(self, ComputePathToPose, action_name)
 
         qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE)
         self.create_subscription(PoseStamped, goal_topic, self._on_goal, qos)
+        self.create_timer(replan_period, self._replan)
 
     def _on_goal(self, msg: PoseStamped) -> None:
-        if self._last_goal is not None and self._same_goal(self._last_goal, msg):
+        self._goal = msg
+
+    def _replan(self) -> None:
+        if self._goal is None or self._in_flight:
             return
-        self._last_goal = msg
         if not self._client.wait_for_server(timeout_sec=0.0):
-            self.get_logger().warning("compute_path_to_pose action server not available; goal queued, will retry on next message")
             return
         goal = ComputePathToPose.Goal()
-        goal.goal = msg
+        goal.goal = self._goal
         goal.use_start = False
         if self._planner_id:
             goal.planner_id = self._planner_id
-        self._client.send_goal_async(goal)
+        self._in_flight = True
+        self._client.send_goal_async(goal).add_done_callback(self._on_sent)
 
-    @staticmethod
-    def _same_goal(a: PoseStamped, b: PoseStamped) -> bool:
-        dx = a.pose.position.x - b.pose.position.x
-        dy = a.pose.position.y - b.pose.position.y
-        if math.hypot(dx, dy) > _DEDUPE_POS_TOL:
-            return False
-        return abs(_yaw_from_quat(a.pose.orientation) - _yaw_from_quat(b.pose.orientation)) <= _DEDUPE_YAW_TOL
+    def _on_sent(self, _future: object) -> None:
+        self._in_flight = False
 
 
 def main() -> None:
