@@ -3,6 +3,11 @@ sensor_frame: front_laser_link
 radius: 0.45
 is_holonomic: true
 
+velocity_limits:
+  linear: [-0.8, 0.8]
+  angular: [-1.0, 1.0]
+  lateral: [-0.8, 0.8]
+
 footprint: [[0.37, 0.255], [0.37, -0.255], [-0.37, -0.255], [-0.37, 0.255]]
 
 polygons_dict:
