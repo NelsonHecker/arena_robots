@@ -1,5 +1,5 @@
 robot_model: a1
-priority: 1
+priority: 3
 base_frame: base
 z_offset: 0.32
 sensors:
