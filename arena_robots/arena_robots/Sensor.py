@@ -50,6 +50,12 @@ BRIDGE_TYPES: dict[str, tuple[str, str]] = {
 }
 
 
+def resolve_topic(spec: SensorSpec, namespace: str = '') -> str:
+    """`spec.topic` with `${namespace}` substituted, or robot-relative when `namespace` is empty."""
+    topic = spec.topic.replace(_NAMESPACE_PLACEHOLDER, namespace.rstrip('/'))
+    return topic if namespace else topic.lstrip('/')
+
+
 def _join(prefix: str, anchor: str) -> str:
     """Prefix-join a gz topic, staying relative when `prefix` is empty (Isaac's namespacing)."""
     return f'{prefix}/{anchor}' if prefix else anchor
@@ -69,8 +75,7 @@ def _grouped_sensors(
     for spec in sensors:
         if spec.sensor is None:
             continue
-        rel = spec.topic.removeprefix(_NAMESPACE_PLACEHOLDER).lstrip('/')
-        grouped.setdefault(spec.sensor, {})[str(spec.type)] = rel
+        grouped.setdefault(spec.sensor, {})[str(spec.type)] = resolve_topic(spec)
 
     result: list[tuple[str, str, str, dict[str, str], dict[str, str]]] = []
     for sensor_name, outputs in grouped.items():
