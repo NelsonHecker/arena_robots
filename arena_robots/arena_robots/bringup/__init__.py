@@ -85,7 +85,7 @@ class Bringup(ABC):
                 remappings=[('joint_states', 'joint_states')]
             ))
 
-        acoustics_yaml = os.path.join(get_share('arena_robots'), 'robots', self.robot.name, 'acoustic_profile.yaml')
+        acoustics_yaml = os.path.join(get_share('arena_robots'), 'robots', self.robot.name, 'telemetry', 'acoustics.yaml')
         fallback_yaml = os.path.join(get_share('arena_robots'), 'config', 'acoustic_profile.yaml')
         
         if os.path.isfile(acoustics_yaml) or os.path.isfile(fallback_yaml):

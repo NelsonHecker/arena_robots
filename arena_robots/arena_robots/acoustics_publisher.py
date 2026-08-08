@@ -35,9 +35,9 @@ class AcousticsPublisher(Node):
 
                 share_dir = Path(get_package_share_directory("arena_robots"))
                 candidates = [
-                    share_dir / "robots" / robot_name_param / "acoustic_profile.yaml",
+                    share_dir / "robots" / robot_name_param / "telemetry" / "acoustics.yaml",
                     share_dir / "config" / "acoustic_profile.yaml",
-                    Path(r"u:\src\Arena\arena_robots\arena_robots\robots") / robot_name_param / "acoustic_profile.yaml",
+                    Path(r"u:\src\Arena\arena_robots\arena_robots\robots") / robot_name_param / "telemetry" / "acoustics.yaml",
                 ]
                 for cand in candidates:
                     if cand.is_file():
