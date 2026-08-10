@@ -143,8 +143,9 @@ class ModelParams(dict[str, typing.Any]):
         return out
 
     @property
-    def priority(self) -> int:
-        return int(self.get('priority', 0))
+    def priority(self) -> float:
+        """Rank for `robot: auto`, lowest wins. Undeclared sorts after every explicit value."""
+        return float(self.get('priority', float('inf')))
 
     @property
     def capabilities(self) -> list[dict[str, typing.Any]]:

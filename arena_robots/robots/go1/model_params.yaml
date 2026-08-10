@@ -1,5 +1,5 @@
 robot_model: go1
-priority: 1
+priority: 2
 base_frame: base
 z_offset: 0.45
 sensors:

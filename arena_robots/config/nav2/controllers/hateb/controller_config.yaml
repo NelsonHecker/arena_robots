@@ -1,3 +1,5 @@
+goal_checker_plugin_class: "hateb_local_planner::HATEBGoalChecker"
+
 controller_plugins:
  - FollowPath
 controller_plugins_dict:

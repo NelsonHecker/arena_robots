@@ -2,6 +2,8 @@ FollowPath:
   critics: ${critics}
   ${**critics_dict}: ''
 
+goal_checker_plugin_class: "nav2_controller::SimpleGoalChecker"
+
 critics: [
   "ConstraintCritic",
   "CostCritic",
