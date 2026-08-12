@@ -133,3 +133,11 @@
 	update = none
 	component = gripper/robotiq_2f_85
 	sparse = robotiq_description
+[submodule "deps/realsense2_description"]
+	path = deps/realsense2_description
+	url = https://github.com/IntelRealSense/realsense-ros.git
+	branch = ros2-development
+	update = none
+	robot = boxer rbkairos rbsummit rbtheron rbvogui
+	component = camera/d435_depth
+	sparse = realsense2_description
