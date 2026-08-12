@@ -73,7 +73,7 @@ class LockstepBeat:
         await self._apply([])
 
     def pulse(self, stamp: TimeMsg | None = None) -> None:
-        """Publish one coverage stamp; defaults to current sim time."""
+        """Publish one coverage stamp, defaulting to current sim time."""
         if self._active <= 0:
             return
         self._last_pulse = self._wall.now()
