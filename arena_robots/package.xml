@@ -14,6 +14,8 @@
   <exec_depend>arena_bringup</exec_depend>
   <exec_depend>arena_rclpy_mixins</exec_depend>
   <exec_depend>arena_robots_msgs</exec_depend>
+  <exec_depend>arena_runtime_msgs</exec_depend>
+  <exec_depend>control_msgs</exec_depend>
   <exec_depend>arena_simulation_setup</exec_depend>
   <exec_depend>ament_index_python</exec_depend>
 

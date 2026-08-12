@@ -7,15 +7,19 @@ from action_msgs.msg import GoalStatus
 from arena_robots_msgs.action import PlayGesture
 from arena_simulation_setup.tree.Gesture import GestureIdentifier, GestureSpec
 from control_msgs.action import FollowJointTrajectory
+from control_msgs.msg import JointTrajectoryControllerState
 from moveit_msgs.action import MoveGroup
 from moveit_msgs.msg import Constraints, JointConstraint, MotionPlanRequest, MoveItErrorCodes
 from rclpy.action import ActionClient
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
+from arena_robots.lockstep_beat import LockstepBeat
 from arena_robots.task_server_handlers import TaskHandler, _executor_sleep
 
 if TYPE_CHECKING:
     from arena_robots.bringup.arm.moveit import MoveItArmBringup
+
+_ARM_BEAT_PERIOD = 0.1
 
 
 def _translate_fjt_status(error_code: int) -> tuple[int, str]:
@@ -102,6 +106,14 @@ class PlayGestureHandlerMoveIt(TaskHandler[PlayGesture.Goal, PlayGesture.Feedbac
         self._bringup = bringup
         self._node = node
         self._mg_clients: dict[str, ActionClient] = {mount: ActionClient(node, MoveGroup, str(bringup.arm_namespace(mount)("move_action"))) for mount in bringup.arms()}
+        self._beat = LockstepBeat(node, "gesture")
+        for mount, arm in bringup.arms().items():
+            node.create_subscription(
+                JointTrajectoryControllerState,
+                str(bringup.arm_namespace(mount)(arm.controller, "controller_state")),
+                lambda msg: self._beat.pulse(msg.header.stamp),
+                10,
+            )
 
     async def execute(self, goal_handle: object) -> PlayGesture.Result:
         arena_goal: PlayGesture.Goal = goal_handle.request
@@ -152,6 +164,22 @@ class PlayGestureHandlerMoveIt(TaskHandler[PlayGesture.Goal, PlayGesture.Feedbac
                 return result
             await _executor_sleep(self._node, 0.1, wall=True)
 
+        await self._beat.acquire(_ARM_BEAT_PERIOD)
+        try:
+            return await self._dispatch(goal_handle, mg_client, mg_goal, gesture, arm, mount, result)
+        finally:
+            await self._beat.release()
+
+    async def _dispatch(
+        self,
+        goal_handle: object,
+        mg_client: ActionClient,
+        mg_goal: MoveGroup.Goal,
+        gesture: GestureSpec,
+        arm: object,
+        mount: str,
+        result: PlayGesture.Result,
+    ) -> PlayGesture.Result:
         mg_handle = await mg_client.send_goal_async(mg_goal)
         if not mg_handle.accepted:
             goal_handle.abort()

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from action_msgs.msg import GoalStatus
 from arena_robots_msgs.action import ReachPose
+from control_msgs.msg import JointTrajectoryControllerState
 from moveit_msgs.action import MoveGroup
 from moveit_msgs.msg import (
     Constraints,
@@ -16,6 +17,7 @@ from moveit_msgs.msg import (
 from rclpy.action import ActionClient
 from shape_msgs.msg import SolidPrimitive
 
+from arena_robots.lockstep_beat import LockstepBeat
 from arena_robots.task_server_handlers import TaskHandler, _executor_sleep
 
 if TYPE_CHECKING:
@@ -24,6 +26,7 @@ if TYPE_CHECKING:
 _DEFAULT_POSITION_TOLERANCE = 0.01
 _DEFAULT_ORIENTATION_TOLERANCE = 0.1
 _DEFAULT_PLANNING_TIME = 5.0
+_ARM_BEAT_PERIOD = 0.1
 
 
 def _translate_moveit_status(code: int) -> tuple[int, str]:
@@ -47,6 +50,14 @@ class ReachPoseHandlerMoveIt(TaskHandler[ReachPose.Goal, ReachPose.Feedback, Rea
         self._node = node
         self._tf_prefix = bringup.frame
         self._native_clients: dict[str, ActionClient] = {mount: ActionClient(node, MoveGroup, str(bringup.arm_namespace(mount)("move_action"))) for mount in bringup.arms()}
+        self._beat = LockstepBeat(node, "reach")
+        for mount, arm in bringup.arms().items():
+            node.create_subscription(
+                JointTrajectoryControllerState,
+                str(bringup.arm_namespace(mount)(arm.controller, "controller_state")),
+                lambda msg: self._beat.pulse(msg.header.stamp),
+                10,
+            )
 
     async def execute(self, goal_handle: object) -> ReachPose.Result:
         arena_goal: ReachPose.Goal = goal_handle.request
@@ -82,6 +93,13 @@ class ReachPoseHandlerMoveIt(TaskHandler[ReachPose.Goal, ReachPose.Feedback, Rea
                 return result
             await _executor_sleep(self._node, 0.1, wall=True)
 
+        await self._beat.acquire(_ARM_BEAT_PERIOD)
+        try:
+            return await self._dispatch(goal_handle, native_client, mg_goal, result)
+        finally:
+            await self._beat.release()
+
+    async def _dispatch(self, goal_handle: object, native_client: ActionClient, mg_goal: MoveGroup.Goal, result: ReachPose.Result) -> ReachPose.Result:
         if goal_handle.is_cancel_requested:
             goal_handle.canceled()
             result.status = ReachPose.Result.STATUS_CANCELED
