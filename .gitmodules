@@ -74,6 +74,7 @@
 	branch = humble
 	update = none
 	robot = rbkairos_plus rbrobout_plus rbvogui_plus ridgeback_plus
+	component = arm/ur
 [submodule "deps/robotnik_description"]
 	path = deps/robotnik_description
 	url = https://github.com/RobotnikAutomation/robotnik_description.git
