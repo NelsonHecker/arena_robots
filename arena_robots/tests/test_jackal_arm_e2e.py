@@ -20,10 +20,12 @@ from arena_simulation_setup.utils.models.urdf import _inject_ros2_control_joints
 
 COMPONENTS_ROOT = Path(__file__).resolve().parent.parent / "components"
 _XACRO = shutil.which("xacro")
+_UR_MACRO = Path(__file__).resolve().parent.parent.parent / "deps" / "ur_description" / "urdf" / "ur_macro.xacro"
 _UR5E_JOINT_SUFFIXES = ("shoulder_pan", "shoulder_lift", "elbow", "wrist_1", "wrist_2", "wrist_3")
 
 
 @pytest.mark.skipif(_XACRO is None, reason="xacro CLI not on PATH; run under the Arena container (bash arena -c pytest)")
+@pytest.mark.skipif(not _UR_MACRO.is_file(), reason="deps/ur_description not initialized; run `arena feature robots add arm/ur`")
 class TestJackalArmEndToEnd:
     @pytest.fixture(scope="class")
     def merged(self, tmp_path_factory: pytest.TempPathFactory) -> ET.Element:
