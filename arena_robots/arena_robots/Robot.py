@@ -276,7 +276,7 @@ class RobotView(PathView):
         resolved = self._resolved(parts)
         if resolved is None:
             return 0.0
-        
+
         total_w = 0.0
         for placement in resolved.placements:
             component = _CATALOG.get(placement.type, placement.variant)

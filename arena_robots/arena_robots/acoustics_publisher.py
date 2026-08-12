@@ -17,7 +17,7 @@ from sensor_msgs.msg import JointState
 class AcousticsPublisher(Node):
     """ROS 2 node that computes acoustic ego-noise level from joint states."""
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: object) -> None:
         super().__init__("acoustics_publisher", **kwargs)
 
         robot_name_param = str(self.declare_parameter("robot_name", "jackal").value)
@@ -37,14 +37,13 @@ class AcousticsPublisher(Node):
                 candidates = [
                     share_dir / "robots" / robot_name_param / "telemetry" / "acoustics.yaml",
                     share_dir / "config" / "acoustic_profile.yaml",
-                    Path(r"u:\src\Arena\arena_robots\arena_robots\robots") / robot_name_param / "telemetry" / "acoustics.yaml",
                 ]
                 for cand in candidates:
                     if cand.is_file():
                         profile_file = cand
                         break
             except Exception:
-                pass
+                self.get_logger().exception("Failed to resolve acoustic profile share directory")
 
         if profile_file is None or not profile_file.is_file():
             self.get_logger().fatal(
@@ -59,6 +58,8 @@ class AcousticsPublisher(Node):
         self._beta_0: float = float(cfg.get("beta_0", 45.0))
         self._beta_1: float = float(cfg.get("beta_1", 18.0))
         self._beta_2: float = float(cfg.get("beta_2", 5.0))
+        self._beta_scrub_0: float = float(cfg.get("beta_scrub_0", 40.0))
+        self._beta_scrub_1: float = float(cfg.get("beta_scrub_1", 15.0))
         self._omega_ref: float = float(cfg.get("omega_ref", 5.0))
         self._tau_ref: float = float(cfg.get("tau_ref", 10.0))
         self._omega_deadband: float = float(cfg.get("omega_deadband", 0.05))
@@ -174,13 +175,64 @@ class AcousticsPublisher(Node):
             * ((1.0 + t_eq / self._tau_ref) ** (self._beta_2 / 10.0))
         )
 
-        # 5. IEC 61672-1 Fast Time Weighting EMA (tau_F = 125ms = 0.125s)
+        # 5. Scrubbing term P_scrub (raw - uses signed arithmetic mean for left/right wheel groups)
+        left_vels: list[float] = []
+        right_vels: list[float] = []
+        if has_velocity:
+            for name, vel in zip(msg.name, msg.velocity, strict=True):
+                n_lower = name.lower()
+                is_left = (
+                    "left" in n_lower
+                    or n_lower.startswith("l_")
+                    or "_l_" in n_lower
+                    or n_lower.endswith("_l")
+                    or "fl" in n_lower
+                    or "rl" in n_lower
+                )
+                is_right = (
+                    "right" in n_lower
+                    or n_lower.startswith("r_")
+                    or "_r_" in n_lower
+                    or n_lower.endswith("_r")
+                    or "fr" in n_lower
+                    or "rr" in n_lower
+                )
+                if is_left and not is_right:
+                    left_vels.append(vel)
+                elif is_right and not is_left:
+                    right_vels.append(vel)
+
+            if not left_vels and not right_vels and n_joints >= 2:
+                half = n_joints // 2
+                left_vels = list(msg.velocity[:half])
+                right_vels = list(msg.velocity[half:])
+
+        if left_vels and right_vels:
+            omega_left = sum(left_vels) / len(left_vels)
+            omega_right = sum(right_vels) / len(right_vels)
+            delta_omega_lr = abs(omega_left - omega_right)
+        else:
+            delta_omega_lr = 0.0
+
+        if delta_active > 0:
+            lambda_scrub = max(0.0, min(1.0, (delta_omega_lr - self._omega_deadband) / delta_active))
+        else:
+            lambda_scrub = 1.0 if delta_omega_lr >= self._omega_active else 0.0
+
+        p_scrub_raw = (
+            lambda_scrub
+            * (10.0 ** (self._beta_scrub_0 / 10.0))
+            * ((max(delta_omega_lr, self._omega_active) / self._omega_ref) ** (self._beta_scrub_1 / 10.0))
+        )
+
+        # 6. IEC 61672-1 Fast Time Weighting EMA (tau_F = 125ms = 0.125s)
         TAU_FAST = 0.125
+        p_dynamic_raw = p_drive_raw + p_scrub_raw
         if dt > 0.0:
             alpha = 1.0 - math.exp(-dt / TAU_FAST)
-            self._ema_p_drive = (1.0 - alpha) * self._ema_p_drive + alpha * p_drive_raw
+            self._ema_p_drive = (1.0 - alpha) * self._ema_p_drive + alpha * p_dynamic_raw
         else:
-            self._ema_p_drive = p_drive_raw
+            self._ema_p_drive = p_dynamic_raw
 
         p_drive = self._ema_p_drive
 

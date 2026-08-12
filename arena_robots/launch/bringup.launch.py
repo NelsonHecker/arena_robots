@@ -23,7 +23,6 @@ def generate_launch_description():
     cap_arg = LaunchArgument('cap', default_value='mobile')
     use_sim_time_arg = LaunchArgument('use_sim_time', default_value='true')
     frame_arg = LaunchArgument('frame', default_value='')
-    active_sensors_arg = LaunchArgument('active_sensors', default_value='')
 
     def _compose(context, *args, **kwargs):
         name = robot_arg.substitution.perform(context)
@@ -32,7 +31,6 @@ def generate_launch_description():
         cap = cap_arg.substitution.perform(context)
         use_sim_time_str = use_sim_time_arg.substitution.perform(context)
         frame = frame_arg.substitution.perform(context)
-        active_sensors_csv = active_sensors_arg.substitution.perform(context)
 
         use_sim_time = use_sim_time_str.lower() in ('true', '1', 'yes')
 
@@ -55,12 +53,7 @@ def generate_launch_description():
         bringup_actions = bringup._launch_actions(use_sim_time=use_sim_time, frame=frame)
 
         actions = [state_publisher, *bringup_actions]
-        
-        active_sensors = []
-        if active_sensors_csv:
-            active_sensors = [s.strip() for s in active_sensors_csv.split(',') if s.strip()]
-            
-        actions.extend(bringup.telemetry_actions(active_sensors=active_sensors))
+        actions.extend(bringup.telemetry_actions())
 
         return actions
 
