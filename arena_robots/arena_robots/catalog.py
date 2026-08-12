@@ -107,6 +107,8 @@ class ComponentSpec:
     exports, for another mount's ``Mount.parent`` to chain onto (e.g. a lift's
     ``top`` frame). Empty for components nothing else mounts onto. Resolved per
     placement by :func:`resolve_mount_parent`."""
+    power: dict[str, object] = attrs.field(factory=dict)
+    """Static power parameters of this component."""
     variants: list[str] = attrs.field(factory=list)
     """Variant names this component serves when no dedicated ``<variant>/`` dir exists
     (family component, e.g. one ``arm/ur`` serving the whole UR family, parameterized
@@ -150,6 +152,10 @@ class ComponentSpec:
         if not isinstance(variants, list):
             raise ValueError(f"component.yaml at {path}: 'variants' must be a list; got {type(variants).__name__}")
 
+        power = data.get('power', {})
+        if not isinstance(power, dict):
+            raise ValueError(f"component.yaml at {path}: 'power' must be a mapping; got {type(power).__name__}")
+
         return cls(
             xacro_include=str(xacro['include']),
             xacro_macro=str(xacro['macro']),
@@ -160,6 +166,7 @@ class ComponentSpec:
             control=dict(control),
             caps=dict(caps),
             frames={str(k): str(v) for k, v in frames.items()},
+            power=dict(power),
             variants=[str(v) for v in variants],
         )
 

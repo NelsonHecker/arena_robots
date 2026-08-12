@@ -23,3 +23,5 @@ sensor:
       topic: "camera_${mount}/points"
       frame: "camera_${mount}"
       sensor: "camera_${mount}"
+power:
+  static_power_w: 2.5

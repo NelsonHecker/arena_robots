@@ -22,3 +22,5 @@ sensor:
       topic: "${topic:-lidar}/points"
       frame: "${prefix}${mount}_link"
       sensor: top_lidar
+power:
+  static_power_w: 12.0

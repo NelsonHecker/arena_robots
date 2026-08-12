@@ -24,3 +24,5 @@ sensor:
       topic: "${topic:-rgbd_camera}/depth_image/points"
       frame: "${prefix}${camera:-${mount}}_link"
       sensor: "${camera:-${mount}}"
+power:
+  static_power_w: 2.0

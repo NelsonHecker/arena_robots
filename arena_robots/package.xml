@@ -15,6 +15,7 @@
   <exec_depend>arena_rclpy_mixins</exec_depend>
   <exec_depend>arena_robots_msgs</exec_depend>
   <exec_depend>arena_simulation_setup</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>ament_index_python</exec_depend>
 
   <exec_depend>rqt_robot_steering</exec_depend>
