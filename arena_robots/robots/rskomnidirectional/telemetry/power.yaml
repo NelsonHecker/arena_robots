@@ -10,7 +10,7 @@
 
 # Energy Evaluation Configuration
 
-robot_model: "jackal"
+robot_model: "rskomnidirectional"
 
 power_system:
   system_voltage_v: 24.0

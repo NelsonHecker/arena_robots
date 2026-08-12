@@ -1,3 +1,12 @@
+# ==============================================================================
+#                                   WARNING
+# ==============================================================================
+# THESE ARE PLACEHOLDER / ESTIMATED VALUES!
+# DO NOT USE FOR ACCURATE ACOUSTIC EVALUATION WITHOUT VERIFICATION.
+# The acoustic profile parameters below must be verified and calibrated for
+# this specific robot model.
+# ==============================================================================
+
 # Robot-Specific Acoustic Profile for WLP311D
 # Derived from Method-A Datasheet Prior / Empirical Measurement
 L_base_0: 45.0 # dBA stationary baseline at 1m
