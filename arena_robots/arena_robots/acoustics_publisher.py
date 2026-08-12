@@ -17,7 +17,7 @@ from sensor_msgs.msg import JointState
 class AcousticsPublisher(Node):
     """ROS 2 node that computes acoustic ego-noise level from joint states."""
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: object) -> None:
         super().__init__("acoustics_publisher", **kwargs)
 
         robot_name_param = str(self.declare_parameter("robot_name", "jackal").value)
@@ -37,14 +37,13 @@ class AcousticsPublisher(Node):
                 candidates = [
                     share_dir / "robots" / robot_name_param / "telemetry" / "acoustics.yaml",
                     share_dir / "config" / "acoustic_profile.yaml",
-                    Path(r"u:\src\Arena\arena_robots\arena_robots\robots") / robot_name_param / "telemetry" / "acoustics.yaml",
                 ]
                 for cand in candidates:
                     if cand.is_file():
                         profile_file = cand
                         break
             except Exception:
-                pass
+                self.get_logger().exception("Failed to resolve acoustic profile share directory")
 
         if profile_file is None or not profile_file.is_file():
             self.get_logger().fatal(
@@ -150,7 +149,7 @@ class AcousticsPublisher(Node):
         left_vels: list[float] = []
         right_vels: list[float] = []
         if has_velocity:
-            for name, vel in zip(msg.name, msg.velocity):
+            for name, vel in zip(msg.name, msg.velocity, strict=True):
                 n_lower = name.lower()
                 is_left = (
                     "left" in n_lower

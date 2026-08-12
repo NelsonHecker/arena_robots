@@ -48,22 +48,22 @@ class PowerPublisher(Node):
 
         components_static_power = float(self.declare_parameter("components_static_power_w", 0.0).value)
 
-        # Compute static power once 
+        # Compute static power once
         self._static_power_w: float = (
             self._compute_core_w + self._idle_motors_w + components_static_power
         )
 
-        # State for energy integration 
+        # State for energy integration
         self._last_time: float | None = None
         self._total_energy_consumed_wh: float = 0.0
         self._warned_empty_effort: bool = False
 
-        # Publishers 
+        # Publishers
         qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE)
         self._power_pub = self.create_publisher(Power, "~/power", qos)
         self._energy_pub = self.create_publisher(Energy, "~/energy", qos)
 
-        # Subscription 
+        # Subscription
         self.create_subscription(JointState, joint_topic, self._on_joint_state, qos)
 
         self.get_logger().info(
@@ -108,7 +108,7 @@ class PowerPublisher(Node):
         total_therm = math.fsum(joint_therm)
         total_power = self._static_power_w + total_mech + total_therm
 
-        # Energy integration 
+        # Energy integration
         if self._last_time is not None:
             dt = current_time - self._last_time
             if dt > 0.0:
@@ -120,7 +120,7 @@ class PowerPublisher(Node):
         else:
             soc = 0.0
 
-        # Publish Power 
+        # Publish Power
         power_msg = Power()
         power_msg.header = msg.header
         power_msg.total_power_w = total_power
@@ -133,7 +133,7 @@ class PowerPublisher(Node):
         power_msg.joint_total_power_w = joint_total
         self._power_pub.publish(power_msg)
 
-        # Publish Energy 
+        # Publish Energy
         energy_msg = Energy()
         energy_msg.header = msg.header
         energy_msg.total_energy_consumed_wh = self._total_energy_consumed_wh
