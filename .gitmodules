@@ -126,3 +126,10 @@
 	url = https://github.com/arena-robots/a1.git
 	robot = a1
 	update = none
+[submodule "deps/robotiq_description"]
+	path = deps/robotiq_description
+	url = https://github.com/PickNikRobotics/ros2_robotiq_gripper.git
+	branch = humble
+	update = none
+	component = gripper/robotiq_2f_85
+	sparse = robotiq_description

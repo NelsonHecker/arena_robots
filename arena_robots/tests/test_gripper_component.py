@@ -19,6 +19,9 @@ from arena_simulation_setup.utils.models.urdf import _inject_ros2_control_joints
 
 COMPONENTS_ROOT = Path(__file__).resolve().parent.parent / "components"
 _XACRO = shutil.which("xacro")
+_DEPS = Path(__file__).resolve().parent.parent.parent / "deps"
+_UR_MACRO = _DEPS / "ur_description" / "urdf" / "ur_macro.xacro"
+_ROBOTIQ_MACRO = _DEPS / "robotiq_description" / "robotiq_description" / "urdf" / "robotiq_2f_85_macro.urdf.xacro"
 KNUCKLE = "robotiq_85_left_knuckle_joint"
 MIMIC_JOINTS = [
     "robotiq_85_right_knuckle_joint",
@@ -119,6 +122,8 @@ class TestGripperChainsOntoArmTip:
 
 
 @pytest.mark.skipif(_XACRO is None, reason="xacro CLI not on PATH; run under the Arena container (bash arena -c pytest)")
+@pytest.mark.skipif(not _UR_MACRO.is_file(), reason="deps/ur_description not initialized; run `arena feature robots add arm/ur`")
+@pytest.mark.skipif(not _ROBOTIQ_MACRO.is_file(), reason="deps/robotiq_description not initialized; run `arena feature robots add gripper/robotiq_2f_85`")
 class TestJackalGripperEndToEnd:
     """Full compose->xacro->inject chain for ``jackal[top=arm/ur5e,top_tool=gripper/robotiq_2f_85]``,
     mirroring test_jackal_arm_e2e with the gripper chained on."""
