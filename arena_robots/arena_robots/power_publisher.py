@@ -33,11 +33,7 @@ class PowerPublisher(Node):
 
         self.create_subscription(JointState, "joint_states", self._on_joint_state, qos)
 
-        self.get_logger().info(
-            f"PowerPublisher ready: static={self._static_power_w:.1f} W, "
-            f"efficiency={self._efficiency}, c_h={self._heating_coeff}, "
-            f"battery={self._battery_capacity_wh} Wh"
-        )
+        self.get_logger().info(f"PowerPublisher ready: static={self._static_power_w:.1f} W, efficiency={self._efficiency}, c_h={self._heating_coeff}, battery={self._battery_capacity_wh} Wh")
 
     def _on_joint_state(self, msg: JointState) -> None:
         stamp = msg.header.stamp
@@ -48,9 +44,7 @@ class PowerPublisher(Node):
         has_velocity = len(msg.velocity) > 0
 
         if not has_effort and not self._warned_empty_effort:
-            self.get_logger().warning(
-                "JointState carries no effort, mechanical and thermal power stay zero until it is published."
-            )
+            self.get_logger().warning("JointState carries no effort, mechanical and thermal power stay zero until it is published.")
             self._warned_empty_effort = True
 
         joint_names: list[str] = []

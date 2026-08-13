@@ -40,9 +40,7 @@ class AcousticsPublisher(Node):
 
         profile_file = Path(profile_path_param)
         if not profile_path_param or not profile_file.is_file():
-            self.get_logger().fatal(
-                f"Acoustic profile file not found for robot '{robot_name_param}' (path: {profile_path_param})"
-            )
+            self.get_logger().fatal(f"Acoustic profile file not found for robot '{robot_name_param}' (path: {profile_path_param})")
             raise SystemExit(1)
 
         with open(profile_file) as f:
@@ -63,17 +61,14 @@ class AcousticsPublisher(Node):
         self._sigma_dynamic: float = float(cfg.get("sigma_dynamic", 2.0))
         self._sigma_no_effort: float = float(cfg.get("sigma_no_effort", 4.0))
 
-        # Precompute baseline acoustic power
         self._P_base: float = 10.0 ** (self._L_base_0 / 10.0)
 
         # The profile is a fitted parametric model, not a calibration against a sound level meter
-        self._calibration_status: str = (
-            f"uncalibrated_parametric_model:{robot_name_param or profile_file.stem}"
-        )
+        self._calibration_status: str = f"uncalibrated_parametric_model:{robot_name_param or profile_file.stem}"
 
         topic_param = str(self.declare_parameter("topic", "acoustics").value)
 
-        # State tracking for acceleration and IEC 61672-1 Fast time weighting (tau_F = 0.125s)
+        # State for acceleration and the Fast-weighting EMA
         self._last_time: float | None = None
         self._last_omega_eq: float | None = None
         self._ema_p_drive: float = 0.0
@@ -85,9 +80,7 @@ class AcousticsPublisher(Node):
 
         self.create_subscription(JointState, "joint_states", self._on_joint_state, qos)
 
-        self.get_logger().info(
-            f"AcousticsPublisher ready: profile={profile_file}, topic={topic_param}, L_base_0={self._L_base_0} dBA"
-        )
+        self.get_logger().info(f"AcousticsPublisher ready: profile={profile_file}, topic={topic_param}, L_base_0={self._L_base_0} dBA")
 
     def _on_joint_state(self, msg: JointState) -> None:
         stamp = msg.header.stamp
@@ -98,31 +91,26 @@ class AcousticsPublisher(Node):
         has_effort = len(msg.effort) > 0
 
         if not has_effort and not self._warned_empty_effort:
-            self.get_logger().warning(
-                "JointState has no effort data. Acoustic model will set T_eq=0 and apply uncertainty penalty."
-            )
+            self.get_logger().warning("JointState has no effort data. Acoustic model will set T_eq=0 and apply uncertainty penalty.")
             self._warned_empty_effort = True
 
-        # Equivalent wheel speed Omega_eq
         if has_velocity:
             omega_eq = math.sqrt(sum(w**2 for w in msg.velocity) / n_joints)
         else:
             omega_eq = 0.0
 
-        # Equivalent joint effort T_eq
         if has_effort and len(msg.effort) > 0:
             t_eq = sum(abs(tau) for tau in msg.effort) / len(msg.effort)
         else:
             t_eq = 0.0
 
-        # Activation lambda(Omega)
         delta_active = self._omega_active - self._omega_deadband
         if delta_active > 0:
             lambda_omega = max(0.0, min(1.0, (omega_eq - self._omega_deadband) / delta_active))
         else:
             lambda_omega = 1.0 if omega_eq >= self._omega_active else 0.0
 
-        # Acceleration a_eq (clamped to dt_min=0.01s and a_max=10.0 rad/s^2)
+        # Clamped to dt_min = 0.01 s and a_max = 10.0 rad/s^2
         dt = 0.0
         if self._last_time is not None and self._last_omega_eq is not None:
             dt = current_time - self._last_time
@@ -135,16 +123,9 @@ class AcousticsPublisher(Node):
         self._last_time = current_time
         self._last_omega_eq = omega_eq
 
-        # Drivetrain acoustic power P_drive (raw)
-        p_drive_raw = (
-            lambda_omega
-            * (10.0 ** (self._beta_0 / 10.0))
-            * ((max(omega_eq, self._omega_active) / self._omega_ref) ** (self._beta_1 / 10.0))
-            * ((1.0 + t_eq / self._tau_ref) ** (self._beta_2 / 10.0))
-            * (10.0 ** (self._beta_3 * a_eq / 10.0))
-        )
+        p_drive_raw = lambda_omega * (10.0 ** (self._beta_0 / 10.0)) * ((max(omega_eq, self._omega_active) / self._omega_ref) ** (self._beta_1 / 10.0)) * ((1.0 + t_eq / self._tau_ref) ** (self._beta_2 / 10.0)) * (10.0 ** (self._beta_3 * a_eq / 10.0))
 
-        # Scrubbing term P_scrub (raw - uses signed arithmetic mean for left/right wheel groups)
+        # Signed arithmetic mean per wheel group, so counter-rotation registers as scrub
         left_vels: list[float] = []
         right_vels: list[float] = []
         sides_from_names = False
@@ -176,13 +157,9 @@ class AcousticsPublisher(Node):
         else:
             lambda_scrub = 1.0 if delta_omega_lr >= self._omega_active else 0.0
 
-        p_scrub_raw = (
-            lambda_scrub
-            * (10.0 ** (self._beta_scrub_0 / 10.0))
-            * ((max(delta_omega_lr, self._omega_active) / self._omega_ref) ** (self._beta_scrub_1 / 10.0))
-        )
+        p_scrub_raw = lambda_scrub * (10.0 ** (self._beta_scrub_0 / 10.0)) * ((max(delta_omega_lr, self._omega_active) / self._omega_ref) ** (self._beta_scrub_1 / 10.0))
 
-        # IEC 61672-1 Fast time weighting EMA (tau_F = 125ms = 0.125s)
+        # IEC 61672-1 Fast time weighting, tau_F = 0.125 s
         TAU_FAST = 0.125
         if dt > 0.0:
             alpha = 1.0 - math.exp(-dt / TAU_FAST)
@@ -195,22 +172,16 @@ class AcousticsPublisher(Node):
         p_drive = self._ema_p_drive
         p_scrub = self._ema_p_scrub
 
-        # Total power and sound levels
         p_total = self._P_base + p_drive + p_scrub
         l_1m = 10.0 * math.log10(p_total) if p_total > 0.0 else 0.0
 
-        # Baseline and drivetrain levels in dBA
         l_base = self._L_base_0
         p_dynamic = p_drive + p_scrub
         l_drivetrain = 10.0 * math.log10(p_dynamic) if p_dynamic > 1e-12 else 0.0
 
-        # Uncertainty 1-sigma
         effort_unc = 0.0 if has_effort else (self._sigma_no_effort**2)
-        sigma_total = math.sqrt(
-            self._sigma_base**2 + (self._sigma_dynamic * omega_eq / self._omega_ref) ** 2 + effort_unc
-        )
+        sigma_total = math.sqrt(self._sigma_base**2 + (self._sigma_dynamic * omega_eq / self._omega_ref) ** 2 + effort_unc)
 
-        # Validity flags
         validity_flags = 0
         if has_velocity and not sides_from_names:
             validity_flags |= Acoustics.FLAG_SCRUB_UNCLASSIFIED
@@ -226,7 +197,6 @@ class AcousticsPublisher(Node):
         else:
             operating_state = "idle"
 
-        # Publish message
         out_msg = Acoustics()
         out_msg.header = msg.header
         out_msg.total_level_af_dba = float(l_1m)

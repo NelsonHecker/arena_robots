@@ -77,20 +77,32 @@ class Bringup(ABC):
 
         power_params = self.robot.power_profile(self.parts)
         if power_params is not None:
-            nodes.append(Node(
-                package='arena_robots', executable='power_publisher', name='power_publisher',
-                namespace=str(self.namespace), parameters=[power_params], output='screen',
-            ))
+            nodes.append(
+                Node(
+                    package='arena_robots',
+                    executable='power_publisher',
+                    name='power_publisher',
+                    namespace=str(self.namespace),
+                    parameters=[power_params],
+                    output='screen',
+                )
+            )
 
         acoustics_yaml = os.path.join(get_share('arena_robots'), 'robots', self.robot.name, 'telemetry', 'acoustics.yaml')
         fallback_yaml = os.path.join(get_share('arena_robots'), 'config', 'acoustic_profile.yaml')
 
         if os.path.isfile(acoustics_yaml) or os.path.isfile(fallback_yaml):
             used_yaml = acoustics_yaml if os.path.isfile(acoustics_yaml) else fallback_yaml
-            nodes.append(Node(
-                package='arena_robots', executable='acoustics_publisher', name='acoustics_publisher',
-                namespace=str(self.namespace), parameters=[{'robot_name': self.robot.name, 'profile_path': used_yaml}], output='screen',
-            ))
+            nodes.append(
+                Node(
+                    package='arena_robots',
+                    executable='acoustics_publisher',
+                    name='acoustics_publisher',
+                    namespace=str(self.namespace),
+                    parameters=[{'robot_name': self.robot.name, 'profile_path': used_yaml}],
+                    output='screen',
+                )
+            )
 
         return nodes
 
