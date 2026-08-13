@@ -75,14 +75,11 @@ class Bringup(ABC):
 
         nodes = []
 
-        yaml_path = os.path.join(get_share('arena_robots'), 'robots', self.robot.name, 'telemetry', 'power.yaml')
-        if os.path.isfile(yaml_path):
-            params = {'config_path': yaml_path}
-            params['components_static_power_w'] = self.robot.effective_static_power(self.parts)
-
+        power_params = self.robot.power_profile(self.parts)
+        if power_params is not None:
             nodes.append(Node(
                 package='arena_robots', executable='power_publisher', name='power_publisher',
-                namespace=str(self.namespace), parameters=[params], output='screen',
+                namespace=str(self.namespace), parameters=[power_params], output='screen',
             ))
 
         acoustics_yaml = os.path.join(get_share('arena_robots'), 'robots', self.robot.name, 'telemetry', 'acoustics.yaml')

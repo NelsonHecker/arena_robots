@@ -269,19 +269,23 @@ class RobotView(PathView):
         resolved = assembly_mod.apply_frame_overrides(resolved, frames or {})
         return RobotCaps(self.caps.caps_dir, resolved=resolved, catalog=_CATALOG, prefix=self.assembly.prefix)
 
-    def effective_static_power(self, parts: dict[str, list[assembly_mod.RequestPart]]) -> float:
-        """The robot's effective static power for a parts request. Robots with no
-        assembly.yaml return 0.0. Robots with an assembly.yaml aggregate static_power_w
-        from resolved components."""
+    def power_profile(self, parts: dict[str, list[assembly_mod.RequestPart]]) -> dict[str, float] | None:
+        """Power-publisher parameters, chassis block plus resolved component draw. ``None`` when unpowered."""
         resolved = self._resolved(parts)
-        if resolved is None:
-            return 0.0
+        if resolved is None or self.assembly.power is None:
+            return None
 
-        total_w = 0.0
+        spec = self.assembly.power
+        static_w = spec.compute_core_w + spec.idle_motors_w
         for placement in resolved.placements:
             component = _CATALOG.get(placement.type, placement.variant)
-            total_w += float(component.power.get('static_power_w', 0.0))
-        return total_w
+            static_w += float(component.power.get('static_power_w', 0.0))
+        return {
+            'static_power_w': static_w,
+            'drivetrain_efficiency': spec.drivetrain_efficiency,
+            'heating_coefficient_ch': spec.heating_coefficient_ch,
+            'battery_capacity_wh': spec.battery_capacity_wh,
+        }
 
     @property
     def model(self) -> ModelWrapper:
