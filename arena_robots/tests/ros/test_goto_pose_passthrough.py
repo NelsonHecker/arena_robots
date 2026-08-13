@@ -33,6 +33,7 @@ def _make_node():
     publisher = MagicMock()
     node = MagicMock()
     node.create_publisher.return_value = publisher
+    node.get_namespace.return_value = "/env_0/robot1"
     return node, publisher
 
 
@@ -98,14 +99,64 @@ class TestPassthroughHandlerExecute:
         assert result.final_pose is target
 
 
-class TestPassthroughHandlerExternal:
-    def test_external_variant_also_works(self):
+class TestGoalWindowHandlerExternal:
+    def _make_handler(self, transform):
         from arena_robots.task_server_handlers.goto_pose._passthrough import GotoPoseHandlerExternal
 
         node, publisher = _make_node()
         bringup = _make_bringup("/ext/goal_pose")
-        handler = GotoPoseHandlerExternal(bringup, tf_buffer=None, node=node)
+        bringup.frame = "env_0/"
+        bringup.robot.model_params.base_frame = "base_link"
+        tf_buffer = MagicMock()
+        tf_buffer.lookup_transform.return_value = transform
+        handler = GotoPoseHandlerExternal(bringup, tf_buffer=tf_buffer, node=node)
+        return handler, publisher
+
+    def _make_transform(self, x: float = 0.0, y: float = 0.0):
+        from geometry_msgs.msg import TransformStamped
+
+        t = TransformStamped()
+        t.transform.translation.x = x
+        t.transform.translation.y = y
+        t.transform.rotation.w = 1.0
+        return t
+
+    def _make_goal_handle(self, *, pose_tolerance: float = 0.5):
         goal_handle = _make_goal_handle()
+        goal_handle.is_active = True
+        goal_handle.is_cancel_requested = False
+        goal_handle.request.pose_tolerance = pose_tolerance
+        goal_handle.request.yaw_tolerance = 0.0
+        return goal_handle
+
+    def test_publishes_target(self):
+        handler, publisher = self._make_handler(self._make_transform())
+        goal_handle = self._make_goal_handle()
+        asyncio.run(handler.execute(goal_handle))
+        publisher.publish.assert_called_once_with(goal_handle.request.target)
+
+    def test_succeeds_once_within_tolerance(self):
+        from arena_robots_msgs.action import GotoPose
+
+        handler, _ = self._make_handler(self._make_transform(0.1, 0.0))
+        goal_handle = self._make_goal_handle()
         result = asyncio.run(handler.execute(goal_handle))
-        publisher.publish.assert_called_once()
         goal_handle.succeed.assert_called_once()
+        assert result.status == GotoPose.Result.STATUS_SUCCEEDED
+
+    def test_final_pose_is_measured_pose(self):
+        handler, _ = self._make_handler(self._make_transform(0.1, 0.0))
+        goal_handle = self._make_goal_handle()
+        result = asyncio.run(handler.execute(goal_handle))
+        assert result.final_pose.pose.position.x == 0.1
+
+    def test_cancel_requested_returns_canceled(self):
+        from arena_robots_msgs.action import GotoPose
+
+        handler, _ = self._make_handler(self._make_transform())
+        goal_handle = self._make_goal_handle()
+        goal_handle.is_cancel_requested = True
+        result = asyncio.run(handler.execute(goal_handle))
+        goal_handle.canceled.assert_called_once()
+        goal_handle.succeed.assert_not_called()
+        assert result.status == GotoPose.Result.STATUS_CANCELED

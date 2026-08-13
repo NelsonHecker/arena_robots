@@ -59,7 +59,10 @@ result = await client.await_result()
 
 `GotoPoseClient` is in `arena_robots.clients.goto_pose`. `send_goal` returns
 once the server accepts the goal; `await_result` blocks until the action
-completes.
+completes. Every planner-driven bringup (`nav2`, `drl`, `rosnav_rl`,
+`external`) holds the goal open until the robot arrives within tolerance
+and preempts it when a newer goal lands; only `none` and `manual` treat
+goto_pose as a fire-and-forget goal publish.
 
 ## List published action endpoints
 
