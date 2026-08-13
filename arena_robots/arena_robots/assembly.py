@@ -65,6 +65,28 @@ class DefaultPart:
     a fleet-def request, only from a robot's own ``assembly.yaml defaults:``."""
 
 
+@attrs.frozen
+class PowerSpec:
+    """Chassis-intrinsic power model from ``assembly.yaml power:``."""
+
+    compute_core_w: float
+    idle_motors_w: float
+    drivetrain_efficiency: float
+    heating_coefficient_ch: float
+    battery_capacity_wh: float
+
+    @classmethod
+    def parse(cls, data: dict[str, typing.Any]) -> PowerSpec:
+        fields = {f.name for f in attrs.fields(cls)}
+        unknown = set(data) - fields
+        if unknown:
+            raise AssemblyError(f"assembly.yaml 'power' has unknown keys {sorted(unknown)}; expected {sorted(fields)}")
+        missing = fields - set(data)
+        if missing:
+            raise AssemblyError(f"assembly.yaml 'power' is missing keys {sorted(missing)}")
+        return cls(**{k: float(v) for k, v in data.items()})
+
+
 @attrs.define
 class RequestPart:
     """One requested part instance from a fleet-def morphology item; ``mount`` set only
@@ -107,6 +129,7 @@ class AssemblySpec:
 
     mounts: dict[str, Mount] = attrs.field(factory=dict)
     defaults: dict[str, list[DefaultPart]] = attrs.field(factory=dict)
+    power: PowerSpec | None = None
     prefix: str = 'robot_'
     """Frame-templating prefix for ``catalog.render_effective_sensors`` (mount frames
     render as ``${prefix}${mount}_link``). Defaults to ``robot_`` (the Robotnik-family
@@ -161,7 +184,9 @@ class AssemblySpec:
                 )
             defaults[str(t)] = parts
 
-        return cls(mounts=mounts, defaults=defaults, prefix=str(data.get('prefix', 'robot_')))
+        power_raw = data.get('power')
+        power = PowerSpec.parse(power_raw) if power_raw is not None else None
+        return cls(mounts=mounts, defaults=defaults, power=power, prefix=str(data.get('prefix', 'robot_')))
 
 
 @attrs.define
