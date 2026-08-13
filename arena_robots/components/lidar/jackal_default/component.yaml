@@ -22,3 +22,5 @@ sensor:
       sensor: gpu_lidar
 power:
   static_power_w: 6.7
+mass:
+  kg: 0.1

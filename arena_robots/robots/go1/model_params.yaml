@@ -2,6 +2,8 @@ robot_model: go1
 priority: 2
 base_frame: base
 z_offset: 0.45
+mass:
+  base_kg: 12.013
 sensors:
   - name: camera_face_image
     type: image

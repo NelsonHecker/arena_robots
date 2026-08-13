@@ -1,6 +1,8 @@
 robot_model: rbvogui_plus
 base_frame: robot_base_footprint
 z_offset: 0.37
+mass:
+  base_kg: 122.45
 sensors:
   - name: lidar
     type: laserscan

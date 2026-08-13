@@ -1,6 +1,8 @@
 robot_model: rbrobout
 base_frame: robot_base_footprint
 z_offset: 0.37
+mass:
+  base_kg: 226.0
 sensors:
   - name: lidar
     type: laserscan

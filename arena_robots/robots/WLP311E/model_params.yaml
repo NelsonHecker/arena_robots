@@ -1,6 +1,8 @@
 robot_model: WLP311E
 base_frame: base
 z_offset: 0.29
+mass:
+  base_kg: 51.557
 sensors:
   - name: lidar
     type: laserscan
