@@ -1,16 +1,14 @@
-# Robot-Specific Acoustic Profile for a1
-# Derived from Method-A Datasheet Prior / Empirical Measurement
-L_base_0: 50.0 # dBA stationary baseline at 1m
-beta_0: 55.0 # dBA drivetrain intercept
-beta_1: 22.0 # dB/decade speed scaling slope
-beta_2: 7.0 # dB/decade load effort slope
-beta_3: 4.0 # dB/decade control transient slope
-beta_scrub_0: 30.0 # dBA scrub intercept
-beta_scrub_1: 0.0 # dB/decade scrub speed slope
-omega_ref: 8.0 # rad/s reference wheel speed
-tau_ref: 15.0 # N*m reference joint effort
-omega_deadband: 0.05 # rad/s
-omega_active: 0.2 # rad/s
-sigma_base: 2.5 # dBA baseline uncertainty
-sigma_dynamic: 3.0 # dBA dynamic max speed uncertainty
-sigma_no_effort: 4.0 # dBA penalty if effort topic is unmapped
+L_base_0: 50.0
+beta_0: 55.0
+beta_1: 22.0
+beta_2: 7.0
+beta_3: 4.0
+beta_scrub_0: 30.0
+beta_scrub_1: 0.0
+omega_ref: 8.0
+tau_ref: 15.0
+omega_deadband: 0.05
+omega_active: 0.2
+sigma_base: 2.5
+sigma_dynamic: 3.0
+sigma_no_effort: 4.0
