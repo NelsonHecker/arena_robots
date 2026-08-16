@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import rclpy.time
 import tf2_ros
@@ -44,14 +44,19 @@ class _PassthroughHandler(TaskHandler[GotoPose.Goal, GotoPose.Feedback, GotoPose
 
 class _GoalWindowHandler(_PassthroughHandler):
     """Publish the goal, then hold the action open until arrival,
-    supersession, or cancel, beat-gating the sim for the whole motion."""
+    supersession, or cancel. Stacks whose control loop Arena does not own
+    are beat-gated by proxy (one cmd_vel per window) for the whole motion."""
+
+    _PROXY_BEAT: ClassVar[bool] = True
 
     def __init__(self, bringup: ExternalBringup | RosnavRlBringup | DrlBringup, *, tf_buffer: object, node: object) -> None:
         super().__init__(bringup, tf_buffer=tf_buffer, node=node)
         self._base_frame = bringup.frame + bringup.robot.model_params.base_frame
-        self._beat = LockstepBeat(node, "nav")
         self._active_token: object | None = None
-        node.create_subscription(Twist, str(bringup.namespace("cmd_vel")), lambda _msg: self._beat.pulse(), 10)
+        self._beat: LockstepBeat | None = None
+        if self._PROXY_BEAT:
+            self._beat = LockstepBeat(node, "nav")
+            node.create_subscription(Twist, str(bringup.namespace("cmd_vel")), lambda _msg: self._beat.pulse(), 10)
 
     async def execute(self, goal_handle: object) -> GotoPose.Result:
         arena_goal: GotoPose.Goal = goal_handle.request
@@ -63,7 +68,8 @@ class _GoalWindowHandler(_PassthroughHandler):
         result.final_pose = arena_goal.target
         tolerance = float(arena_goal.pose_tolerance) or _DEFAULT_TOLERANCE_M
 
-        await self._beat.acquire(_PASSTHROUGH_BEAT_PERIOD)
+        if self._beat is not None:
+            await self._beat.acquire(_PASSTHROUGH_BEAT_PERIOD)
         try:
             while True:
                 if self._active_token is not token:
@@ -101,7 +107,8 @@ class _GoalWindowHandler(_PassthroughHandler):
         finally:
             if self._active_token is token:
                 self._active_token = None
-            await self._beat.release()
+            if self._beat is not None:
+                await self._beat.release()
 
     def _current_pose(self) -> PoseStamped | None:
         try:
@@ -142,4 +149,6 @@ class GotoPoseHandlerRosnavRl(_GoalWindowHandler):
 
 
 class GotoPoseHandlerDrl(_GoalWindowHandler):
-    pass
+    """The planner bridge registers its own `planner/<robot>` beat."""
+
+    _PROXY_BEAT = False

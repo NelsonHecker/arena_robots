@@ -1,14 +1,14 @@
-"""Lockstep heartbeat for task_server handlers.
+"""Lockstep heartbeat for per-robot producers.
 
-A handler acquires the beat for the lifetime of an active goal: acquire
-registers a hard lockstep channel for this robot, each pulse republishes
-controller activity as a coverage stamp, and release deregisters. A
-wall-clock watchdog covers silent phases (MoveIt planning, nav2 recovery
-behaviors) with forward keepalive stamps after a grace period, so a
-producer that legitimately needs sim time to pass cannot freeze the sim.
+acquire registers a hard channel for this robot, pulse republishes a coverage
+stamp, release deregisters. A wall-clock watchdog covers legitimately silent
+phases (MoveIt planning, nav2 recoveries) with keepalive stamps after `grace_s`,
+`grace_s=None` lets silence hold the sim.
 """
 
 from __future__ import annotations
+
+import typing
 
 from arena_runtime_msgs.msg import LockstepChannel, LockstepHeartbeat, LockstepRegistration
 from arena_runtime_msgs.srv import LockstepRegister
@@ -26,9 +26,18 @@ _KEEPALIVE_COVER_S = 2.0
 
 
 class LockstepBeat:
-    def __init__(self, node: object, kind: str) -> None:
+    def __init__(
+        self,
+        node: object,
+        kind: str,
+        *,
+        grace_s: float | None = _GRACE_S,
+        sleep: typing.Callable[[float], typing.Awaitable[None]] | None = None,
+    ) -> None:
         ns = node.get_namespace().rstrip("/")
         self._node = node
+        self._grace_s = grace_s
+        self._sleep = sleep
         self._name = f"{kind}/{ns.rsplit('/', 1)[-1]}"
         self._topic = f"{ns}/lockstep/{kind}"
         self._env = ns.rsplit("/", 1)[0] or "/"
@@ -39,7 +48,8 @@ class LockstepBeat:
         self._starved = False
         self._wall = Clock()
         self._last_pulse = self._wall.now()
-        node.create_timer(_WATCHDOG_PERIOD, self._watchdog, clock=self._wall)
+        if grace_s is not None:
+            node.create_timer(_WATCHDOG_PERIOD, self._watchdog, clock=self._wall)
 
     async def acquire(self, period_s: float) -> None:
         """Register the channel on the first concurrent acquisition."""
@@ -86,7 +96,7 @@ class LockstepBeat:
         if self._active <= 0 or not self._registered:
             return
         silent = (self._wall.now() - self._last_pulse).nanoseconds * 1e-9
-        if silent < _GRACE_S:
+        if silent < self._grace_s:
             return
         if not self._starved:
             self._starved = True
@@ -95,13 +105,19 @@ class LockstepBeat:
         msg.header.stamp = (self._node.get_clock().now() + Duration(seconds=_KEEPALIVE_COVER_S)).to_msg()
         self._pub.publish(msg)
 
+    async def _wait(self, seconds: float) -> None:
+        if self._sleep is not None:
+            await self._sleep(seconds)
+            return
+        await _executor_sleep(self._node, seconds, wall=True)
+
     async def _apply(self, channels: list[LockstepChannel]) -> bool:
         deadline = self._wall.now().nanoseconds * 1e-9 + _REGISTER_TIMEOUT
         while not self._client.service_is_ready():
             if self._wall.now().nanoseconds * 1e-9 >= deadline:
                 self._node.get_logger().info("lockstep register service not available, skipping beat registration")
                 return False
-            await _executor_sleep(self._node, 0.1, wall=True)
+            await self._wait(0.1)
         request = LockstepRegister.Request()
         request.registration = LockstepRegistration(caller=self._topic, env=self._env, channels=channels)
         call = self._client.call_async(request)
@@ -109,7 +125,7 @@ class LockstepBeat:
             if self._wall.now().nanoseconds * 1e-9 >= deadline:
                 self._node.get_logger().warning(f"lockstep beat {self._name}: register call timed out")
                 return False
-            await _executor_sleep(self._node, 0.1, wall=True)
+            await self._wait(0.1)
         response = call.result()
         if not response.success:
             self._node.get_logger().warning(f"lockstep beat {self._name}: registration failed: {response.error_msg}")
