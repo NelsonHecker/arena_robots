@@ -1,7 +1,7 @@
 # Nav2 controllers
 
 One directory per selectable local planner. Pick it at launch with
-`mobile.local_planner:=<name>` (default comes from the robot's `caps/mobile.yaml`
+`robot.mobile.local_planner:=<name>` (default comes from the robot's `caps/mobile.yaml`
 `nav2:` block).
 
 ## Layout
