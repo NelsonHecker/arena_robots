@@ -55,7 +55,7 @@ class ExternalBringup(Bringup):
     ) -> list[Action]:
         target = launch_file or self.launch_file
         if not target:
-            return [LogInfo(msg=f"robot {self.robot.name!r}: mobile adapter 'external' has no launch_file, starting no navstack. Drive {self.cmd_vel_topic} yourself or set mobile.launch_file:=<path>.")]
+            return [LogInfo(msg=f"robot {self.robot.name!r}: mobile adapter 'external' has no launch_file, starting no navstack. Drive {self.cmd_vel_topic} yourself or set robot.mobile.launch_file:=<path>.")]
         args: dict[str, str] = {
             "goal_topic": self.goal_topic,
             "cmd_vel_topic": self.cmd_vel_topic,

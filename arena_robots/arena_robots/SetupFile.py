@@ -80,7 +80,7 @@ class Config:
             if '.' in k:
                 cap, _, tail = k.partition('.')
                 if tail != 'adapter':
-                    raise RuntimeError(f"'{k}': the only dotted key is '<cap>.adapter=<kind>'; tuning belongs on the planner:= / task-config channel")
+                    raise RuntimeError(f"'{k}': the only dotted key is '<cap>.adapter=<kind>'; tuning belongs on the robot.planner:= / task-config channel")
                 adapters[cap] = str(v)
                 continue
 
