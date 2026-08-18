@@ -14,8 +14,6 @@ beta_0: 52.0 # dBA drivetrain intercept
 beta_1: 20.0 # dB/decade speed scaling slope
 beta_2: 6.0 # dB/decade load effort slope
 beta_3: 3.5 # dB/decade control transient slope
-beta_scrub_0: 45.0 # dBA scrub intercept
-beta_scrub_1: 14.0 # dB/decade scrub speed slope
 omega_ref: 4.0 # rad/s reference wheel speed
 tau_ref: 25.0 # N*m reference joint effort
 omega_deadband: 0.05 # rad/s

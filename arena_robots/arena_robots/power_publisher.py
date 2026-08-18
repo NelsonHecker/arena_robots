@@ -18,8 +18,8 @@ class PowerPublisher(Node):
     """ROS 2 node that computes instantaneous power, integrates energy, and
     tracks battery State of Charge"""
 
-    def __init__(self) -> None:
-        super().__init__("power_publisher")
+    def __init__(self, **kwargs) -> None:
+        super().__init__("power_publisher", **kwargs)
 
         config_path = self.declare_parameter("config_path", "").value
         if not config_path:
@@ -82,9 +82,30 @@ class PowerPublisher(Node):
 
         if not has_effort and not self._warned_empty_effort:
             self.get_logger().warning(
-                "JointState has no effort data mechanical & thermal power will be zero until effort is published."
+                "JointState has no effort data. Mechanical and thermal power cannot be calculated and will be invalidated (NaN)."
             )
             self._warned_empty_effort = True
+
+        if not has_effort or not has_velocity:
+            # Strict Invalidation: Publish NaN to prevent logging false 0W dynamic energy
+            power_msg = Power()
+            power_msg.header = msg.header
+            power_msg.total_power_w = float("nan")
+            power_msg.static_power_w = float(self._static_power_w)
+            power_msg.total_mechanical_power_w = float("nan")
+            power_msg.total_thermal_power_w = float("nan")
+            power_msg.joint_names = list(msg.name)
+            power_msg.joint_mechanical_power_w = [float("nan")] * n_joints
+            power_msg.joint_thermal_power_w = [float("nan")] * n_joints
+            power_msg.joint_total_power_w = [float("nan")] * n_joints
+            self._power_pub.publish(power_msg)
+
+            energy_msg = Energy()
+            energy_msg.header = msg.header
+            energy_msg.total_energy_consumed_wh = float("nan")
+            energy_msg.battery_soc_percent = float("nan")
+            self._energy_pub.publish(energy_msg)
+            return
 
         joint_names: list[str] = []
         joint_mech: list[float] = []

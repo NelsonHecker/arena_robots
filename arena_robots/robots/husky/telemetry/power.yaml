@@ -24,6 +24,3 @@ joint_metrics:
 static_power_w:
   compute_core: 30.0
   idle_motors: 5.0
-  sensors:
-    lidar: 8.0
-    imu: 0.5

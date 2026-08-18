@@ -17,8 +17,6 @@ beta_0: 45.0
 beta_1: 18.0
 beta_2: 5.0
 beta_3: 3.0
-beta_scrub_0: 40.0
-beta_scrub_1: 12.0
 omega_ref: 5.0
 tau_ref: 10.0
 omega_deadband: 0.05
@@ -53,8 +51,6 @@ beta_0: 45.0
 beta_1: 18.0
 beta_2: 5.0
 beta_3: 3.0
-beta_scrub_0: 40.0
-beta_scrub_1: 12.0
 omega_ref: 5.0
 tau_ref: 10.0
 omega_deadband: 0.05
@@ -87,46 +83,3 @@ sigma_no_effort: 4.0
     finally:
         node.destroy_node()
 
-
-def test_acoustics_publisher_turning_in_place_scrub(tmp_path: Path) -> None:
-    from arena_robots.acoustics_publisher import AcousticsPublisher
-
-    profile_content = """
-L_base_0: 40.0
-beta_0: 45.0
-beta_1: 18.0
-beta_2: 5.0
-beta_3: 3.0
-beta_scrub_0: 40.0
-beta_scrub_1: 12.0
-omega_ref: 5.0
-tau_ref: 10.0
-omega_deadband: 0.05
-omega_active: 0.20
-sigma_base: 1.5
-sigma_dynamic: 2.0
-sigma_no_effort: 4.0
-"""
-    profile_path = tmp_path / "test_profile.yaml"
-    profile_path.write_text(profile_content)
-
-    node = AcousticsPublisher(
-        parameter_overrides=[
-            Parameter("profile_path", value=str(profile_path)),
-            Parameter("topic", value="/test_acoustics"),
-        ]
-    )
-
-    try:
-        msg = JointState()
-        msg.header.stamp.sec = 10
-        msg.header.stamp.nanosec = 0
-        msg.name = ["left_wheel_joint", "right_wheel_joint"]
-        msg.velocity = [2.0, -2.0]  # Turn in place
-        msg.effort = [2.0, 2.0]
-
-        node._on_joint_state(msg)
-        # Verify that signed arithmetic mean yields delta_omega_lr = 4.0, non-zero scrub power
-        assert node._ema_p_scrub > 0.0
-    finally:
-        node.destroy_node()

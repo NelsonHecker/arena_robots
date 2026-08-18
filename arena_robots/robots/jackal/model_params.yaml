@@ -2,6 +2,8 @@ robot_model: jackal
 priority: 1
 base_frame: base_link
 z_offset: 0.0635
+mass:
+  base_kg: 17.0
 sensors:
   - name: lidar
     type: laserscan
