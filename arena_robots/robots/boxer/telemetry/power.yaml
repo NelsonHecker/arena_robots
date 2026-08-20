@@ -17,6 +17,12 @@ power_system:
   global_drivetrain_efficiency: 0.70
   heating_coefficient_ch: 1.25
   battery_capacity_wh: 270.0
+  drivetrain_damping: 0.15
+  drivetrain_friction: 0.3
+  rolling_resistance_crr: 0.03
+  robot_mass_kg: 115.0
+  wheel_radius_m: 0.08
+  num_wheels: 2
 
 joint_metrics:
   topic: "joint_states"
@@ -24,6 +30,3 @@ joint_metrics:
 static_power_w:
   compute_core: 30.0
   idle_motors: 5.0
-  sensors:
-    lidar: 8.0
-    imu: 0.5

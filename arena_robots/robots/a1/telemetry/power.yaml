@@ -13,17 +13,20 @@
 robot_model: "a1"
 
 power_system:
-  system_voltage_v: 24.0
-  global_drivetrain_efficiency: 0.70
-  heating_coefficient_ch: 1.25
-  battery_capacity_wh: 270.0
+  system_voltage_v: 24.0              # Nominal battery voltage (24V)
+  global_drivetrain_efficiency: 0.85  # Quasi-direct-drive (QDD) single-stage planetary gear
+  heating_coefficient_ch: 0.25        # W/(N*m)^2 based on Unitree QDD motor R=0.22 Ohm, K_T=0.95 Nm/A
+  battery_capacity_wh: 100.8          # 24.0V * 4.2 Ah standard pack (100.8 Wh)
+  drivetrain_damping: 0.050           # Joint viscous damping in N*m*s/rad
+  drivetrain_friction: 0.100          # Planetary gearbox Coulomb friction in N*m
+  rolling_resistance_crr: 0.000       # Legged robot (no rolling resistance)
+  robot_mass_kg: 12.0                 # A1 platform mass in kg
+  wheel_radius_m: 0.000               # Legged robot (no wheels)
+  num_wheels: 0                       # 12 articulated leg actuators
 
 joint_metrics:
   topic: "joint_states"
 
 static_power_w:
-  compute_core: 30.0
-  idle_motors: 5.0
-  sensors:
-    lidar: 8.0
-    imu: 0.5
+  compute_core: 18.0                  # Main onboard compute (Jetson TX2 / Xavier + companion MCUs)
+  idle_motors: 6.0                    # Standby logic power for 12 motor inverter drivers (0.5W each)

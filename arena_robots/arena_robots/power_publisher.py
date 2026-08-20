@@ -39,6 +39,21 @@ class PowerPublisher(Node):
         self._heating_coeff: float = float(power_system["heating_coefficient_ch"])
         self._battery_capacity_wh: float = float(power_system["battery_capacity_wh"])
 
+        # Physical drivetrain & rolling resistance parameters (with backward compatible defaults)
+        self._drivetrain_damping: float = float(power_system.get("drivetrain_damping", 0.0))
+        self._drivetrain_friction: float = float(power_system.get("drivetrain_friction", 0.0))
+        self._rolling_resistance_crr: float = float(power_system.get("rolling_resistance_crr", 0.0))
+        self._robot_mass_kg: float = float(power_system.get("robot_mass_kg", 0.0))
+        self._wheel_radius_m: float = float(power_system.get("wheel_radius_m", 0.0))
+        self._num_wheels: int = int(power_system.get("num_wheels", 1))
+
+        if self._num_wheels > 0 and self._robot_mass_kg > 0.0 and self._wheel_radius_m > 0.0:
+            self._tau_roll_per_wheel: float = (
+                self._rolling_resistance_crr * self._robot_mass_kg * 9.81 * self._wheel_radius_m
+            ) / float(self._num_wheels)
+        else:
+            self._tau_roll_per_wheel: float = 0.0
+
         joint_metrics = cfg["joint_metrics"]
         joint_topic: str = str(joint_metrics["topic"])
 
@@ -69,7 +84,8 @@ class PowerPublisher(Node):
         self.get_logger().info(
             f"PowerPublisher ready — static={self._static_power_w:.1f} W, "
             f"η={self._efficiency}, c_h={self._heating_coeff}, "
-            f"battery={self._battery_capacity_wh} Wh"
+            f"battery={self._battery_capacity_wh} Wh, "
+            f"drivetrain_losses(b={self._drivetrain_damping}, tau_c={self._drivetrain_friction}, tau_roll={self._tau_roll_per_wheel:.3f} Nm)"
         )
 
     def _on_joint_state(self, msg: JointState) -> None:
@@ -114,11 +130,22 @@ class PowerPublisher(Node):
 
         for i in range(n_joints):
             name = msg.name[i]
-            effort = msg.effort[i] if i < len(msg.effort) else 0.0
-            velocity = msg.velocity[i] if i < len(msg.velocity) else 0.0
+            effort = abs(msg.effort[i]) if i < len(msg.effort) else 0.0
+            velocity = abs(msg.velocity[i]) if i < len(msg.velocity) else 0.0
 
-            p_mech = abs(effort * velocity) / self._efficiency
-            p_therm = self._heating_coeff * effort * effort
+            if velocity > 1e-4:
+                tau_parasitic = (
+                    self._drivetrain_friction
+                    + self._drivetrain_damping * velocity
+                    + self._tau_roll_per_wheel
+                )
+            else:
+                tau_parasitic = 0.0
+
+            total_effort = effort + tau_parasitic
+
+            p_mech = (total_effort * velocity) / self._efficiency
+            p_therm = self._heating_coeff * total_effort * total_effort
 
             joint_names.append(name)
             joint_mech.append(p_mech)

@@ -144,3 +144,71 @@ static_power_w:
         assert node._total_energy_consumed_wh == 0.0
     finally:
         node.destroy_node()
+
+
+def test_power_publisher_with_drivetrain_augmentation(tmp_path: Path) -> None:
+    from arena_robots.power_publisher import PowerPublisher
+
+    config_content = """
+power_system:
+  system_voltage_v: 24.0
+  global_drivetrain_efficiency: 0.80
+  heating_coefficient_ch: 1.0
+  battery_capacity_wh: 200.0
+  drivetrain_damping: 0.010
+  drivetrain_friction: 0.050
+  rolling_resistance_crr: 0.020
+  robot_mass_kg: 20.0
+  wheel_radius_m: 0.10
+  num_wheels: 2
+
+joint_metrics:
+  topic: "joint_states"
+
+static_power_w:
+  compute_core: 10.0
+  idle_motors: 0.0
+"""
+    config_path = tmp_path / "power.yaml"
+    config_path.write_text(config_content)
+
+    node = PowerPublisher(
+        parameter_overrides=[
+            Parameter("config_path", value=str(config_path)),
+        ]
+    )
+
+    try:
+        # tau_roll = (0.020 * 20.0 * 9.81 * 0.10) / 2 = 0.1962 Nm
+        # At omega = 5.0 rad/s with raw effort = 0.0 (steady state cruise in Gazebo):
+        # tau_parasitic = 0.050 + 0.010 * 5.0 + 0.1962 = 0.2962 Nm
+        # total_effort = 0.0 + 0.2962 = 0.2962 Nm
+        # P_mech per wheel = (0.2962 * 5.0) / 0.80 = 1.85125 W
+        # Total P_mech (2 wheels) = 3.7025 W
+        # P_therm per wheel = 1.0 * (0.2962^2) = 0.08773444 W
+        # Total P_therm (2 wheels) = 0.17546888 W
+        # Total power = 10.0 + 3.7025 + 0.17546888 = 13.87796888 W
+
+        msg = JointState()
+        msg.header.stamp.sec = 0
+        msg.header.stamp.nanosec = 0
+        msg.name = ["wheel_l", "wheel_r"]
+        msg.velocity = [5.0, 5.0]
+        msg.effort = [0.0, 0.0]
+
+        node._on_joint_state(msg)
+
+        msg2 = JointState()
+        msg2.header.stamp.sec = 1
+        msg2.header.stamp.nanosec = 0
+        msg2.name = ["wheel_l", "wheel_r"]
+        msg2.velocity = [5.0, 5.0]
+        msg2.effort = [0.0, 0.0]
+
+        node._on_joint_state(msg2)
+
+        expected_energy = 13.87796888 / 3600.0
+        assert abs(node._total_energy_consumed_wh - expected_energy) < 1e-4
+    finally:
+        node.destroy_node()
+
