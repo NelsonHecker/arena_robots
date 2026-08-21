@@ -3,7 +3,13 @@ L_base_0: 42.0 # dBA stationary baseline at 1m
 beta_0: 45.0 # dBA drivetrain intercept
 beta_1: 18.0 # dB/decade speed scaling slope
 beta_2: 5.0 # dB/decade load effort slope
+<<<<<<< HEAD
 beta_3: 3.0 # dB/decade control transient slope
+=======
+beta_3: 3.0 # dB per rad/s^2 control transient slope, a_eq clamped at 10
+beta_scrub_0: 40.0 # dBA scrub intercept
+beta_scrub_1: 12.0 # dB/decade scrub speed slope
+>>>>>>> 8ba01a5 (update acoustics)
 omega_ref: 5.0 # rad/s reference wheel speed
 tau_ref: 10.0 # N*m reference joint effort
 omega_deadband: 0.05 # rad/s

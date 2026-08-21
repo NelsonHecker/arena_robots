@@ -83,7 +83,6 @@ class Bringup(ABC):
             nodes.append(Node(
                 package='arena_robots', executable='power_publisher', name='power_publisher',
                 namespace=str(self.namespace), parameters=[params], output='screen',
-                remappings=[('joint_states', 'joint_states')]
             ))
 
         acoustics_yaml = os.path.join(get_share('arena_robots'), 'robots', self.robot.name, 'telemetry', 'acoustics.yaml')
@@ -94,7 +93,6 @@ class Bringup(ABC):
             nodes.append(Node(
                 package='arena_robots', executable='acoustics_publisher', name='acoustics_publisher',
                 namespace=str(self.namespace), parameters=[{'robot_name': self.robot.name, 'profile_path': used_yaml}], output='screen',
-                remappings=[('joint_states', 'joint_states')]
             ))
 
         return nodes
