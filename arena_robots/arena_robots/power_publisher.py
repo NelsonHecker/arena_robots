@@ -22,7 +22,11 @@ class PowerPublisher(Node):
         self._efficiency: float = float(self.declare_parameter("drivetrain_efficiency", 1.0).value)
         self._heating_coeff: float = float(self.declare_parameter("heating_coefficient_ch", 0.0).value)
         self._battery_capacity_wh: float = float(self.declare_parameter("battery_capacity_wh", 0.0).value)
+        self._max_torque_nm: float = float(self.declare_parameter("max_joint_torque_nm", 15.0).value)
+        self._filter_tau_s: float = float(self.declare_parameter("filter_tau_s", 0.125).value)
 
+        self._filtered_mech_w: float = 0.0
+        self._filtered_therm_w: float = 0.0
         self._last_time: float | None = None
         self._total_energy_consumed_wh: float = 0.0
         self._warned_empty_effort: bool = False
@@ -33,7 +37,7 @@ class PowerPublisher(Node):
 
         self.create_subscription(JointState, "joint_states", self._on_joint_state, qos)
 
-        self.get_logger().info(f"PowerPublisher ready: static={self._static_power_w:.1f} W, efficiency={self._efficiency}, c_h={self._heating_coeff}, battery={self._battery_capacity_wh} Wh")
+        self.get_logger().info(f"PowerPublisher ready: static={self._static_power_w:.1f} W, efficiency={self._efficiency}, c_h={self._heating_coeff}, tau_max={self._max_torque_nm:.1f} Nm, filter_tau={self._filter_tau_s:.3f} s, battery={self._battery_capacity_wh} Wh")
 
     def _on_joint_state(self, msg: JointState) -> None:
         stamp = msg.header.stamp
@@ -54,8 +58,14 @@ class PowerPublisher(Node):
 
         for i in range(n_joints):
             name = msg.name[i]
-            effort = msg.effort[i] if i < len(msg.effort) else 0.0
+            raw_effort = msg.effort[i] if i < len(msg.effort) else 0.0
             velocity = msg.velocity[i] if i < len(msg.velocity) else 0.0
+
+            # Torque saturation clamping to eliminate unphysical Gazebo impulse spikes
+            if self._max_torque_nm > 0.0:
+                effort = max(-self._max_torque_nm, min(self._max_torque_nm, raw_effort))
+            else:
+                effort = raw_effort
 
             p_mech = abs(effort * velocity) / self._efficiency
             p_therm = self._heating_coeff * effort * effort
@@ -65,8 +75,21 @@ class PowerPublisher(Node):
             joint_therm.append(p_therm)
             joint_total.append(p_mech + p_therm)
 
-        total_mech = math.fsum(joint_mech)
-        total_therm = math.fsum(joint_therm)
+        total_mech_raw = math.fsum(joint_mech)
+        total_therm_raw = math.fsum(joint_therm)
+
+        # 125ms EMA low-pass filtering (conserves total energy while spreading transient impulses)
+        if self._last_time is not None and self._filter_tau_s > 0.0:
+            dt = max(current_time - self._last_time, 1e-6)
+            alpha = 1.0 - math.exp(-dt / self._filter_tau_s)
+            self._filtered_mech_w += alpha * (total_mech_raw - self._filtered_mech_w)
+            self._filtered_therm_w += alpha * (total_therm_raw - self._filtered_therm_w)
+        else:
+            self._filtered_mech_w = total_mech_raw
+            self._filtered_therm_w = total_therm_raw
+
+        total_mech = self._filtered_mech_w
+        total_therm = self._filtered_therm_w
         total_power = self._static_power_w + total_mech + total_therm
 
         if self._last_time is not None:

@@ -50,11 +50,11 @@ class AcousticsPublisher(Node):
         self._beta_0: float = float(cfg.get("beta_0", 45.0))
         self._beta_1: float = float(cfg.get("beta_1", 18.0))
         self._beta_2: float = float(cfg.get("beta_2", 5.0))
-        self._beta_3: float = float(cfg.get("beta_3", 3.0))
         self._beta_scrub_0: float = float(cfg.get("beta_scrub_0", 40.0))
         self._beta_scrub_1: float = float(cfg.get("beta_scrub_1", 12.0))
         self._omega_ref: float = float(cfg.get("omega_ref", 5.0))
         self._tau_ref: float = float(cfg.get("tau_ref", 10.0))
+        self._max_torque_nm: float = float(cfg.get("max_joint_torque_nm", 15.0))
         self._omega_deadband: float = float(cfg.get("omega_deadband", 0.05))
         self._omega_active: float = float(cfg.get("omega_active", 0.20))
         self._sigma_base: float = float(cfg.get("sigma_base", 1.5))
@@ -68,9 +68,8 @@ class AcousticsPublisher(Node):
 
         topic_param = str(self.declare_parameter("topic", "acoustics").value)
 
-        # State for acceleration and the Fast-weighting EMA
+        # State for the Fast-weighting EMA (IEC 61672-1 Fast time constant = 125ms)
         self._last_time: float | None = None
-        self._last_omega_eq: float | None = None
         self._ema_p_drive: float = 0.0
         self._ema_p_scrub: float = 0.0
         self._warned_empty_effort: bool = False
@@ -100,7 +99,11 @@ class AcousticsPublisher(Node):
             omega_eq = 0.0
 
         if has_effort and len(msg.effort) > 0:
-            t_eq = sum(abs(tau) for tau in msg.effort) / len(msg.effort)
+            efforts = [
+                max(-self._max_torque_nm, min(self._max_torque_nm, tau)) if self._max_torque_nm > 0.0 else tau
+                for tau in msg.effort
+            ]
+            t_eq = sum(abs(tau) for tau in efforts) / len(efforts)
         else:
             t_eq = 0.0
 
@@ -110,20 +113,18 @@ class AcousticsPublisher(Node):
         else:
             lambda_omega = 1.0 if omega_eq >= self._omega_active else 0.0
 
-        # Clamped to dt_min = 0.01 s and a_max = 10.0 rad/s^2
         dt = 0.0
-        if self._last_time is not None and self._last_omega_eq is not None:
+        if self._last_time is not None:
             dt = current_time - self._last_time
-            dt_safe = max(dt, 0.01)
-            delta_omega_eq = omega_eq - self._last_omega_eq
-            a_eq = min(abs(delta_omega_eq / dt_safe), 10.0)
-        else:
-            a_eq = 0.0
-
         self._last_time = current_time
-        self._last_omega_eq = omega_eq
 
-        p_drive_raw = lambda_omega * (10.0 ** (self._beta_0 / 10.0)) * ((max(omega_eq, self._omega_active) / self._omega_ref) ** (self._beta_1 / 10.0)) * ((1.0 + t_eq / self._tau_ref) ** (self._beta_2 / 10.0)) * (10.0 ** (self._beta_3 * a_eq / 10.0))
+        # Pure torque and rotational speed formulation (physically captures dynamic load via torque)
+        p_drive_raw = (
+            lambda_omega
+            * (10.0 ** (self._beta_0 / 10.0))
+            * ((max(omega_eq, self._omega_active) / self._omega_ref) ** (self._beta_1 / 10.0))
+            * ((1.0 + t_eq / self._tau_ref) ** (self._beta_2 / 10.0))
+        )
 
         # Signed arithmetic mean per wheel group, so counter-rotation registers as scrub
         left_vels: list[float] = []
