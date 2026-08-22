@@ -23,7 +23,7 @@ not live under `task_generator_node`, such as `door_mask` for
 `nav2_mask_overlay_layer`. Planner selection is
 typically driven from
 [cap-scoped overrides](../../../../arena_bringup/BRINGUP.md#cap-scoped-overrides)
-at launch (`mobile.local_planner:=teb`, etc.) which the task-generator
+at launch (`robot.mobile.local_planner:=teb`, etc.) which the task-generator
 forwards to this launch file.
 
 ### `none.launch.py`

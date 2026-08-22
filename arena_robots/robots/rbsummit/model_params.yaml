@@ -1,6 +1,8 @@
 robot_model: rbsummit
 base_frame: robot_base_footprint
 z_offset: 0.37
+mass:
+  base_kg: 52.2
 sensors:
   - name: lidar
     type: laserscan

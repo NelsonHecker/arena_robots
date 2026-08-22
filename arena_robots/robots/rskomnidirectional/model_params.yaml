@@ -1,6 +1,8 @@
 robot_model: rskomnidirectional
 base_frame: base
 z_offset: 0.05
+mass:
+  base_kg: 0.666
 sensors:
   - name: lidar
     type: laserscan

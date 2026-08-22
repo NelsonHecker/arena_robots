@@ -2,6 +2,8 @@ robot_model: mpo700
 priority: 1
 base_frame: base_footprint
 z_offset: 0.10
+mass:
+  base_kg: 195.6
 sensors:
   - name: lidar
     type: laserscan

@@ -29,3 +29,10 @@ defaults:
   imu:
     - variant: jackal_default
       mount: imu
+
+power:
+  compute_core_w: 30.0
+  idle_motors_w: 5.0
+  drivetrain_efficiency: 0.70
+  heating_coefficient_ch: 1.25
+  battery_capacity_wh: 270.0

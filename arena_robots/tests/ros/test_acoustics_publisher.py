@@ -77,7 +77,6 @@ sigma_no_effort: 4.0
         msg.velocity = [1.0, 1.5]
         msg.effort = [2.0, 2.5]
 
-        # Call joint state handler
         node._on_joint_state(msg)
         assert node._ema_p_drive > 0.0
     finally:

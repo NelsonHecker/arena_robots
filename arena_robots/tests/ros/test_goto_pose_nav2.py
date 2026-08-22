@@ -15,9 +15,24 @@ def _make_bringup(native_action_name: str = "/robot1/navigate_to_pose"):
     return b
 
 
+def _make_client(srv_type, *_args, **_kwargs):
+    """The lockstep register client is polled, the parameter client is awaited."""
+    from rcl_interfaces.msg import ParameterType, ParameterValue
+    from rcl_interfaces.srv import GetParameters
+
+    client = MagicMock()
+    if srv_type is GetParameters:
+        response = GetParameters.Response()
+        response.values = [ParameterValue(type=ParameterType.PARAMETER_DOUBLE, double_value=20.0)]
+        client.call_async = AsyncMock(return_value=response)
+    return client
+
+
 def _make_node():
     node = MagicMock()
     node.get_logger.return_value = MagicMock(info=lambda m: None, warn=lambda m: None)
+    node.get_namespace.return_value = "/env_0/robot1"
+    node.create_client.side_effect = _make_client
     return node
 
 

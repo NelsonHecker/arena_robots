@@ -3,7 +3,7 @@ priority: 1
 base_frame: base_link
 z_offset: 0.0635
 mass:
-  base_kg: 17.0
+  base_kg: 18.431
 sensors:
   - name: lidar
     type: laserscan

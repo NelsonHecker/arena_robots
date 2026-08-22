@@ -47,7 +47,7 @@ class DrlBringup(Bringup):
     def planner(self) -> str:
         v = self._cfg.get("planner")
         if not v:
-            raise ValueError(f"drl bringup for '{self.robot.name}' missing required 'planner': set caps/mobile.yaml 'drl.planner' or pass mobile.planner:=<name>")
+            raise ValueError(f"drl bringup for '{self.robot.name}' missing required 'planner': set caps/mobile.yaml 'drl.planner' or pass robot.mobile.planner:=<name>")
         return str(v)
 
     @property

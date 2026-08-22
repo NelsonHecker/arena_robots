@@ -1,6 +1,8 @@
 robot_model: rbtheron
 base_frame: robot_base_footprint
 z_offset: 0.37
+mass:
+  base_kg: 54.0
 sensors:
   - name: lidar
     type: laserscan
