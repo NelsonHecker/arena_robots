@@ -15,8 +15,8 @@ from sensor_msgs.msg import JointState
 class PowerPublisher(Node):
     """Instantaneous power and integrated energy from joint effort and velocity."""
 
-    def __init__(self) -> None:
-        super().__init__("power_publisher")
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        super().__init__("power_publisher", *args, **kwargs)
 
         self._static_power_w: float = float(self.declare_parameter("static_power_w", 0.0).value)
         self._efficiency: float = float(self.declare_parameter("drivetrain_efficiency", 1.0).value)
