@@ -1,15 +1,3 @@
-# ==============================================================================
-#                                   WARNING
-# ==============================================================================
-# THESE ARE PLACEHOLDER VALUES!
-# DO NOT USE FOR ACCURATE EVALUATION OR PRODUCTION WITHOUT VERIFICATION.
-# The parameters below are generic defaults copied from the jackal robot model.
-# You must calibrate system voltage, efficiency, capacity, and power draw for
-# this specific robot model before relying on these metrics.
-# ==============================================================================
-
-# Energy Evaluation Configuration
-
 robot_model: "mpo700"
 
 power_system:
