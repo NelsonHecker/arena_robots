@@ -26,3 +26,4 @@ control:
     - joint_state_broadcaster
     - wlp311e_velocity_controller
   cmd_vel_topic: wlp311e_velocity_controller/cmd_vel
+  odom_topic: wlp311e_velocity_controller/odom

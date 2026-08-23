@@ -26,3 +26,4 @@ control:
     - joint_state_broadcaster
     - husky_velocity_controller
   cmd_vel_topic: husky_velocity_controller/cmd_vel
+  odom_topic: husky_velocity_controller/odom
