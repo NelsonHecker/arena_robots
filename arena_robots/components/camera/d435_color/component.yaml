@@ -1,5 +1,5 @@
 xacro:
-  include: depth/intel_realsense_d435.urdf.xacro
+  include: "$(find arena_robots)/components/camera/d435_color/intel_realsense_d435.urdf.xacro"
   macro: sensor_intel_realsense_d435
   attach:
     parent: "${prefix}${parent}"
