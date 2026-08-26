@@ -1,7 +1,7 @@
 # node_name left at the macro default ("imu"): the fleet's backing sensor id is
 # "imu_sensor", not mount-derived, so no override is needed.
 xacro:
-  include: imu/vectornav.urdf.xacro
+  include: "$(find arena_robots)/components/imu/vectornav/vectornav.urdf.xacro"
   macro: sensor_vectornav
   attach:
     frame_prefix: "${prefix}${mount}_"

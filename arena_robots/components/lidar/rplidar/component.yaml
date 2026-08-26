@@ -1,5 +1,5 @@
 xacro:
-  include: sensors/rplidar.urdf.xacro
+  include: "$(find arena_robots)/components/lidar/rplidar/rplidar.urdf.xacro"
   macro: rplidar
   attach:
     name: "${mount}"

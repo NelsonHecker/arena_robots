@@ -1,6 +1,6 @@
 # node_name is hardcoded "top_lidar", not the macro's default "robosense_helios_16p".
 xacro:
-  include: 3d_lidar/robosense_helios_16p.urdf.xacro
+  include: "$(find arena_robots)/components/lidar/robosense_helios_16p/robosense_helios_16p.urdf.xacro"
   macro: sensor_robosense_helios_16p
   attach:
     frame_prefix: "${prefix}${mount}_"

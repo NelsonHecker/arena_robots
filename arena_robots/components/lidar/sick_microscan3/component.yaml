@@ -1,5 +1,5 @@
 xacro:
-  include: 2d_lidar/sick_microscan3.urdf.xacro
+  include: "$(find arena_robots)/components/lidar/sick_microscan3/sick_microscan3.urdf.xacro"
   macro: sensor_sick_microscan3
   attach:
     frame_prefix: "${prefix}${mount}_"
