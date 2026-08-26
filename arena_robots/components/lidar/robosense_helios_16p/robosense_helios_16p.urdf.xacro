@@ -2,6 +2,7 @@
 <robot name="sensor_robosense_helios" xmlns:xacro="http://wiki.ros.org/xacro">
 
   <xacro:include filename="$(find arena_robots)/components/plugins/lidar/lidar_3d_plugin.urdf.xacro" />
+  <xacro:include filename="$(find arena_robots)/components/utils/inertia.urdf.xacro" />
   
   <xacro:macro name="sensor_robosense_helios_16p"
                params="frame_prefix

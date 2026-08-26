@@ -2,6 +2,7 @@
 <robot name="sensor_hokuyo_ust20lx" xmlns:xacro="http://wiki.ros.org/xacro">
 
   <xacro:include filename="$(find arena_robots)/components/plugins/lidar/lidar_2d_plugin.urdf.xacro" />
+  <xacro:include filename="$(find arena_robots)/components/utils/inertia.urdf.xacro" />
 
   <xacro:macro name="sensor_hokuyo_ust20lx"
                params="frame_prefix
