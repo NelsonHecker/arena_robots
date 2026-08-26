@@ -1,5 +1,5 @@
 xacro:
-  include: "$(find arena_robots)/robots/turtlebot/urdf/sensors/oakd.urdf.xacro"
+  include: "$(find arena_robots)/components/camera/oakd_rgbd/oakd.urdf.xacro"
   macro: oakd
   attach:
     name: "${mount}"
