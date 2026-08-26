@@ -2,6 +2,7 @@
 <robot name="sensor_sick_s300" xmlns:xacro="http://wiki.ros.org/xacro">
 
   <xacro:include filename="$(find arena_robots)/components/plugins/lidar/lidar_2d_plugin.urdf.xacro" />
+  <xacro:include filename="$(find arena_robots)/components/utils/inertia.urdf.xacro" />
 
   <xacro:macro name="sensor_sick_s300"
                params="frame_prefix
