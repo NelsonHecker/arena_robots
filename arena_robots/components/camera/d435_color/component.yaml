@@ -1,9 +1,9 @@
 xacro:
-  include: "$(find arena_robots)/components/camera/d435_color/intel_realsense_d435.urdf.xacro"
-  macro: sensor_intel_realsense_d435
+  include: "$(find arena_robots)/components/camera/d435_color/d435_color.urdf.xacro"
+  macro: d435_color
   attach:
     parent: "${prefix}${parent}"
-    frame_prefix: "${prefix}${mount}_"
+    frame_prefix: "${prefix}${mount}"
     node_name: "${node_name:-${name:-${mount}}}"
     node_namespace: "${namespace}"
     gazebo_classic: "${gazebo_classic}"

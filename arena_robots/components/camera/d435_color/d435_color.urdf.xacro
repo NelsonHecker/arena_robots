@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<robot name="sensor_intel_realsense_d435" xmlns:xacro="http://wiki.ros.org/xacro">
+<robot name="d435_color" xmlns:xacro="http://wiki.ros.org/xacro">
 
     <!-- Realsense Macro (for Geoemtry, TF and Meshes) -->
     <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
@@ -9,7 +9,7 @@
     <xacro:include filename="$(find arena_robots)/components/plugins/camera/irred_camera_plugin.urdf.xacro" />
     <xacro:include filename="$(find arena_robots)/components/plugins/camera/camera_plugin.urdf.xacro" />
 
-    <xacro:macro name="sensor_intel_realsense_d435"
+    <xacro:macro name="d435_color"
         params="frame_prefix
                 parent
                 *origin
@@ -19,7 +19,7 @@
                 node_namespace:=${None}
                 topic_prefix:=~/">
         
-        <xacro:sensor_d435 parent="${parent}" name="${node_name}" use_nominal_extrinsics="true">
+        <xacro:sensor_d435 parent="${parent}" name="${frame_prefix}" use_nominal_extrinsics="true">
             <xacro:insert_block name="origin" />
         </xacro:sensor_d435>
 
