@@ -31,13 +31,13 @@
       <visual>
         <origin xyz="0 0 0" rpy="${-pi/2} 0 0"/>
         <geometry>
-          <mesh filename="package://arena_robots/robots/rbvogui/meshes/2d_lidar/sick/s300.dae"/>
+          <mesh filename="package://arena_robots/components/lidar/sick_s300/meshes/s300.dae"/>
         </geometry>
       </visual>
       <collision>
         <origin xyz="0 0 0" rpy="${-pi/2} 0 0"/>
         <geometry>
-          <mesh filename="package://arena_robots/robots/rbvogui/meshes/2d_lidar/sick/s300.dae"/>
+          <mesh filename="package://arena_robots/components/lidar/sick_s300/meshes/s300.dae"/>
         </geometry>
       </collision>
       <inertial>

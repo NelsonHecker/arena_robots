@@ -31,7 +31,7 @@
           <color rgba="1 0 0 1"/>
         </material>
         <geometry>
-          <mesh filename="package://arena_robots/robots/rbvogui/meshes/imu/vectornav_vn100.stl"/>
+          <mesh filename="package://arena_robots/components/imu/vectornav/meshes/vectornav_vn100.stl"/>
         </geometry>
       </visual>
       <collision>

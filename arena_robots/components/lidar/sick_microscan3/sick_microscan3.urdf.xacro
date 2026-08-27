@@ -29,13 +29,13 @@
       <visual>
         <origin xyz="0 0 0" rpy="0 0 0"/>
         <geometry>
-		  <mesh filename="package://arena_robots/robots/rbrobout/meshes/2d_lidar/sick/microscan3.dae"/>
+		  <mesh filename="package://arena_robots/components/lidar/sick_microscan3/meshes/microscan3.dae"/>
         </geometry>
       </visual>
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0"/>
         <geometry>
-		  <mesh filename="package://arena_robots/robots/rbrobout/meshes/2d_lidar/sick/microscan3.dae"/>
+		  <mesh filename="package://arena_robots/components/lidar/sick_microscan3/meshes/microscan3.dae"/>
         </geometry>
       </collision>
       <inertial>

@@ -29,13 +29,13 @@
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0"/>
         <geometry>
-          <mesh filename="package://arena_robots/robots/rbvogui/meshes/3d_lidar/robotsense/helios_16p.stl"/>
+          <mesh filename="package://arena_robots/components/lidar/robosense_helios_16p/meshes/helios_16p.stl"/>
         </geometry>
       </collision>
       <visual>
         <origin xyz="0 0 0" rpy="0 0 0"/>
         <geometry>
-          <mesh filename="package://arena_robots/robots/rbvogui/meshes/3d_lidar/robotsense/helios_16p.stl"/>
+          <mesh filename="package://arena_robots/components/lidar/robosense_helios_16p/meshes/helios_16p.stl"/>
         </geometry>
         <material name="blackgray_color">
           <color rgba="0.25 0.25 0.25 1"/>
