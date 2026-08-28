@@ -149,10 +149,6 @@
 	path = arena_robots/components/imu/vectornav/meshes
 	url = https://github.com/arena-robots/vectornav_meshes.git
 	update = none
-[submodule "arena_robots/components/lidar/hokyo_ust20lx/meshes"]
-	path = arena_robots/components/lidar/hokyo_ust20lx/meshes
-	url = https://github.com/arena-robots/hokyo_ust20lx_meshes.git
-	update = none
 [submodule "arena_robots/components/lidar/robosense_helios_16p/meshes"]
 	path = arena_robots/components/lidar/robosense_helios_16p/meshes
 	url = https://github.com/arena-robots/robosense_helios_16p_meshes.git
@@ -168,4 +164,8 @@
 [submodule "arena_robots/components/lidar/sick_s300/meshes"]
 	path = arena_robots/components/lidar/sick_s300/meshes
 	url = https://github.com/arena-robots/sick_s300_meshes.git
+	update = none
+[submodule "arena_robots/components/lidar/hokuyo_ust20lx/meshes"]
+	path = arena_robots/components/lidar/hokuyo_ust20lx/meshes
+	url = https://github.com/arena-robots/hokyo_ust20lx_meshes.git
 	update = none

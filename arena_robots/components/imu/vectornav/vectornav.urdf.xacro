@@ -2,6 +2,7 @@
 <robot name="sensor_vectornav" xmlns:xacro="http://wiki.ros.org/xacro">
 
   <xacro:include filename="$(find arena_robots)/components/plugins/imu/imu_plugin.urdf.xacro" />
+  <xacro:include filename="$(find arena_robots)/components/utils/inertia.urdf.xacro" />
 
   <xacro:macro name="sensor_vectornav"
                params="frame_prefix
