@@ -139,33 +139,40 @@
 	branch = ros2-development
 	update = none
 	robot = boxer rbkairos rbsummit rbtheron rbvogui
-	component = camera/d435_depth
+	component = camera/d435_depth camera/d435_color
 	sparse = realsense2_description
 [submodule "arena_robots/components/camera/oakd_rgbd/meshes"]
 	path = arena_robots/components/camera/oakd_rgbd/meshes
 	url = https://github.com/arena-robots/oakd_rgbd_meshes.git
 	update = none
+	component = camera/oakd_rgbd
 [submodule "arena_robots/components/imu/vectornav/meshes"]
 	path = arena_robots/components/imu/vectornav/meshes
 	url = https://github.com/arena-robots/vectornav_meshes.git
 	update = none
+	component = imu/vectornav
 [submodule "arena_robots/components/lidar/robosense_helios_16p/meshes"]
 	path = arena_robots/components/lidar/robosense_helios_16p/meshes
 	url = https://github.com/arena-robots/robosense_helios_16p_meshes.git
 	update = none
+	component = lidar/robosense_helios_16p
 [submodule "arena_robots/components/lidar/rplidar/meshes"]
 	path = arena_robots/components/lidar/rplidar/meshes
 	url = https://github.com/arena-robots/rplidar_meshes.git
 	update = none
+	component = lidar/rplidar
 [submodule "arena_robots/components/lidar/sick_microscan3/meshes"]
 	path = arena_robots/components/lidar/sick_microscan3/meshes
 	url = https://github.com/arena-robots/sick_microscan3_meshes.git
 	update = none
+	component = lidar/sick_microscan3
 [submodule "arena_robots/components/lidar/sick_s300/meshes"]
 	path = arena_robots/components/lidar/sick_s300/meshes
 	url = https://github.com/arena-robots/sick_s300_meshes.git
 	update = none
+	component = lidar/sick_s300
 [submodule "arena_robots/components/lidar/hokuyo_ust20lx/meshes"]
 	path = arena_robots/components/lidar/hokuyo_ust20lx/meshes
 	url = https://github.com/arena-robots/hokyo_ust20lx_meshes.git
 	update = none
+	component = hokuyo_ust20lx
