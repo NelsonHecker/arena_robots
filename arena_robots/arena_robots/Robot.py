@@ -25,11 +25,11 @@ _CATALOG = Catalog()
 class ControlSpec:
     """ros2_control wiring declared in ``model_params.yaml`` under ``control:``.
 
-    Presence in the YAML opts the robot into the ros2_control path in
-    Gazebo bringup: an in-process controller_manager (hosted by the URDF's
-    gz_ros2_control plugin) plus a controller_manager/spawner per entry in
-    ``controllers``. Absence means the gazebo_native path (PosePublisher
-    + pose_to_tf + bridged cmd_vel) runs instead.
+    Presence in the YAML opts the robot into the ros2_control path: an
+    in-process controller_manager (hosted by the URDF's gz_ros2_control
+    plugin, or a ros2_control_node under Isaac) whose ``controllers`` the
+    task generator loads and activates at robot bring-up. Absence means the
+    gazebo_native path (PosePublisher + pose_to_tf + bridged cmd_vel) runs instead.
     """
 
     mode: str

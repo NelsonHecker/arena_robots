@@ -46,3 +46,4 @@ control:
     - joint_state_broadcaster
     - rbkairos_velocity_controller
   cmd_vel_topic: rbkairos_velocity_controller/reference
+  odom_topic: rbkairos_velocity_controller/odometry

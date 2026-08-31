@@ -26,3 +26,4 @@ control:
     - joint_state_broadcaster
     - dingo_velocity_controller
   cmd_vel_topic: dingo_velocity_controller/cmd_vel
+  odom_topic: dingo_velocity_controller/odom

@@ -84,7 +84,10 @@ sigma_no_effort: 4.0
 
 
 def test_acoustics_publisher_uncertainty_bounds(tmp_path: Path) -> None:
+    import rclpy
     from arena_robots.acoustics_publisher import AcousticsPublisher
+    from arena_robots_msgs.msg import Acoustics
+    from rclpy.qos import QoSProfile, ReliabilityPolicy
 
     profile_content = """
 L_base_0: 42.0
@@ -117,9 +120,13 @@ sigma_no_effort: 1.0
         msg.velocity = [15.0, 15.0]
         msg.effort = [5.0, 5.0]
 
-        captured = []
-        node._acoustics_pub.publish = lambda m: captured.append(m)
+        captured: list[Acoustics] = []
+        node.create_subscription(Acoustics, "/test_acoustics", captured.append, QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE))
         node._on_joint_state(msg)
+        for _ in range(100):
+            rclpy.spin_once(node, timeout_sec=0.05)
+            if captured:
+                break
 
         assert len(captured) == 1
         unc = captured[0].uncertainty_1sigma_dba
@@ -133,6 +140,11 @@ sigma_no_effort: 1.0
         msg_no_effort.effort = []
 
         node._on_joint_state(msg_no_effort)
+        for _ in range(100):
+            rclpy.spin_once(node, timeout_sec=0.05)
+            if len(captured) == 2:
+                break
+
         assert len(captured) == 2
         unc_no_effort = captured[1].uncertainty_1sigma_dba
         assert 1.0 <= unc_no_effort <= 2.5, f"Uncertainty without effort {unc_no_effort} exceeded 2.5 dBA"

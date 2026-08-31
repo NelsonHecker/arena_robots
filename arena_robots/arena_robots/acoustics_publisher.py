@@ -113,10 +113,7 @@ class AcousticsPublisher(Node):
             omega_eq = 0.0
 
         if has_effort and len(msg.effort) > 0:
-            efforts = [
-                max(-self._max_torque_nm, min(self._max_torque_nm, tau)) if self._max_torque_nm > 0.0 else tau
-                for tau in msg.effort
-            ]
+            efforts = [max(-self._max_torque_nm, min(self._max_torque_nm, tau)) if self._max_torque_nm > 0.0 else tau for tau in msg.effort]
             t_eq = sum(abs(tau) for tau in efforts) / len(efforts)
         else:
             t_eq = 0.0
@@ -133,12 +130,7 @@ class AcousticsPublisher(Node):
         self._last_time = current_time
 
         # Pure torque and rotational speed formulation (physically captures dynamic load via torque)
-        p_drive_raw = (
-            lambda_omega
-            * (10.0 ** (self._beta_0 / 10.0))
-            * ((max(omega_eq, self._omega_active) / self._omega_ref) ** (self._beta_1 / 10.0))
-            * ((1.0 + t_eq / self._tau_ref) ** (self._beta_2 / 10.0))
-        )
+        p_drive_raw = lambda_omega * (10.0 ** (self._beta_0 / 10.0)) * ((max(omega_eq, self._omega_active) / self._omega_ref) ** (self._beta_1 / 10.0)) * ((1.0 + t_eq / self._tau_ref) ** (self._beta_2 / 10.0))
 
         # Signed arithmetic mean per wheel group, so counter-rotation registers as scrub
         left_vels: list[float] = []

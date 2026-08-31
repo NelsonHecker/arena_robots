@@ -26,3 +26,4 @@ control:
     - joint_state_broadcaster
     - rskomni_velocity_controller
   cmd_vel_topic: rskomni_velocity_controller/cmd_vel
+  odom_topic: rskomni_velocity_controller/odometry

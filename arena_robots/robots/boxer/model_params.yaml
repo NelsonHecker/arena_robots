@@ -51,3 +51,4 @@ control:
     - joint_state_broadcaster
     - boxer_velocity_controller
   cmd_vel_topic: boxer_velocity_controller/cmd_vel
+  odom_topic: boxer_velocity_controller/odom

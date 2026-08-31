@@ -47,3 +47,4 @@ control:
     - joint_state_broadcaster
     - turtlebot_velocity_controller
   cmd_vel_topic: turtlebot_velocity_controller/cmd_vel
+  odom_topic: turtlebot_velocity_controller/odom

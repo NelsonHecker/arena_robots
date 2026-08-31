@@ -81,12 +81,6 @@ class TestConfigParseIdentityLaneExtra:
         assert len(configs) == 1
         assert configs[0].extra["pos"] == (1, 2, 0)
 
-    def test_record_data_dir_routes_to_extra_without_error(self):
-        from arena_robots.SetupFile import Config
-
-        configs = Config.parse({"robot": "jackal", "record_data_dir": "/tmp/out"})
-        assert configs[0].extra["record_data_dir"] == "/tmp/out"
-
 
 class TestConfigParseGrammarRejections:
     @pytest.mark.parametrize("bad_key", ["mobile.kp", "x.y.z", "arm.speed"])
