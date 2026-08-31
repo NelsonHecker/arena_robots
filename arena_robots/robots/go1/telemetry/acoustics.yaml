@@ -9,6 +9,6 @@ omega_ref: 8.0
 tau_ref: 12.0
 omega_deadband: 0.05
 omega_active: 0.2
-sigma_base: 2.5
-sigma_dynamic: 3.0
-sigma_no_effort: 4.0
+sigma_base: 1.2
+sigma_dynamic: 1.0
+sigma_no_effort: 1.0

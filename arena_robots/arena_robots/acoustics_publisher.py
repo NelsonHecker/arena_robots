@@ -57,9 +57,9 @@ class AcousticsPublisher(Node):
         self._max_torque_nm: float = float(cfg.get("max_joint_torque_nm", 15.0))
         self._omega_deadband: float = float(cfg.get("omega_deadband", 0.05))
         self._omega_active: float = float(cfg.get("omega_active", 0.20))
-        self._sigma_base: float = float(cfg.get("sigma_base", 1.5))
-        self._sigma_dynamic: float = float(cfg.get("sigma_dynamic", 2.0))
-        self._sigma_no_effort: float = float(cfg.get("sigma_no_effort", 4.0))
+        self._sigma_base: float = float(cfg.get("sigma_base", 1.0))
+        self._sigma_dynamic: float = float(cfg.get("sigma_dynamic", 0.8))
+        self._sigma_no_effort: float = float(cfg.get("sigma_no_effort", 1.0))
 
         self._P_base: float = 10.0 ** (self._L_base_0 / 10.0)
 
@@ -181,7 +181,8 @@ class AcousticsPublisher(Node):
         l_drivetrain = 10.0 * math.log10(p_dynamic) if p_dynamic > 1e-12 else 0.0
 
         effort_unc = 0.0 if has_effort else (self._sigma_no_effort**2)
-        sigma_total = math.sqrt(self._sigma_base**2 + (self._sigma_dynamic * omega_eq / self._omega_ref) ** 2 + effort_unc)
+        sigma_dyn = self._sigma_dynamic * math.log(1.0 + (omega_eq / max(self._omega_ref, 1e-3)))
+        sigma_total = min(2.5, math.sqrt(self._sigma_base**2 + sigma_dyn**2 + effort_unc))
 
         validity_flags = 0
         if has_velocity and not sides_from_names:
