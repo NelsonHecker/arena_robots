@@ -269,7 +269,7 @@ class RobotView(PathView):
         resolved = assembly_mod.apply_frame_overrides(resolved, frames or {})
         return RobotCaps(self.caps.caps_dir, resolved=resolved, catalog=_CATALOG, prefix=self.assembly.prefix)
 
-    def power_profile(self, parts: dict[str, list[assembly_mod.RequestPart]]) -> dict[str, float] | None:
+    def power_profile(self, parts: dict[str, list[assembly_mod.RequestPart]]) -> dict[str, float | int] | None:
         """Power-publisher parameters, chassis block plus resolved component draw. ``None`` when unpowered."""
         resolved = self._resolved(parts)
         if resolved is None or self.assembly.power is None:
@@ -280,11 +280,50 @@ class RobotView(PathView):
         for placement in resolved.placements:
             component = _CATALOG.get(placement.type, placement.variant)
             static_w += float(component.power.get('static_power_w', 0.0))
+
+        damping = spec.drivetrain_damping
+        friction = spec.drivetrain_friction
+        crr = spec.rolling_resistance_crr
+        mass_kg = spec.robot_mass_kg
+        wheel_r = spec.wheel_radius_m
+        num_wheels = spec.num_wheels
+
+        telemetry_yaml = self.path / 'telemetry' / 'power.yaml'
+        if telemetry_yaml.is_file():
+            try:
+                with open(telemetry_yaml) as f:
+                    t_cfg = yaml.safe_load(f)
+                if isinstance(t_cfg, dict) and "power_system" in t_cfg:
+                    ps = t_cfg["power_system"]
+                    if damping == 0.0:
+                        damping = float(ps.get("drivetrain_damping", 0.0))
+                    if friction == 0.0:
+                        friction = float(ps.get("drivetrain_friction", 0.0))
+                    if crr == 0.0:
+                        crr = float(ps.get("rolling_resistance_crr", 0.0))
+                    if mass_kg == 0.0:
+                        mass_kg = float(ps.get("robot_mass_kg", 0.0))
+                    if wheel_r == 0.0:
+                        wheel_r = float(ps.get("wheel_radius_m", 0.0))
+                    if num_wheels <= 1:
+                        num_wheels = int(ps.get("num_wheels", 1))
+            except Exception:
+                pass
+
+        if mass_kg == 0.0 and "mass" in self.model_params:
+            mass_kg = float(self.model_params.get("mass", {}).get("base_kg", 0.0))
+
         return {
             'static_power_w': static_w,
             'drivetrain_efficiency': spec.drivetrain_efficiency,
             'heating_coefficient_ch': spec.heating_coefficient_ch,
             'battery_capacity_wh': spec.battery_capacity_wh,
+            'drivetrain_damping': damping,
+            'drivetrain_friction': friction,
+            'rolling_resistance_crr': crr,
+            'robot_mass_kg': mass_kg,
+            'wheel_radius_m': wheel_r,
+            'num_wheels': num_wheels,
         }
 
     @property

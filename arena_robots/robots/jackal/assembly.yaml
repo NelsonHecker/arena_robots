@@ -36,3 +36,9 @@ power:
   drivetrain_efficiency: 0.70
   heating_coefficient_ch: 1.25
   battery_capacity_wh: 270.0
+  drivetrain_damping: 0.006
+  drivetrain_friction: 0.050
+  rolling_resistance_crr: 0.025
+  robot_mass_kg: 17.0
+  wheel_radius_m: 0.098
+  num_wheels: 4

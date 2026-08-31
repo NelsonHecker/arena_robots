@@ -25,6 +25,21 @@ class PowerPublisher(Node):
         self._max_torque_nm: float = float(self.declare_parameter("max_joint_torque_nm", 15.0).value)
         self._filter_tau_s: float = float(self.declare_parameter("filter_tau_s", 0.125).value)
 
+        # Physical drivetrain & rolling resistance parameters
+        self._drivetrain_damping: float = float(self.declare_parameter("drivetrain_damping", 0.0).value)
+        self._drivetrain_friction: float = float(self.declare_parameter("drivetrain_friction", 0.0).value)
+        self._rolling_resistance_crr: float = float(self.declare_parameter("rolling_resistance_crr", 0.0).value)
+        self._robot_mass_kg: float = float(self.declare_parameter("robot_mass_kg", 0.0).value)
+        self._wheel_radius_m: float = float(self.declare_parameter("wheel_radius_m", 0.0).value)
+        self._num_wheels: int = int(self.declare_parameter("num_wheels", 1).value)
+
+        if self._num_wheels > 0 and self._robot_mass_kg > 0.0 and self._wheel_radius_m > 0.0:
+            self._tau_roll_per_wheel: float = (
+                self._rolling_resistance_crr * self._robot_mass_kg * 9.81 * self._wheel_radius_m
+            ) / float(self._num_wheels)
+        else:
+            self._tau_roll_per_wheel: float = 0.0
+
         self._filtered_mech_w: float = 0.0
         self._filtered_therm_w: float = 0.0
         self._last_time: float | None = None
@@ -37,7 +52,13 @@ class PowerPublisher(Node):
 
         self.create_subscription(JointState, "joint_states", self._on_joint_state, qos)
 
-        self.get_logger().info(f"PowerPublisher ready: static={self._static_power_w:.1f} W, efficiency={self._efficiency}, c_h={self._heating_coeff}, tau_max={self._max_torque_nm:.1f} Nm, filter_tau={self._filter_tau_s:.3f} s, battery={self._battery_capacity_wh} Wh")
+        self.get_logger().info(
+            f"PowerPublisher ready: static={self._static_power_w:.1f} W, "
+            f"efficiency={self._efficiency}, c_h={self._heating_coeff}, "
+            f"tau_max={self._max_torque_nm:.1f} Nm, filter_tau={self._filter_tau_s:.3f} s, "
+            f"battery={self._battery_capacity_wh} Wh, "
+            f"losses(b={self._drivetrain_damping}, tau_f={self._drivetrain_friction}, tau_roll={self._tau_roll_per_wheel:.4f} Nm)"
+        )
 
     def _on_joint_state(self, msg: JointState) -> None:
         stamp = msg.header.stamp
@@ -67,8 +88,19 @@ class PowerPublisher(Node):
             else:
                 effort = raw_effort
 
-            p_mech = abs(effort * velocity) / self._efficiency
-            p_therm = self._heating_coeff * effort * effort
+            # Parasitic mechanical drag (coulomb friction + viscous damping + rolling resistance)
+            if abs(velocity) > 1e-4:
+                tau_parasitic = (
+                    self._drivetrain_friction
+                    + self._drivetrain_damping * abs(velocity)
+                    + self._tau_roll_per_wheel
+                )
+            else:
+                tau_parasitic = 0.0
+
+            total_effort = abs(effort) + tau_parasitic
+            p_mech = (total_effort * abs(velocity)) / self._efficiency
+            p_therm = self._heating_coeff * total_effort * total_effort
 
             joint_names.append(name)
             joint_mech.append(p_mech)

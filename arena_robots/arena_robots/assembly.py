@@ -74,17 +74,30 @@ class PowerSpec:
     drivetrain_efficiency: float
     heating_coefficient_ch: float
     battery_capacity_wh: float
+    drivetrain_damping: float = 0.0
+    drivetrain_friction: float = 0.0
+    rolling_resistance_crr: float = 0.0
+    robot_mass_kg: float = 0.0
+    wheel_radius_m: float = 0.0
+    num_wheels: int = 1
 
     @classmethod
     def parse(cls, data: dict[str, typing.Any]) -> PowerSpec:
+        required = {
+            "compute_core_w",
+            "idle_motors_w",
+            "drivetrain_efficiency",
+            "heating_coefficient_ch",
+            "battery_capacity_wh",
+        }
         fields = {f.name for f in attrs.fields(cls)}
         unknown = set(data) - fields
         if unknown:
             raise AssemblyError(f"assembly.yaml 'power' has unknown keys {sorted(unknown)}; expected {sorted(fields)}")
-        missing = fields - set(data)
+        missing = required - set(data)
         if missing:
             raise AssemblyError(f"assembly.yaml 'power' is missing keys {sorted(missing)}")
-        return cls(**{k: float(v) for k, v in data.items()})
+        return cls(**{k: (int(v) if k == "num_wheels" else float(v)) for k, v in data.items()})
 
 
 @attrs.define
