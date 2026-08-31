@@ -9,7 +9,7 @@ from pathlib import Path
 import rclpy
 import yaml
 from arena_rclpy_mixins.spin import spin_node
-from arena_robots_msgs.msg import Acoustics
+from arena_robots_msgs.msg import Acoustics, CollisionEvents
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import JointState
@@ -30,7 +30,9 @@ def _wheel_side(name: str) -> str:
 
 
 class AcousticsPublisher(Node):
-    """ROS 2 node that computes acoustic ego-noise level from joint states."""
+    """ROS 2 node that computes acoustic ego-noise level from joint states and collisions."""
+
+    COLLISION_IMPULSE_DBA: float = 100.0
 
     def __init__(self, **kwargs: object) -> None:
         super().__init__("acoustics_publisher", **kwargs)
@@ -74,12 +76,24 @@ class AcousticsPublisher(Node):
         self._ema_p_scrub: float = 0.0
         self._warned_empty_effort: bool = False
 
+        # Collision positive-flank state tracking (trigger 100 dBA only on impact transition 0 -> 1)
+        self._in_collision: bool = False
+        self._collision_impulse_pending: bool = False
+
         qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE)
         self._acoustics_pub = self.create_publisher(Acoustics, topic_param, qos)
 
         self.create_subscription(JointState, "joint_states", self._on_joint_state, qos)
+        self.create_subscription(CollisionEvents, "collision_events", self._on_collision_events, qos)
 
         self.get_logger().info(f"AcousticsPublisher ready: profile={profile_file}, topic={topic_param}, L_base_0={self._L_base_0} dBA")
+
+    def _on_collision_events(self, msg: CollisionEvents) -> None:
+        """Track collision state and trigger impulse on positive flank (impact onset)."""
+        is_colliding = len(msg.events) > 0
+        if is_colliding and not self._in_collision:
+            self._collision_impulse_pending = True
+        self._in_collision = is_colliding
 
     def _on_joint_state(self, msg: JointState) -> None:
         stamp = msg.header.stamp
@@ -192,7 +206,13 @@ class AcousticsPublisher(Node):
         if not has_velocity:
             validity_flags |= Acoustics.FLAG_NO_VELOCITY
 
-        if lambda_scrub > 0.0:
+        # Positive-flank collision acoustic impulse (fires on impact frame only)
+        is_impact = self._collision_impulse_pending
+        if is_impact:
+            self._collision_impulse_pending = False
+            l_1m = max(l_1m, self.COLLISION_IMPULSE_DBA)
+            operating_state = "collision"
+        elif lambda_scrub > 0.0:
             operating_state = "scrubbing"
         elif lambda_omega > 0.0:
             operating_state = "driving"
