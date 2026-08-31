@@ -1,0 +1,20 @@
+robot_model: "rbkairos"
+
+power_system:
+  system_voltage_v: 24.0
+  global_drivetrain_efficiency: 0.70
+  heating_coefficient_ch: 1.25
+  battery_capacity_wh: 270.0
+  drivetrain_damping: 0.08
+  drivetrain_friction: 0.2
+  rolling_resistance_crr: 0.035
+  robot_mass_kg: 75.0
+  wheel_radius_m: 0.127
+  num_wheels: 4
+
+joint_metrics:
+  topic: "joint_states"
+
+static_power_w:
+  compute_core: 30.0
+  idle_motors: 5.0

@@ -1,0 +1,20 @@
+robot_model: "a1"
+
+power_system:
+  system_voltage_v: 24.0
+  global_drivetrain_efficiency: 0.85
+  heating_coefficient_ch: 0.25
+  battery_capacity_wh: 100.8
+  drivetrain_damping: 0.050
+  drivetrain_friction: 0.100
+  rolling_resistance_crr: 0.000
+  robot_mass_kg: 12.0
+  wheel_radius_m: 0.000
+  num_wheels: 0
+
+joint_metrics:
+  topic: "joint_states"
+
+static_power_w:
+  compute_core: 18.0
+  idle_motors: 6.0
