@@ -56,3 +56,4 @@ control:
     - joint_state_broadcaster
     - robotnik_base_controller
   cmd_vel_topic: robotnik_base_controller/cmd_vel
+  odom_topic: robotnik_base_controller/odometry

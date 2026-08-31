@@ -36,3 +36,4 @@ control:
     - joint_state_broadcaster
     - rbrobout_velocity_controller
   cmd_vel_topic: rbrobout_velocity_controller/reference
+  odom_topic: rbrobout_velocity_controller/odometry

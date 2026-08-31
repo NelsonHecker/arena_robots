@@ -47,3 +47,4 @@ control:
     - rbkairos_velocity_controller
     - arm_controller
   cmd_vel_topic: rbkairos_velocity_controller/reference
+  odom_topic: rbkairos_velocity_controller/odometry

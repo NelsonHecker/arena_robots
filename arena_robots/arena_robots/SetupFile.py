@@ -15,7 +15,7 @@ from arena_robots import ARENA_ROBOTS_DIR
 # Config fields a morphology directive must not shadow.
 _RESERVED_TYPES = frozenset({'robot', 'name', 'count', 'parts', 'frames', 'adapters', 'extra'})
 # Bare keys routed straight to extra (identity-lane, consumed by Robot.parse).
-_EXTRA_KEYS = frozenset({'pos', 'record_data_dir'})
+_EXTRA_KEYS = frozenset({'pos'})
 
 
 @attrs.define()
@@ -34,7 +34,7 @@ class Config:
         """Parse a configuration from the given data.
 
         Dict keys route by grammar, not a registry: ``robot``/``name`` are fields,
-        ``count`` expands instances, ``pos``/``record_data_dir`` are identity extras,
+        ``count`` expands instances, ``pos`` is an identity extra,
         ``adapters`` (dict value) and ``<cap>.adapter`` set adapter kinds, ``frames``
         (dict value) sets mount frame-stem overrides, any other dotted key is rejected
         (the dot is the adapter lane), and remaining bare keys are morphology

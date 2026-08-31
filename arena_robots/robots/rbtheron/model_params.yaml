@@ -56,3 +56,4 @@ control:
     - joint_state_broadcaster
     - rbtheron_velocity_controller
   cmd_vel_topic: rbtheron_velocity_controller/cmd_vel
+  odom_topic: rbtheron_velocity_controller/odom

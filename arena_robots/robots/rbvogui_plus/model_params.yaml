@@ -57,3 +57,4 @@ control:
     - robotnik_base_controller
     - arm_controller
   cmd_vel_topic: robotnik_base_controller/cmd_vel
+  odom_topic: robotnik_base_controller/odometry

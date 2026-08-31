@@ -36,3 +36,4 @@ control:
     - joint_state_broadcaster
     - rbsummit_velocity_controller
   cmd_vel_topic: rbsummit_velocity_controller/cmd_vel
+  odom_topic: rbsummit_velocity_controller/odom
