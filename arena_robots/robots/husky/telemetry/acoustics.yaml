@@ -3,8 +3,6 @@ beta_0: 52.0
 beta_1: 20.0
 beta_2: 6.0
 beta_3: 3.5
-beta_scrub_0: 45.0
-beta_scrub_1: 14.0
 omega_ref: 4.0
 tau_ref: 25.0
 omega_deadband: 0.05
