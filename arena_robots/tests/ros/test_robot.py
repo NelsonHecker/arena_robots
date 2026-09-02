@@ -223,8 +223,110 @@ class TestRobotView:
         view = RobotView(rd)
         assert "mobile" in view.caps.available
 
+    def test_power_profile_with_assembly_and_telemetry_fallbacks(self, temp_robot_dir):
+        from arena_robots.Robot import RobotView
+
+        rd = temp_robot_dir(
+            model_params={"mass": {"base_kg": 18.0}},
+            control={},
+        )
+        (rd / "assembly.yaml").write_text(
+            yaml.dump(
+                {
+                    "mounts": {},
+                    "defaults": {},
+                    "power": {
+                        "compute_core_w": 30.0,
+                        "idle_motors_w": 5.0,
+                        "drivetrain_efficiency": 0.70,
+                        "heating_coefficient_ch": 1.25,
+                        "battery_capacity_wh": 270.0,
+                    },
+                }
+            )
+        )
+        # Add telemetry/power.yaml with physical losses
+        telem_dir = rd / "telemetry"
+        telem_dir.mkdir()
+        (telem_dir / "power.yaml").write_text(
+            yaml.dump(
+                {
+                    "power_system": {
+                        "drivetrain_damping": 0.006,
+                        "drivetrain_friction": 0.050,
+                        "rolling_resistance_crr": 0.025,
+                        "robot_mass_kg": 17.0,
+                        "wheel_radius_m": 0.098,
+                        "num_wheels": 4,
+                    }
+                }
+            )
+        )
+
+        view = RobotView(rd)
+        profile = view.power_profile({})
+        assert profile is not None
+        assert profile["static_power_w"] == 35.0
+        assert profile["drivetrain_efficiency"] == 0.70
+        assert profile["heating_coefficient_ch"] == 1.25
+        assert profile["battery_capacity_wh"] == 270.0
+        assert profile["drivetrain_damping"] == 0.006
+        assert profile["drivetrain_friction"] == 0.050
+        assert profile["rolling_resistance_crr"] == 0.025
+        assert profile["robot_mass_kg"] == 17.0
+        assert profile["wheel_radius_m"] == 0.098
+        assert profile["num_wheels"] == 4
+
+    def test_power_profile_from_standalone_telemetry_yaml(self, temp_robot_dir):
+        from arena_robots.Robot import RobotView
+
+        rd = temp_robot_dir(
+            model_params={"mass": {"base_kg": 17.0}},
+            control={},
+        )
+        telem_dir = rd / "telemetry"
+        telem_dir.mkdir()
+        (telem_dir / "power.yaml").write_text(
+            yaml.dump(
+                {
+                    "robot_model": "test_robot",
+                    "power_system": {
+                        "global_drivetrain_efficiency": 0.85,
+                        "heating_coefficient_ch": 0.05,
+                        "battery_capacity_wh": 270.0,
+                        "drivetrain_damping": 0.15,
+                        "drivetrain_friction": 0.65,
+                        "rolling_resistance_crr": 0.035,
+                        "robot_mass_kg": 17.0,
+                        "wheel_radius_m": 0.098,
+                        "num_wheels": 4,
+                    },
+                    "static_power_w": {
+                        "compute_core": 20.0,
+                        "idle_motors": 15.0,
+                    },
+                }
+            )
+        )
+
+        view = RobotView(rd)
+        profile = view.power_profile({})
+        assert profile is not None
+        assert profile["static_power_w"] == 35.0
+        assert profile["drivetrain_efficiency"] == 0.85
+        assert profile["heating_coefficient_ch"] == 0.05
+        assert profile["battery_capacity_wh"] == 270.0
+        assert profile["drivetrain_damping"] == 0.15
+        assert profile["drivetrain_friction"] == 0.65
+        assert profile["rolling_resistance_crr"] == 0.035
+        assert profile["robot_mass_kg"] == 17.0
+        assert profile["wheel_radius_m"] == 0.098
+        assert profile["num_wheels"] == 4
+
+
 
 def _write(tmp_path: Path, data: dict) -> Path:
     path = tmp_path / "model_params.yaml"
     path.write_text(yaml.dump(data))
     return path
+

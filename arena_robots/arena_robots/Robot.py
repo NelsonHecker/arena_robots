@@ -269,22 +269,98 @@ class RobotView(PathView):
         resolved = assembly_mod.apply_frame_overrides(resolved, frames or {})
         return RobotCaps(self.caps.caps_dir, resolved=resolved, catalog=_CATALOG, prefix=self.assembly.prefix)
 
-    def power_profile(self, parts: dict[str, list[assembly_mod.RequestPart]]) -> dict[str, float] | None:
+    def power_profile(self, parts: dict[str, list[assembly_mod.RequestPart]]) -> dict[str, float | int] | None:
         """Power-publisher parameters, chassis block plus resolved component draw. ``None`` when unpowered."""
-        resolved = self._resolved(parts)
-        if resolved is None or self.assembly.power is None:
+        telemetry_yaml = self.path / 'telemetry' / 'power.yaml'
+        has_telemetry = telemetry_yaml.is_file()
+        has_assembly_power = self.assembly is not None and self.assembly.power is not None
+
+        if not has_telemetry and not has_assembly_power:
             return None
 
-        spec = self.assembly.power
-        static_w = spec.compute_core_w + spec.idle_motors_w
-        for placement in resolved.placements:
-            component = _CATALOG.get(placement.type, placement.variant)
-            static_w += float(component.power.get('static_power_w', 0.0))
+        static_w = 0.0
+        efficiency = 1.0
+        heating_ch = 0.0
+        battery_wh = 0.0
+        damping = 0.0
+        friction = 0.0
+        crr = 0.0
+        mass_kg = 0.0
+        wheel_r = 0.0
+        num_wheels = 1
+
+        # 1. Primary telemetry configuration from telemetry/power.yaml
+        if has_telemetry:
+            try:
+                with open(telemetry_yaml) as f:
+                    t_cfg = yaml.safe_load(f)
+                if isinstance(t_cfg, dict):
+                    if "power_system" in t_cfg and isinstance(t_cfg["power_system"], dict):
+                        ps = t_cfg["power_system"]
+                        efficiency = float(ps.get("global_drivetrain_efficiency", ps.get("drivetrain_efficiency", 1.0)))
+                        heating_ch = float(ps.get("heating_coefficient_ch", 0.0))
+                        battery_wh = float(ps.get("battery_capacity_wh", 0.0))
+                        damping = float(ps.get("drivetrain_damping", 0.0))
+                        friction = float(ps.get("drivetrain_friction", 0.0))
+                        crr = float(ps.get("rolling_resistance_crr", 0.0))
+                        mass_kg = float(ps.get("robot_mass_kg", 0.0))
+                        wheel_r = float(ps.get("wheel_radius_m", 0.0))
+                        num_wheels = int(ps.get("num_wheels", 1))
+                    if "static_power_w" in t_cfg:
+                        sp = t_cfg["static_power_w"]
+                        if isinstance(sp, dict):
+                            static_w = float(sp.get("compute_core", 0.0)) + float(sp.get("idle_motors", 0.0))
+                        elif isinstance(sp, (int, float)):
+                            static_w = float(sp)
+            except Exception:
+                pass
+
+        # 2. Backward-compatible fallback / override from assembly.yaml power:
+        if has_assembly_power:
+            spec = self.assembly.power
+            if static_w == 0.0:
+                static_w = spec.compute_core_w + spec.idle_motors_w
+            if efficiency == 1.0 and spec.drivetrain_efficiency != 1.0:
+                efficiency = spec.drivetrain_efficiency
+            if heating_ch == 0.0:
+                heating_ch = spec.heating_coefficient_ch
+            if battery_wh == 0.0:
+                battery_wh = spec.battery_capacity_wh
+            if damping == 0.0:
+                damping = spec.drivetrain_damping
+            if friction == 0.0:
+                friction = spec.drivetrain_friction
+            if crr == 0.0:
+                crr = spec.rolling_resistance_crr
+            if mass_kg == 0.0:
+                mass_kg = spec.robot_mass_kg
+            if wheel_r == 0.0:
+                wheel_r = spec.wheel_radius_m
+            if num_wheels <= 1 and spec.num_wheels > 1:
+                num_wheels = spec.num_wheels
+
+        # 3. Add dynamic component static power draw from catalog (e.g. mounted sensors)
+        resolved = self._resolved(parts)
+        if resolved is not None:
+            for placement in resolved.placements:
+                component = _CATALOG.get(placement.type, placement.variant)
+                static_w += float(component.power.get('static_power_w', 0.0))
+
+        # 4. Fallback for mass from model_params
+        if mass_kg == 0.0 and "mass" in self.model_params:
+            mass_kg = float(self.model_params.get("mass", {}).get("base_kg", 0.0))
+
         return {
             'static_power_w': static_w,
-            'drivetrain_efficiency': spec.drivetrain_efficiency,
-            'heating_coefficient_ch': spec.heating_coefficient_ch,
-            'battery_capacity_wh': spec.battery_capacity_wh,
+            'drivetrain_efficiency': efficiency,
+            'heating_coefficient_ch': heating_ch,
+            'battery_capacity_wh': battery_wh,
+            'drivetrain_damping': damping,
+            'drivetrain_friction': friction,
+            'rolling_resistance_crr': crr,
+            'robot_mass_kg': mass_kg,
+            'wheel_radius_m': wheel_r,
+            'num_wheels': num_wheels,
         }
 
     @property

@@ -103,3 +103,58 @@ def test_power_publisher_on_missing_effort() -> None:
         node.destroy_node()
 
 
+def test_power_publisher_with_drivetrain_and_rolling_losses() -> None:
+    from arena_robots.power_publisher import PowerPublisher
+
+    node = PowerPublisher(
+        parameter_overrides=[
+            Parameter("static_power_w", value=10.0),
+            Parameter("drivetrain_efficiency", value=0.80),
+            Parameter("heating_coefficient_ch", value=1.0),
+            Parameter("battery_capacity_wh", value=200.0),
+            Parameter("filter_tau_s", value=0.0),  # disable EMA filter for exact step verification
+            Parameter("drivetrain_damping", value=0.010),
+            Parameter("drivetrain_friction", value=0.050),
+            Parameter("rolling_resistance_crr", value=0.020),
+            Parameter("robot_mass_kg", value=20.0),
+            Parameter("wheel_radius_m", value=0.10),
+            Parameter("num_wheels", value=2),
+        ]
+    )
+
+    try:
+        # tau_roll = (0.020 * 20.0 * 9.81 * 0.10) / 2 = 0.1962 Nm
+        # At omega = 5.0 rad/s with raw effort = 0.0 (steady state cruise in Gazebo):
+        # tau_parasitic = 0.050 + 0.010 * 5.0 + 0.1962 = 0.2962 Nm
+        # total_effort = 0.0 + 0.2962 = 0.2962 Nm
+        # P_mech per wheel = (0.2962 * 5.0) / 0.80 = 1.85125 W
+        # Total P_mech (2 wheels) = 3.7025 W
+        # P_therm per wheel = 1.0 * (0.2962^2) = 0.08773444 W
+        # Total P_therm (2 wheels) = 0.17546888 W
+        # Total power = 10.0 + 3.7025 + 0.17546888 = 13.87796888 W
+
+        msg = JointState()
+        msg.header.stamp.sec = 0
+        msg.header.stamp.nanosec = 0
+        msg.name = ["wheel_l", "wheel_r"]
+        msg.velocity = [5.0, 5.0]
+        msg.effort = [0.0, 0.0]
+
+        node._on_joint_state(msg)
+
+        msg2 = JointState()
+        msg2.header.stamp.sec = 1
+        msg2.header.stamp.nanosec = 0
+        msg2.name = ["wheel_l", "wheel_r"]
+        msg2.velocity = [5.0, 5.0]
+        msg2.effort = [0.0, 0.0]
+
+        node._on_joint_state(msg2)
+
+        expected_energy = 13.87796888 / 3600.0
+        assert abs(node._total_energy_consumed_wh - expected_energy) < 1e-4
+    finally:
+        node.destroy_node()
+
+
+

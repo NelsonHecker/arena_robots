@@ -3,34 +3,22 @@
 from __future__ import annotations
 
 import math
-import re
 from pathlib import Path
 
 import rclpy
 import yaml
 from arena_rclpy_mixins.spin import spin_node
-from arena_robots_msgs.msg import Acoustics
+from arena_robots_msgs.msg import Acoustics, CollisionEvents
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import JointState
 
-_TOKEN_SPLIT = re.compile(r"[_\-]+")
-_LEFT_TOKENS = frozenset({"left", "l", "fl", "rl", "lf", "lh"})
-_RIGHT_TOKENS = frozenset({"right", "r", "fr", "rr", "rf", "rh"})
-
-
-def _wheel_side(name: str) -> str:
-    """Side of a wheel/leg joint by whole-token match. Empty when unknown or ambiguous."""
-    tokens = {t for t in _TOKEN_SPLIT.split(name.lower()) if t}
-    is_left = bool(tokens & _LEFT_TOKENS)
-    is_right = bool(tokens & _RIGHT_TOKENS)
-    if is_left == is_right:
-        return ""
-    return "left" if is_left else "right"
 
 
 class AcousticsPublisher(Node):
-    """ROS 2 node that computes acoustic ego-noise level from joint states."""
+    """ROS 2 node that computes acoustic ego-noise level from joint states and collisions."""
+
+    COLLISION_IMPULSE_DBA: float = 100.0
 
     def __init__(self, **kwargs: object) -> None:
         super().__init__("acoustics_publisher", **kwargs)
@@ -50,8 +38,6 @@ class AcousticsPublisher(Node):
         self._beta_0: float = float(cfg.get("beta_0", 45.0))
         self._beta_1: float = float(cfg.get("beta_1", 18.0))
         self._beta_2: float = float(cfg.get("beta_2", 5.0))
-        self._beta_scrub_0: float = float(cfg.get("beta_scrub_0", 40.0))
-        self._beta_scrub_1: float = float(cfg.get("beta_scrub_1", 12.0))
         self._omega_ref: float = float(cfg.get("omega_ref", 5.0))
         self._tau_ref: float = float(cfg.get("tau_ref", 10.0))
         self._max_torque_nm: float = float(cfg.get("max_joint_torque_nm", 15.0))
@@ -71,15 +57,26 @@ class AcousticsPublisher(Node):
         # State for the Fast-weighting EMA (IEC 61672-1 Fast time constant = 125ms)
         self._last_time: float | None = None
         self._ema_p_drive: float = 0.0
-        self._ema_p_scrub: float = 0.0
         self._warned_empty_effort: bool = False
+
+        # Collision positive-flank state tracking (trigger 100 dBA only on impact transition 0 -> 1)
+        self._in_collision: bool = False
+        self._collision_impulse_pending: bool = False
 
         qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE)
         self._acoustics_pub = self.create_publisher(Acoustics, topic_param, qos)
 
         self.create_subscription(JointState, "joint_states", self._on_joint_state, qos)
+        self.create_subscription(CollisionEvents, "collision_events", self._on_collision_events, qos)
 
         self.get_logger().info(f"AcousticsPublisher ready: profile={profile_file}, topic={topic_param}, L_base_0={self._L_base_0} dBA")
+
+    def _on_collision_events(self, msg: CollisionEvents) -> None:
+        """Track collision state and trigger impulse on positive flank (impact onset)."""
+        is_colliding = len(msg.events) > 0
+        if is_colliding and not self._in_collision:
+            self._collision_impulse_pending = True
+        self._in_collision = is_colliding
 
     def _on_joint_state(self, msg: JointState) -> None:
         stamp = msg.header.stamp
@@ -118,74 +115,38 @@ class AcousticsPublisher(Node):
         # Pure torque and rotational speed formulation (physically captures dynamic load via torque)
         p_drive_raw = lambda_omega * (10.0 ** (self._beta_0 / 10.0)) * ((max(omega_eq, self._omega_active) / self._omega_ref) ** (self._beta_1 / 10.0)) * ((1.0 + t_eq / self._tau_ref) ** (self._beta_2 / 10.0))
 
-        # Signed arithmetic mean per wheel group, so counter-rotation registers as scrub
-        left_vels: list[float] = []
-        right_vels: list[float] = []
-        sides_from_names = False
-        if has_velocity:
-            for i, name in enumerate(msg.name):
-                if i >= n_joints:
-                    break
-                side = _wheel_side(name)
-                if side == "left":
-                    left_vels.append(msg.velocity[i])
-                elif side == "right":
-                    right_vels.append(msg.velocity[i])
-
-            sides_from_names = bool(left_vels and right_vels)
-            if not left_vels and not right_vels and n_joints >= 2:
-                half = n_joints // 2
-                left_vels = list(msg.velocity[:half])
-                right_vels = list(msg.velocity[half:])
-
-        if left_vels and right_vels:
-            omega_left = sum(left_vels) / len(left_vels)
-            omega_right = sum(right_vels) / len(right_vels)
-            delta_omega_lr = abs(omega_left - omega_right)
-        else:
-            delta_omega_lr = 0.0
-
-        if delta_active > 0:
-            lambda_scrub = max(0.0, min(1.0, (delta_omega_lr - self._omega_deadband) / delta_active))
-        else:
-            lambda_scrub = 1.0 if delta_omega_lr >= self._omega_active else 0.0
-
-        p_scrub_raw = lambda_scrub * (10.0 ** (self._beta_scrub_0 / 10.0)) * ((max(delta_omega_lr, self._omega_active) / self._omega_ref) ** (self._beta_scrub_1 / 10.0))
-
         # IEC 61672-1 Fast time weighting, tau_F = 0.125 s
         TAU_FAST = 0.125
         if dt > 0.0:
             alpha = 1.0 - math.exp(-dt / TAU_FAST)
             self._ema_p_drive = (1.0 - alpha) * self._ema_p_drive + alpha * p_drive_raw
-            self._ema_p_scrub = (1.0 - alpha) * self._ema_p_scrub + alpha * p_scrub_raw
         else:
             self._ema_p_drive = p_drive_raw
-            self._ema_p_scrub = p_scrub_raw
 
         p_drive = self._ema_p_drive
-        p_scrub = self._ema_p_scrub
 
-        p_total = self._P_base + p_drive + p_scrub
+        p_total = self._P_base + p_drive
         l_1m = 10.0 * math.log10(p_total) if p_total > 0.0 else 0.0
 
         l_base = self._L_base_0
-        p_dynamic = p_drive + p_scrub
-        l_drivetrain = 10.0 * math.log10(p_dynamic) if p_dynamic > 1e-12 else 0.0
+        l_drivetrain = 10.0 * math.log10(p_drive) if p_drive > 1e-12 else 0.0
 
         effort_unc = 0.0 if has_effort else (self._sigma_no_effort**2)
         sigma_dyn = self._sigma_dynamic * math.log(1.0 + (omega_eq / max(self._omega_ref, 1e-3)))
         sigma_total = min(2.5, math.sqrt(self._sigma_base**2 + sigma_dyn**2 + effort_unc))
 
         validity_flags = 0
-        if has_velocity and not sides_from_names:
-            validity_flags |= Acoustics.FLAG_SCRUB_UNCLASSIFIED
         if not has_effort:
             validity_flags |= Acoustics.FLAG_NO_EFFORT
         if not has_velocity:
             validity_flags |= Acoustics.FLAG_NO_VELOCITY
 
-        if lambda_scrub > 0.0:
-            operating_state = "scrubbing"
+        # Positive-flank collision acoustic impulse (fires on impact frame only)
+        is_impact = self._collision_impulse_pending
+        if is_impact:
+            self._collision_impulse_pending = False
+            l_1m = max(l_1m, self.COLLISION_IMPULSE_DBA)
+            operating_state = "collision"
         elif lambda_omega > 0.0:
             operating_state = "driving"
         else:

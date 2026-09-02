@@ -150,3 +150,87 @@ sigma_no_effort: 1.0
         assert 1.0 <= unc_no_effort <= 2.5, f"Uncertainty without effort {unc_no_effort} exceeded 2.5 dBA"
     finally:
         node.destroy_node()
+
+
+def test_acoustics_publisher_positive_flank_collision(tmp_path: Path) -> None:
+    from arena_robots.acoustics_publisher import AcousticsPublisher
+    from arena_robots_msgs.msg import CollisionEvent, CollisionEvents
+
+    profile_content = """
+L_base_0: 42.0
+beta_0: 45.0
+beta_1: 18.0
+beta_2: 5.0
+omega_ref: 5.0
+tau_ref: 10.0
+omega_deadband: 0.05
+omega_active: 0.20
+sigma_base: 1.0
+sigma_dynamic: 0.8
+sigma_no_effort: 1.0
+"""
+    profile_path = tmp_path / "test_profile.yaml"
+    profile_path.write_text(profile_content)
+
+    node = AcousticsPublisher(
+        parameter_overrides=[
+            Parameter("profile_path", value=str(profile_path)),
+            Parameter("topic", value="/test_acoustics"),
+        ]
+    )
+
+    try:
+        captured = []
+        node._acoustics_pub.publish = lambda m: captured.append(m)
+
+        def _make_js(sec: int) -> JointState:
+            js = JointState()
+            js.header.stamp.sec = sec
+            js.name = ["front_left_wheel", "front_right_wheel"]
+            js.velocity = [2.0, 2.0]
+            js.effort = [1.0, 1.0]
+            return js
+
+        # 1. Normal driving frame
+        node._on_joint_state(_make_js(1))
+        assert len(captured) == 1
+        assert captured[0].total_level_af_dba < 60.0
+        assert captured[0].operating_state == "driving"
+
+        # 2. Collision impact onset (0 -> 1)
+        col_msg = CollisionEvents()
+        col_msg.events = [CollisionEvent()]
+        node._on_collision_events(col_msg)
+
+        # 3. Next tick: initial impact frame triggers 100 dBA
+        node._on_joint_state(_make_js(2))
+        assert len(captured) == 2
+        assert captured[1].total_level_af_dba == 100.0
+        assert captured[1].operating_state == "collision"
+
+        # 4. Subsequent tick: still in same collision (1 -> 1), does NOT retrigger 100 dBA
+        node._on_collision_events(col_msg)
+        node._on_joint_state(_make_js(3))
+        assert len(captured) == 3
+        assert captured[2].total_level_af_dba < 60.0
+        assert captured[2].operating_state == "driving"
+
+        # 5. Collision clears (1 -> 0)
+        empty_col_msg = CollisionEvents()
+        empty_col_msg.events = []
+        node._on_collision_events(empty_col_msg)
+        node._on_joint_state(_make_js(4))
+        assert len(captured) == 4
+        assert captured[3].total_level_af_dba < 60.0
+
+        # 6. New collision impact onset (0 -> 1)
+        node._on_collision_events(col_msg)
+        node._on_joint_state(_make_js(5))
+        assert len(captured) == 5
+        assert captured[4].total_level_af_dba == 100.0
+        assert captured[4].operating_state == "collision"
+    finally:
+        node.destroy_node()
+
+
+
