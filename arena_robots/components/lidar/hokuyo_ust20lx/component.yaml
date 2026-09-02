@@ -1,5 +1,5 @@
 xacro:
-  include: 2d_lidar/hokuyo_ust20lx.urdf.xacro
+  include: "$(find arena_robots)/components/lidar/hokuyo_ust20lx/hokuyo_ust20lx.urdf.xacro"
   macro: sensor_hokuyo_ust20lx
   attach:
     frame_prefix: "${prefix}${mount}_"
