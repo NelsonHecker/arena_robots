@@ -43,6 +43,8 @@
   <exec_depend>arena_swerve_controller</exec_depend>
   <exec_depend>arena_omni_drive_controller</exec_depend>
 
+  <exec_depend>irobot_create_description</exec_depend>
+
   <exec_depend>ur_moveit_config</exec_depend>
   <exec_depend>ur_robot_driver</exec_depend>
   <exec_depend>moveit_msgs</exec_depend>
