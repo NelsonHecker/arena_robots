@@ -2,8 +2,8 @@
 
 acquire registers a hard channel for this robot, pulse republishes a coverage
 stamp, release deregisters. A wall-clock watchdog covers legitimately silent
-phases (MoveIt planning, nav2 recoveries) with keepalive stamps after `grace_s`,
-`grace_s=None` lets silence hold the sim.
+phases (MoveIt planning, nav2 recoveries) with keepalive stamps after `grace_s`
+that pace the sim at wall rate, `grace_s=None` lets silence hold the sim.
 """
 
 from __future__ import annotations
@@ -22,7 +22,6 @@ _REGISTER_SERVICE = "/arena/sim_lifecycle/lockstep/register"
 _REGISTER_TIMEOUT = 3.0
 _WATCHDOG_PERIOD = 0.2
 _GRACE_S = 2.0
-_KEEPALIVE_COVER_S = 2.0
 
 
 class LockstepBeat:
@@ -102,7 +101,7 @@ class LockstepBeat:
             self._starved = True
             self._node.get_logger().warning(f"lockstep beat {self._name}: silent {silent:.1f}s, keepalive engaged")
         msg = LockstepHeartbeat()
-        msg.header.stamp = (self._node.get_clock().now() + Duration(seconds=_KEEPALIVE_COVER_S)).to_msg()
+        msg.header.stamp = (self._node.get_clock().now() + Duration(seconds=_WATCHDOG_PERIOD)).to_msg()
         self._pub.publish(msg)
 
     async def _wait(self, seconds: float) -> None:
