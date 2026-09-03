@@ -53,10 +53,10 @@ controller_plugins_dict:
      agent_radius: 0.3
      max_agent_vel_x: 1.3
      max_agent_vel_y: 0.4
-     max_agent_vel_x_backwards: 0.0
+     max_agent_vel_x_backwards: 0.01
      max_agent_vel_theta: 1.1
      agent_acc_lim_x: 0.6
-     agent_acc_lim_y: 0.5
+     agent_acc_lim_y: 0.3
      agent_acc_lim_theta: 0.8
      agent_fov: 3.14
      num_moving_avg: 5
@@ -64,21 +64,21 @@ controller_plugins_dict:
    # trajectory
    trajectory:
      teb_autosize: true
-     dt_ref: 0.3
-     dt_hysteresis: 0.1
+     dt_ref: 0.1
+     dt_hysteresis: 0.01
      min_samples: 3
      max_samples: 500
      agent_min_samples: 3
      global_plan_overwrite_orientation: true
      allow_init_with_backwards_motion: false
-     global_plan_viapoint_sep: -1.0
+     global_plan_viapoint_sep: 0.2
      via_points_ordered: false
-     max_global_plan_lookahead_dist: 1.0
+     max_global_plan_lookahead_dist: 0.0
      global_plan_prune_distance: 1.0
      exact_arc_length: false
      force_reinit_new_goal_dist: 1.0
      force_reinit_new_goal_angular: 1.57
-     feasibility_check_no_poses: 5
+     feasibility_check_no_poses: 2
      publish_feedback: false
      min_resolution_collision_check_angular: 3.14
      control_look_ahead_poses: 1
@@ -88,27 +88,27 @@ controller_plugins_dict:
    # goal tolerance
    goal:
      xy_goal_tolerance: 0.2
-     yaw_goal_tolerance: 0.2
-     free_goal_vel: false
+     yaw_goal_tolerance: 0.1
+     free_goal_vel: true
      complete_global_plan: true
 
    # obstacles
    obstacles:
-     min_obstacle_dist: 0.5
+     min_obstacle_dist: 0.2
      inflation_dist: 0.6
      use_nonlinear_obstacle_penalty: true
      obstacle_cost_mult: 1.0
      dynamic_obstacle_inflation_dist: 0.6
      include_dynamic_obstacles: true
      include_costmap_obstacles: true
-     costmap_obstacles_behind_robot_dist: 1.5
-     obstacle_poses_affected: 25
+     costmap_obstacles_behind_robot_dist: 0.5
+     obstacle_poses_affected: 1
      legacy_obstacle_association: false
      obstacle_association_force_inclusion_factor: 1.5
      obstacle_association_cutoff_factor: 5.0
      costmap_converter_plugin: ""
      costmap_converter_spin_thread: true
-     costmap_converter_rate: 5
+     costmap_converter_rate: 10
 
    # optimization
    optim:
@@ -116,7 +116,7 @@ controller_plugins_dict:
      no_outer_iterations: 4
      optimization_activate: true
      optimization_verbose: false
-     penalty_epsilon: 0.1
+     penalty_epsilon: 0.01
      time_penalty_epsilon: 0.1
      cap_optimaltime_penalty: true
      weight_max_vel_x: 2.0
@@ -126,33 +126,33 @@ controller_plugins_dict:
      weight_acc_lim_y: 1.0
      weight_acc_lim_theta: 1.0
      weight_kinematics_nh: 1000.0
-     weight_kinematics_forward_drive: 1.0
-     weight_kinematics_turning_radius: 1.0
+     weight_kinematics_forward_drive: 50.0
+     weight_kinematics_turning_radius: 0.0
      weight_optimaltime: 1.0
-     weight_shortest_path: 0.0
+     weight_shortest_path: 1.0
      weight_obstacle: 50.0
      weight_inflation: 0.1
      weight_dynamic_obstacle: 50.0
      weight_dynamic_obstacle_inflation: 0.1
-     weight_viapoint: 1.0
+     weight_viapoint: 0.05
      weight_prefer_rotdir: 50.0
      weight_adapt_factor: 2.0
      obstacle_cost_exponent: 1.0
-     weight_max_agent_vel_x: 2.0
-     weight_max_agent_vel_y: 2.0
+     weight_max_agent_vel_x: 4.0
+     weight_max_agent_vel_y: 4.0
      weight_nominal_agent_vel_x: 2.0
      weight_max_agent_vel_theta: 2.0
-     weight_agent_acc_lim_x: 1.0
-     weight_agent_acc_lim_y: 1.0
-     weight_agent_acc_lim_theta: 1.0
-     weight_agent_optimaltime: 1.0
-     weight_agent_viapoint: 1.0
+     weight_agent_acc_lim_x: 2.0
+     weight_agent_acc_lim_y: 2.0
+     weight_agent_acc_lim_theta: 2.0
+     weight_agent_optimaltime: 3.0
+     weight_agent_viapoint: 0.5
      weight_invisible_human: 1.0
-     weight_agent_robot_safety: 20.0
-     weight_agent_agent_safety: 20.0
-     weight_agent_robot_rel_vel: 20.0
-     weight_agent_robot_visibility: 20.0
-     disable_warm_start: false
+     weight_agent_robot_safety: 5.0
+     weight_agent_agent_safety: 2.0
+     weight_agent_robot_rel_vel: 5.0
+     weight_agent_robot_visibility: 5.0
+     disable_warm_start: true
      disable_rapid_omega_chage: true
      omega_chage_time_seperation: 1.0
 
@@ -165,12 +165,12 @@ controller_plugins_dict:
      use_agent_robot_visi_c: true
      use_agent_elastic_vel: true
      pose_prediction_reset_time: 2.0
-     min_agent_robot_dist: 0.6
-     min_agent_agent_dist: 0.2
-     rel_vel_cost_threshold: 1.0
+     min_agent_robot_dist: 0.8
+     min_agent_agent_dist: 0.4
+     rel_vel_cost_threshold: 1.5
      invisible_human_threshold: 1.0
-     visibility_cost_threshold: 1.0
-     prediction_time_horizon: 5.0
+     visibility_cost_threshold: 2.5
+     prediction_time_horizon: 10.0
 
    # recovery
    recovery:
