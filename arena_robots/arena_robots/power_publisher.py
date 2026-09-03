@@ -34,9 +34,7 @@ class PowerPublisher(Node):
         self._num_wheels: int = int(self.declare_parameter("num_wheels", 1).value)
 
         if self._num_wheels > 0 and self._robot_mass_kg > 0.0 and self._wheel_radius_m > 0.0:
-            self._tau_roll_per_wheel: float = (
-                self._rolling_resistance_crr * self._robot_mass_kg * 9.81 * self._wheel_radius_m
-            ) / float(self._num_wheels)
+            self._tau_roll_per_wheel: float = (self._rolling_resistance_crr * self._robot_mass_kg * 9.81 * self._wheel_radius_m) / float(self._num_wheels)
         else:
             self._tau_roll_per_wheel: float = 0.0
 
@@ -90,11 +88,7 @@ class PowerPublisher(Node):
 
             # Parasitic mechanical drag (coulomb friction + viscous damping + rolling resistance)
             if abs(velocity) > 1e-4:
-                tau_parasitic = (
-                    self._drivetrain_friction
-                    + self._drivetrain_damping * abs(velocity)
-                    + self._tau_roll_per_wheel
-                )
+                tau_parasitic = self._drivetrain_friction + self._drivetrain_damping * abs(velocity) + self._tau_roll_per_wheel
             else:
                 tau_parasitic = 0.0
 

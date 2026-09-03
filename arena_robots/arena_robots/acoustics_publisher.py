@@ -14,7 +14,6 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import JointState
 
 
-
 class AcousticsPublisher(Node):
     """ROS 2 node that computes acoustic ego-noise level from joint states and collisions."""
 
