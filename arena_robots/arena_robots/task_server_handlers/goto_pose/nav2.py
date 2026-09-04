@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 _NAV2_RETRY_BACKOFF_SEC = 0.5
 _CONTROLLER_PERIOD_FALLBACK = 0.1
-_DEFAULT_NAV2_MAX_RETRIES = 3
+_DEFAULT_NAV2_MAX_RETRIES = 10
 
 
 def _translate_nav2_status(nav2_status: int) -> tuple[int, str]:
@@ -88,7 +88,11 @@ class GotoPoseHandlerNav2(TaskHandler[GotoPose.Goal, GotoPose.Feedback, GotoPose
             await self._beat.release()
 
     async def _dispatch(self, goal_handle: object, nav2_goal: NavigateToPose.Goal, result: GotoPose.Result) -> GotoPose.Result:
+        retries = 0
+        min_distance = float("inf")
+
         def _on_nav2_feedback(fb_msg: object) -> None:
+            nonlocal min_distance, retries
             fb = fb_msg.feedback
             arena_fb = GotoPose.Feedback()
             arena_fb.current_pose = fb.current_pose
@@ -97,7 +101,11 @@ class GotoPoseHandlerNav2(TaskHandler[GotoPose.Goal, GotoPose.Feedback, GotoPose
             arena_fb.eta_seconds = eta.sec + eta.nanosec * 1e-9
             goal_handle.publish_feedback(arena_fb)
 
-        retries = 0
+            dist = getattr(fb, "distance_remaining", None)
+            if dist is not None and dist < min_distance - 0.5:
+                min_distance = dist
+                retries = 0
+
         while True:
             if not goal_handle.is_active:
                 result.status = GotoPose.Result.STATUS_CANCELED
