@@ -401,17 +401,17 @@
     </sensor>
   </gazebo>
   <!-- CAMERA -->
-  <joint name="robot_front_rgbd_camera_base_joint" type="fixed">
+  <joint name="robot_front_rgbd_camera_joint" type="fixed">
     <origin rpy="0 0 0" xyz="0.324 0.012 0.172"/>
     <parent link="robot_base_link"/>
-    <child link="robot_front_rgbd_camera_base_link"/>
+    <child link="robot_front_rgbd_camera_bottom_screw_frame"/>
   </joint>
-  <link name="robot_front_rgbd_camera_base_link"/>
+  <link name="robot_front_rgbd_camera_bottom_screw_frame"/>
   <!-- camera body, with origin at bottom screw mount -->
-  <joint name="robot_front_rgbd_camera_joint" type="fixed">
-    <parent link="robot_front_rgbd_camera_base_link"/>
+  <joint name="robot_front_rgbd_camera_link_joint" type="fixed">
+    <parent link="robot_front_rgbd_camera_bottom_screw_frame"/>
     <child link="robot_front_rgbd_camera_link"/>
-    <origin rpy="0 0 0" xyz="0.01 0.02 0"/>
+    <origin rpy="0 0 0" xyz="0.0106 0.0175 0.0125"/>
     <child link="robot_front_rgbd_camera_link"/>
   </joint>
   <link name="robot_front_rgbd_camera_link">

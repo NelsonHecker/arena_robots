@@ -614,17 +614,17 @@
   <gazebo reference="robot_vectornav_base_link">
     <material>Gazebo/Red</material>
   </gazebo>
-  <joint name="robot_front_rgbd_camera_base_joint" type="fixed">
+  <joint name="robot_front_rgbd_camera_joint" type="fixed">
     <origin rpy="0 0 0" xyz="0.46462 0.0 0.18258"/>
     <parent link="robot_base_link"/>
-    <child link="robot_front_rgbd_camera_base_link"/>
+    <child link="robot_front_rgbd_camera_bottom_screw_frame"/>
   </joint>
-  <link name="robot_front_rgbd_camera_base_link"/>
+  <link name="robot_front_rgbd_camera_bottom_screw_frame"/>
   <!-- camera body, with origin at bottom screw mount -->
-  <joint name="robot_front_rgbd_camera_joint" type="fixed">
-    <parent link="robot_front_rgbd_camera_base_link"/>
+  <joint name="robot_front_rgbd_camera_link_joint" type="fixed">
+    <parent link="robot_front_rgbd_camera_bottom_screw_frame"/>
     <child link="robot_front_rgbd_camera_link"/>
-    <origin rpy="0 0 0" xyz="0.01 0.02 0"/>
+    <origin rpy="0 0 0" xyz="0.0106 0.0175 0.0125"/>
     <child link="robot_front_rgbd_camera_link"/>
   </joint>
   <link name="robot_front_rgbd_camera_link">
@@ -727,17 +727,17 @@
       <gz_frame_id>/robot_front_rgbd_camera_color_frame</gz_frame_id>
     </sensor>
   </gazebo>
-  <joint name="robot_rear_rgbd_camera_base_joint" type="fixed">
+  <joint name="robot_rear_rgbd_camera_joint" type="fixed">
     <origin rpy="0 0 -3.14159265359" xyz="-0.503 0.0 0.29"/>
     <parent link="robot_base_link"/>
-    <child link="robot_rear_rgbd_camera_base_link"/>
+    <child link="robot_rear_rgbd_camera_bottom_screw_frame"/>
   </joint>
-  <link name="robot_rear_rgbd_camera_base_link"/>
+  <link name="robot_rear_rgbd_camera_bottom_screw_frame"/>
   <!-- camera body, with origin at bottom screw mount -->
-  <joint name="robot_rear_rgbd_camera_joint" type="fixed">
-    <parent link="robot_rear_rgbd_camera_base_link"/>
+  <joint name="robot_rear_rgbd_camera_link_joint" type="fixed">
+    <parent link="robot_rear_rgbd_camera_bottom_screw_frame"/>
     <child link="robot_rear_rgbd_camera_link"/>
-    <origin rpy="0 0 0" xyz="0.01 0.02 0"/>
+    <origin rpy="0 0 0" xyz="0.0106 0.0175 0.0125"/>
     <child link="robot_rear_rgbd_camera_link"/>
   </joint>
   <link name="robot_rear_rgbd_camera_link">
