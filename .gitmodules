@@ -98,7 +98,7 @@
 	url = https://github.com/arena-robots/arena_swerve_controller.git
 	branch = jazzy
 	update = none
-	robot = rbvogui rbvogui_plus
+	robot = rbvogui rbvogui_plus mpo700
 [submodule "deps/arena_omni_drive_controller"]
 	path = deps/arena_omni_drive_controller
 	url = https://github.com/arena-robots/arena_omni_drive_controller.git
