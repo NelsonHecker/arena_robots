@@ -314,3 +314,33 @@ class TestGotoPoseHandlerNav2Execute:
         goal_handle = self._make_goal_handle()
         result = asyncio.run(handler.execute(goal_handle))
         assert isinstance(result.final_pose, PoseStamped)
+
+    def test_nav2_goal_aborted_exceeds_max_retries(self):
+        from action_msgs.msg import GoalStatus
+        from arena_robots_msgs.action import GotoPose
+
+        handler = self._make_handler()
+        handler._native_client = MagicMock()
+        handler._native_client.server_is_ready.return_value = True
+        handler._max_retries = 2
+
+        wrapped = MagicMock()
+        wrapped.status = GoalStatus.STATUS_ABORTED
+        wrapped.result = None
+
+        nav2_gh = MagicMock()
+        nav2_gh.accepted = True
+        nav2_gh.get_result_async = AsyncMock(return_value=wrapped)
+        handler._native_client.send_goal_async = AsyncMock(return_value=nav2_gh)
+
+        async def mock_sleep(node, t, **kw):
+            pass
+
+        with patch("arena_robots.task_server_handlers.goto_pose.nav2._executor_sleep", mock_sleep):
+            goal_handle = self._make_goal_handle()
+            result = asyncio.run(handler.execute(goal_handle))
+
+        assert result.status == GotoPose.Result.STATUS_ABORTED
+        goal_handle.abort.assert_called_once()
+        assert handler._native_client.send_goal_async.call_count == 3  # initial + 2 retries
+

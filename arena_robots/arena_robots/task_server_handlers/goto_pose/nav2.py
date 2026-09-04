@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 from action_msgs.msg import GoalStatus
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
 
 _NAV2_RETRY_BACKOFF_SEC = 0.5
 _CONTROLLER_PERIOD_FALLBACK = 0.1
+_DEFAULT_NAV2_MAX_RETRIES = 3
 
 
 def _translate_nav2_status(nav2_status: int) -> tuple[int, str]:
@@ -37,6 +39,15 @@ class GotoPoseHandlerNav2(TaskHandler[GotoPose.Goal, GotoPose.Feedback, GotoPose
         self._beat = LockstepBeat(node, "nav")
         self._beat_period: float | None = None
         node.create_subscription(Twist, str(bringup.namespace("cmd_vel")), lambda _msg: self._beat.pulse(), 10)
+
+        self._max_retries = _DEFAULT_NAV2_MAX_RETRIES
+        if "ARENA_NAV2_MAX_RETRIES" in os.environ:
+            try:
+                self._max_retries = int(os.environ["ARENA_NAV2_MAX_RETRIES"])
+            except ValueError:
+                pass
+        elif hasattr(node, "has_parameter") and node.has_parameter("nav2_max_retries"):
+            self._max_retries = int(node.get_parameter("nav2_max_retries").value)
 
     async def _controller_period(self) -> float:
         """One controller tick in sim seconds, read once from controller_server."""
@@ -86,6 +97,7 @@ class GotoPoseHandlerNav2(TaskHandler[GotoPose.Goal, GotoPose.Feedback, GotoPose
             arena_fb.eta_seconds = eta.sec + eta.nanosec * 1e-9
             goal_handle.publish_feedback(arena_fb)
 
+        retries = 0
         while True:
             if not goal_handle.is_active:
                 result.status = GotoPose.Result.STATUS_CANCELED
@@ -101,6 +113,13 @@ class GotoPoseHandlerNav2(TaskHandler[GotoPose.Goal, GotoPose.Feedback, GotoPose
             nav2_goal_handle = await send_future
 
             if not nav2_goal_handle.accepted:
+                retries += 1
+                if retries > self._max_retries:
+                    self._node.get_logger().warn(f"nav2 rejected goal {retries} times; aborting")
+                    goal_handle.abort()
+                    result.status = GotoPose.Result.STATUS_ABORTED
+                    result.reason = "Nav2: goal rejected"
+                    return result
                 self._node.get_logger().info("nav2 rejected goal; retrying")
                 await _executor_sleep(self._node, _NAV2_RETRY_BACKOFF_SEC)
                 continue
@@ -125,5 +144,13 @@ class GotoPoseHandlerNav2(TaskHandler[GotoPose.Goal, GotoPose.Feedback, GotoPose
                 result.reason = arena_reason
                 return result
 
-            self._node.get_logger().info("nav2 aborted goal; replanning")
+            retries += 1
+            if retries > self._max_retries:
+                self._node.get_logger().warn(f"nav2 aborted goal {retries} times; aborting goal ({arena_reason})")
+                goal_handle.abort()
+                result.status = GotoPose.Result.STATUS_ABORTED
+                result.reason = arena_reason
+                return result
+
+            self._node.get_logger().info(f"nav2 aborted goal; replanning ({retries}/{self._max_retries})")
             await _executor_sleep(self._node, _NAV2_RETRY_BACKOFF_SEC)
