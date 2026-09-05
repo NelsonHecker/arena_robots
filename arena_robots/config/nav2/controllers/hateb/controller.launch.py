@@ -21,7 +21,7 @@ def generate_launch_description() -> LaunchDescription:
         env_ns = env_namespace.substitution.perform(context)
         sim_time = use_sim_time.substitution.perform(context)
 
-        target_frame = os.path.basename(env_ns.rstrip('/')) + '/map'
+        target_frame = 'map'
         arena_peds_abs = env_ns.rstrip('/') + '/arena_peds'
 
         bridge = Node(
