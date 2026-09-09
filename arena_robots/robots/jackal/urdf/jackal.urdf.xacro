@@ -38,9 +38,9 @@
         <material name="black" />
       </visual>
       <collision>
-        <origin xyz="0 0 0" rpy="${PI/2} 0 0"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
         <geometry>
-          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+          <sphere radius="${wheel_radius}"/>
         </geometry>
       </collision>
       <inertial>
@@ -249,7 +249,8 @@
   <!-- Optional standard accessories, including their simulation data. The rendering
        of these into the final description is controlled by optenv variables, which
        default each one to off.-->
-  <xacro:include filename="$(find jackal_description)/urdf/accessories.urdf.xacro" />
+  <!-- Bring in simulation accessories for everything in accessories.urdf.xacro -->
+  <!-- <xacro:include filename="$(find jackal_description)/urdf/accessories.urdf.xacro" /> -->
 
   <!-- Optional custom includes. -->
   <xacro:include filename="$(optenv JACKAL_URDF_EXTRAS empty.urdf)" />
