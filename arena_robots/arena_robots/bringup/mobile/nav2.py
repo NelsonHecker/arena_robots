@@ -45,7 +45,7 @@ class Nav2Bringup(Bringup):
         task_generator_node: str = "",
         env_namespace: str = "",
         sensors: list[SensorSpec] | None = None,
-        **_: object,
+        **extra: object,
     ) -> list[Action]:
         launch_file = PathJoinSubstitution(
             [
@@ -56,9 +56,9 @@ class Nav2Bringup(Bringup):
                 "nav2.launch.py",
             ]
         )
-        launch_arguments = {
+        launch_arguments: dict[str, str] = {
             "robot": self.robot.name,
-            "namespace": self.namespace,
+            "namespace": str(self.namespace),
             "use_sim_time": str(use_sim_time).lower(),
             "frame": frame,
             "global_planner": global_planner,
@@ -68,6 +68,23 @@ class Nav2Bringup(Bringup):
             "task_generator_node": task_generator_node,
             "env_namespace": env_namespace,
         }
+        _KINEMATIC_KEYS = (
+            "max_linear_vel",
+            "min_linear_vel",
+            "linear_acc",
+            "linear_decel",
+            "max_angular_vel",
+            "min_angular_vel",
+            "angular_acc",
+            "angular_decel",
+            "max_lateral_vel",
+            "min_lateral_vel",
+            "lateral_acc",
+            "lateral_decel",
+        )
+        for k in _KINEMATIC_KEYS:
+            if k in extra and extra[k] is not None and str(extra[k]).strip() != "":
+                launch_arguments[k] = str(extra[k])
         if sensors is not None:
             launch_arguments["sensors_json"] = json.dumps(
                 [

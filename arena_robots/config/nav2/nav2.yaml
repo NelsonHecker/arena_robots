@@ -255,6 +255,33 @@ behavior_server:
     min_rotational_vel: 0.4
     rotational_acc_lim: 3.2
 
+velocity_smoother:
+  ros__parameters:
+    use_sim_time: True
+    smoothing_frequency: 20.0
+    scale_velocities: false
+    feedback: "OPEN_LOOP"
+    max_velocity:
+      - ${max_linear_vel:-2.0}
+      - ${max_lateral_vel:-0.0}
+      - ${max_angular_vel:-3.0}
+    min_velocity:
+      - ${min_linear_vel:- -2.0}
+      - ${min_lateral_vel:-0.0}
+      - ${min_angular_vel:- -3.0}
+    max_accel:
+      - ${linear_acc:-5.0}
+      - ${lateral_acc:-0.0}
+      - ${angular_acc:-6.0}
+    max_decel:
+      - ${linear_decel:- -5.0}
+      - ${lateral_decel:-0.0}
+      - ${angular_decel:- -6.0}
+    odom_topic: ${odom_frame:-odom}
+    odom_duration: 0.1
+    deadband_velocity: [0.0, 0.0, 0.0]
+    velocity_timeout: 0.5
+
 collision_monitor:
   ros__parameters:
     enabled: true

@@ -45,6 +45,19 @@ def generate_launch_description():
     planner_only = LaunchArgument('planner_only', default_value='false')
     sensors_json = LaunchArgument('sensors_json', default_value='')
 
+    max_linear_vel = LaunchArgument('max_linear_vel', default_value='')
+    min_linear_vel = LaunchArgument('min_linear_vel', default_value='')
+    linear_acc = LaunchArgument('linear_acc', default_value='')
+    linear_decel = LaunchArgument('linear_decel', default_value='')
+    max_angular_vel = LaunchArgument('max_angular_vel', default_value='')
+    min_angular_vel = LaunchArgument('min_angular_vel', default_value='')
+    angular_acc = LaunchArgument('angular_acc', default_value='')
+    angular_decel = LaunchArgument('angular_decel', default_value='')
+    max_lateral_vel = LaunchArgument('max_lateral_vel', default_value='')
+    min_lateral_vel = LaunchArgument('min_lateral_vel', default_value='')
+    lateral_acc = LaunchArgument('lateral_acc', default_value='')
+    lateral_decel = LaunchArgument('lateral_decel', default_value='')
+
     def nav2_cfg(*parts):
         return PathJoinSubstitution([robots_root, 'config', 'nav2', *parts])
 
@@ -65,7 +78,23 @@ def generate_launch_description():
         YAMLFileSubstitution(mobile_path),
         Nav2SubBlockYAML(mobile_path),
         Nav2CollisionDerivedYAML(mobile_path),
-        Nav2KinematicsDerivedYAML(mobile_path),
+        Nav2KinematicsDerivedYAML(
+            mobile_path,
+            overrides={
+                'max_linear_vel': max_linear_vel.substitution,
+                'min_linear_vel': min_linear_vel.substitution,
+                'linear_acc': linear_acc.substitution,
+                'linear_decel': linear_decel.substitution,
+                'max_angular_vel': max_angular_vel.substitution,
+                'min_angular_vel': min_angular_vel.substitution,
+                'angular_acc': angular_acc.substitution,
+                'angular_decel': angular_decel.substitution,
+                'max_lateral_vel': max_lateral_vel.substitution,
+                'min_lateral_vel': min_lateral_vel.substitution,
+                'lateral_acc': lateral_acc.substitution,
+                'lateral_decel': lateral_decel.substitution,
+            },
+        ),
         SensorsDerivedYAML(model_params_path, mobile_path, sensors_json.substitution),
         YAMLFileSubstitution(nav2_cfg('defaults', 'controller_config.yaml')),
         YAMLFileSubstitution(nav2_cfg('controllers', local_planner.substitution, 'controller_config.yaml')),

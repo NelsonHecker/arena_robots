@@ -107,3 +107,19 @@ class TestNav2LaunchActions:
         actions = b._launch_actions()
         args = dict(actions[0].launch_arguments)
         assert "robot1" in args["namespace"]
+
+    def test_kinematic_kwargs_forwarded(self):
+        b = self._make_bringup()
+        actions = b._launch_actions(
+            max_linear_vel=1.5,
+            linear_acc=2.5,
+            linear_decel=-2.5,
+            max_angular_vel=1.8,
+            angular_acc=3.2,
+        )
+        args = dict(actions[0].launch_arguments)
+        assert args["max_linear_vel"] == "1.5"
+        assert args["linear_acc"] == "2.5"
+        assert args["linear_decel"] == "-2.5"
+        assert args["max_angular_vel"] == "1.8"
+        assert args["angular_acc"] == "3.2"

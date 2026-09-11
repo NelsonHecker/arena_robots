@@ -207,7 +207,8 @@ class Nav2SubBlockYAML(YAMLFileSubstitution):
 
 class Nav2KinematicsDerivedYAML(YAMLFileSubstitution):
     """Emit controller-agnostic velocity/acceleration keys from the top-level
-    ``velocity_limits``/``acceleration_limits`` in caps/mobile.yaml.
+    ``velocity_limits``/``acceleration_limits`` in caps/mobile.yaml, overlaid
+    with any runtime kinematic overrides (e.g. from contestant args).
 
     These are the planner envelope (what nav2 may sample), not the hardware
     envelope (motor firmware / ``diff_drive_controller`` clip downstream).
@@ -218,9 +219,18 @@ class Nav2KinematicsDerivedYAML(YAMLFileSubstitution):
     and hardcode the literal instead.
     """
 
-    def __init__(self, mobile_path: launch.SomeSubstitutionsType):
+    def __init__(
+        self,
+        mobile_path: launch.SomeSubstitutionsType,
+        overrides: dict[str, launch.SomeSubstitutionsType] | None = None,
+    ):
         super().__init__(path=[], default={}, substitute=False)
         self._path = launch.utilities.normalize_to_list_of_substitutions(mobile_path)
+        self._overrides = (
+            {k: launch.utilities.normalize_to_list_of_substitutions(v) for k, v in overrides.items()}
+            if overrides is not None
+            else {}
+        )
 
     def perform(self, context: launch.LaunchContext) -> str:
         path_str = launch.utilities.perform_substitutions(context, self._path)
@@ -246,6 +256,25 @@ class Nav2KinematicsDerivedYAML(YAMLFileSubstitution):
             if acc.lateral is not None:
                 out['lateral_acc'] = acc.lateral
                 out['lateral_decel'] = -acc.lateral
+
+        for k, v_subs in self._overrides.items():
+            val_str = launch.utilities.perform_substitutions(context, v_subs).strip()
+            if val_str:
+                try:
+                    out[k] = float(val_str)
+                except ValueError:
+                    out[k] = val_str
+
+        # If positive limits were overridden without explicit min/decel overrides,
+        # symmetrically bound reverse velocity and deceleration to match the regime.
+        if 'max_linear_vel' in self._overrides and 'min_linear_vel' not in self._overrides and 'max_linear_vel' in out:
+            out['min_linear_vel'] = -abs(float(out['max_linear_vel']))
+        if 'max_angular_vel' in self._overrides and 'min_angular_vel' not in self._overrides and 'max_angular_vel' in out:
+            out['min_angular_vel'] = -abs(float(out['max_angular_vel']))
+        if 'linear_acc' in self._overrides and 'linear_decel' not in self._overrides and 'linear_acc' in out:
+            out['linear_decel'] = -abs(float(out['linear_acc']))
+        if 'angular_acc' in self._overrides and 'angular_decel' not in self._overrides and 'angular_acc' in out:
+            out['angular_decel'] = -abs(float(out['angular_acc']))
 
         tmp = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.yaml')
         yaml.dump(out if out else {}, tmp)
