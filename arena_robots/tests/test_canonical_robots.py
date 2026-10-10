@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from arena_robots.caps import MobileSpec
 from arena_robots.sensors import SENSOR_TYPES
 
 ROBOTS_DIR = Path(__file__).resolve().parents[2] / "arena_robots" / "robots"
@@ -16,6 +17,14 @@ def _robot_dirs() -> list[Path]:
 
 def _model_params_files() -> list[Path]:
     return list(ROBOTS_DIR.rglob("model_params.yaml"))
+
+
+@pytest.mark.parametrize("yaml_path", sorted(ROBOTS_DIR.glob("*/caps/mobile.yaml")), ids=lambda p: p.parents[1].name)
+def test_every_mobile_cap_carries_a_planar_block(yaml_path: Path) -> None:
+    with open(yaml_path) as f:
+        planar = MobileSpec(yaml_path, yaml.safe_load(f)).planar
+    assert planar is not None, f"{yaml_path}: no planar block"
+    assert set(planar.velocity) == {"linear", "lateral", "angular"}, f"{yaml_path}: planar.velocity must cover every axis"
 
 
 def test_no_robot_named_auto() -> None:

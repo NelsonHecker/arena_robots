@@ -95,6 +95,15 @@ actions:
 
 laser: {angle: {min: -2.35619, max: 2.35619}, num_beams: 720, range: 30.0, update_rate: 10}
 
+planar:
+  velocity: {linear: [-2.0, 2.0], lateral: [0.0, 0.0], angular: [-4.0, 4.0]}
+  acceleration: {linear: 20.0, lateral: .inf, angular: 25.0}
+  gain: {linear: 1.0, lateral: 1.0, angular: 1.36}
+  lag: 0.0
+  traction: 7.85
+  pivot: 0.131
+  timeout: 0.25
+
 nav2:                      # planner plugin wiring only
   planner_plugins: [GridBased]
   planner_plugins_dict: {...}
@@ -105,6 +114,12 @@ via `Nav2KinematicsDerivedYAML` substitution; controller YAMLs reference them
 as `${max_linear_vel:-default}` etc. To override a specific controller without
 touching `mobile.yaml`, replace the substitution with a literal value in that
 controller YAML.
+
+`planar` is the body response `sim:=flatsim` drives the robot with, the same keys
+for every robot: per-axis velocity bounds, acceleration and gain, a first-order
+`lag`, a `traction` cap on planar acceleration, the `pivot` x the body turns
+about and the command `timeout`. It is the drive's envelope, not the planner's,
+so it can exceed `velocity_limits`.
 
 #### `caps/arm.yaml`, `caps/lift.yaml`, `caps/gripper.yaml`: dict-keyed
 

@@ -272,6 +272,40 @@ class LaserSpec:
         )
 
 
+PLANAR_AXES = ('linear', 'lateral', 'angular')
+
+
+@attrs.define(slots=False)
+class PlanarSpec:
+    """Body response of the base in a planar simulator, per axis. An axis left out is unbounded with unit gain."""
+
+    velocity: dict[str, Range]
+    acceleration: dict[str, float]
+    gain: dict[str, float]
+    lag: float
+    traction: float | None
+    pivot: float
+    timeout: float | None
+
+    @classmethod
+    def from_dict(cls, d: dict[str, typing.Any]) -> PlanarSpec:
+        def axes(key: str) -> dict[str, typing.Any]:
+            raw = d.get(key, {})
+            if not isinstance(raw, dict) or not set(raw) <= set(PLANAR_AXES):
+                raise ValueError(f"planar.{key}: expected a mapping over {list(PLANAR_AXES)}; got {raw!r}")
+            return raw
+
+        return cls(
+            velocity={axis: Range.from_value(v, f'planar.velocity.{axis}') for axis, v in axes('velocity').items()},
+            acceleration={axis: float(v) for axis, v in axes('acceleration').items()},
+            gain={axis: float(v) for axis, v in axes('gain').items()},
+            lag=float(d.get('lag', 0.0)),
+            traction=float(d['traction']) if 'traction' in d else None,
+            pivot=float(d.get('pivot', 0.0)),
+            timeout=float(d['timeout']) if 'timeout' in d else None,
+        )
+
+
 @attrs.define(slots=False)
 class CapConfig:
     """Raw cap file content + the path it came from, for error messages and
@@ -375,6 +409,15 @@ class MobileSpec(CapConfig):
         if not isinstance(v, dict):
             raise ValueError(f"{self.path}: 'actions' must be a mapping; got {type(v).__name__}")
         return ActionsSpec.from_dict(v)
+
+    @property
+    def planar(self) -> PlanarSpec | None:
+        v = self.raw.get('planar')
+        if v is None:
+            return None
+        if not isinstance(v, dict):
+            raise ValueError(f"{self.path}: 'planar' must be a mapping; got {type(v).__name__}")
+        return PlanarSpec.from_dict(v)
 
     @property
     def laser(self) -> LaserSpec | None:
