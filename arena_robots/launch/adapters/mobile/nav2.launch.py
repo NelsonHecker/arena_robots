@@ -44,6 +44,8 @@ def generate_launch_description():
     train_mode = LaunchArgument('train_mode', default_value='false')
     planner_only = LaunchArgument('planner_only', default_value='false')
     sensors_json = LaunchArgument('sensors_json', default_value='')
+    params_overlay = LaunchArgument('params_overlay', default_value='')
+    agent = LaunchArgument('agent', default_value='')
 
     def nav2_cfg(*parts):
         return PathJoinSubstitution([robots_root, 'config', 'nav2', *parts])
@@ -95,7 +97,10 @@ def generate_launch_description():
     )
 
     substituted_parameters = YAMLReplaceSubstitution(
-        obj=YAMLFileSubstitution(nav2_cfg('nav2.yaml')),
+        obj=YAMLFileSubstitution(YAMLMergeSubstitution(
+            YAMLFileSubstitution(nav2_cfg('nav2.yaml')),
+            YAMLFileSubstitution(params_overlay.substitution, default={}),
+        )),
         substitutions=YAMLFileSubstitution(substitutions)
     )
 
@@ -127,8 +132,6 @@ def generate_launch_description():
         is_planner_only = planner_only.substitution.perform(context).lower() == 'true'
         remappings = [
             ('map_server', '/map_server'),
-            ('/tf', '/tf'),
-            ('/tf_static', '/tf_static'),
         ]
         if tgn:
             remappings.append(('map', PathJoinSubstitution([tgn, 'map'])))
@@ -206,7 +209,9 @@ def generate_launch_description():
                         'namespace': namespace.substitution,
                         'env_namespace': env_namespace.substitution,
                         'frame': frame.substitution,
+                        'base_frame': YAMLRetrieveSubstitution(YAMLFileSubstitution(model_params_path), 'base_frame'),
                         'use_sim_time': use_sim_time.substitution,
+                        'agent': agent.substitution,
                     }.items(),
                 )
             )

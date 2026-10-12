@@ -11,6 +11,7 @@ SENSOR_TYPES: frozenset[str] = frozenset(
         "imu",
         "contact",
         "camera_info",
+        "audio",
     }
 )
 

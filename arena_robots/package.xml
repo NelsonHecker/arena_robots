@@ -19,6 +19,7 @@
   <exec_depend>arena_simulation_setup</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
 
   <exec_depend>rqt_robot_steering</exec_depend>
 
@@ -39,6 +40,7 @@
   <exec_depend>topic_tools</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
   <exec_depend>nav2_mask_overlay_layer</exec_depend>
+  <exec_depend>spatio_temporal_voxel_layer</exec_depend>
 
   <exec_depend>arena_swerve_controller</exec_depend>
   <exec_depend>arena_omni_drive_controller</exec_depend>

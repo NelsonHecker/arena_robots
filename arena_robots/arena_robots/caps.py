@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import ast
 import copy
+import math
 import subprocess
 import typing
 import xml.etree.ElementTree as ET
@@ -271,6 +272,40 @@ class LaserSpec:
         )
 
 
+PLANAR_AXES = ('linear', 'lateral', 'angular')
+
+
+@attrs.define(slots=False)
+class PlanarSpec:
+    """Body response of the base in a planar simulator, per axis. An axis left out is unbounded with unit gain."""
+
+    velocity: dict[str, Range]
+    acceleration: dict[str, float]
+    gain: dict[str, float]
+    lag: float
+    traction: float | None
+    pivot: float
+    timeout: float | None
+
+    @classmethod
+    def from_dict(cls, d: dict[str, typing.Any]) -> PlanarSpec:
+        def axes(key: str) -> dict[str, typing.Any]:
+            raw = d.get(key, {})
+            if not isinstance(raw, dict) or not set(raw) <= set(PLANAR_AXES):
+                raise ValueError(f"planar.{key}: expected a mapping over {list(PLANAR_AXES)}; got {raw!r}")
+            return raw
+
+        return cls(
+            velocity={axis: Range.from_value(v, f'planar.velocity.{axis}') for axis, v in axes('velocity').items()},
+            acceleration={axis: float(v) for axis, v in axes('acceleration').items()},
+            gain={axis: float(v) for axis, v in axes('gain').items()},
+            lag=float(d.get('lag', 0.0)),
+            traction=float(d['traction']) if 'traction' in d else None,
+            pivot=float(d.get('pivot', 0.0)),
+            timeout=float(d['timeout']) if 'timeout' in d else None,
+        )
+
+
 @attrs.define(slots=False)
 class CapConfig:
     """Raw cap file content + the path it came from, for error messages and
@@ -286,6 +321,9 @@ class CapConfig:
         if not isinstance(v, dict):
             raise ValueError(f"{self.path}: '{adapter}' sub-block must be a mapping; got {type(v).__name__}")
         return v
+
+
+INFLATION_MARGIN = 0.4
 
 
 @attrs.define(slots=False)
@@ -335,8 +373,15 @@ class MobileSpec(CapConfig):
 
     @property
     def inflation_radius(self) -> float | None:
+        """Costmap inflation radius, the outer radius of the padded footprint or `radius` plus INFLATION_MARGIN unless set."""
         v = self.raw.get('inflation_radius')
-        return None if v is None else float(v)
+        if v is not None:
+            return float(v)
+        footprint = self.footprint
+        outer = [max(math.hypot(x, y) for x, y in footprint) + (self.footprint_padding or 0.0)] if footprint else []
+        if self.radius is not None:
+            outer.append(self.radius)
+        return max(outer) + INFLATION_MARGIN if outer else None
 
     @property
     def velocity_limits(self) -> VelocityLimits | None:
@@ -364,6 +409,15 @@ class MobileSpec(CapConfig):
         if not isinstance(v, dict):
             raise ValueError(f"{self.path}: 'actions' must be a mapping; got {type(v).__name__}")
         return ActionsSpec.from_dict(v)
+
+    @property
+    def planar(self) -> PlanarSpec | None:
+        v = self.raw.get('planar')
+        if v is None:
+            return None
+        if not isinstance(v, dict):
+            raise ValueError(f"{self.path}: 'planar' must be a mapping; got {type(v).__name__}")
+        return PlanarSpec.from_dict(v)
 
     @property
     def laser(self) -> LaserSpec | None:

@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
-from arena_robots.assembly import resolve
+from arena_robots.assembly import RequestPart, resolve
 from arena_robots.catalog import render_wrapper_xacro
 from arena_robots.Robot import RobotIdentifier
 
@@ -28,6 +28,14 @@ class TestEffectiveSensorsMatchModelParams:
         view = RobotIdentifier(robot_name).resolve_sync()
         assert view.assembly is not None, f"{robot_name} has no assembly.yaml"
         assert view.effective_sensors({}) == view.model_params.sensors
+
+    @pytest.mark.parametrize("robot_name", ROBOT_NAMES)
+    def test_pinned_default_request_keeps_sensor_names_and_topics(self, robot_name: str) -> None:
+        view = RobotIdentifier(robot_name).resolve_sync()
+        pinned: dict[str, list[RequestPart]] = {}
+        for placement in resolve(view.assembly, {}).placements:
+            pinned.setdefault(placement.type, []).append(RequestPart(variant=placement.variant, mount=placement.mount.name, overrides=placement.overrides))
+        assert [(s.name, s.topic) for s in view.effective_sensors(pinned)] == [(s.name, s.topic) for s in view.model_params.sensors]
 
 
 def _origin(joint: ET.Element) -> tuple[tuple[float, ...], tuple[float, ...]]:

@@ -13,9 +13,9 @@ rskomni_velocity_controller:
     # 3-wheel omni at 120 deg spacing, wheel joints defined in rskomnidirectional.urdf.xacro
     wheel_joint_names: [wheel1_speed, wheel2_speed, wheel3_speed]
 
-    # Wheel hub positions from URDF joint origins.
-    wheel_positions_x: [ 0.0236,  0.0236, -0.0472]
-    wheel_positions_y: [ 0.0409, -0.0409,  0.0000]
+    # Wheel contact positions: URDF joint origins plus the 0.01 m collision offset along the axle
+    wheel_positions_x: [ 0.0286,  0.0286, -0.0572]
+    wheel_positions_y: [ 0.0495, -0.0495,  0.0000]
 
     # Rolling-axis angle in body frame (rad). theta_i = (body angle of wheel) + pi/2 for
     # kiwi-drive rolling tangent to radial. If observed motion is inverted, switch

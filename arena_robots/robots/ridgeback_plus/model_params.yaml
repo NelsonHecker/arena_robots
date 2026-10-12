@@ -1,6 +1,6 @@
 robot_model: ridgeback_plus
 base_frame: base_link
-z_offset: 0.37
+z_offset: 0.0259
 mass:
   base_kg: 217.539
 sensors:

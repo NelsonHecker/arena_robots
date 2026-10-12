@@ -1,6 +1,6 @@
 robot_model: husky
 base_frame: base_link
-z_offset: 0.37
+z_offset: 0.1323
 mass:
   base_kg: 56.582
 sensors:

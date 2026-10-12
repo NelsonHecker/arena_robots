@@ -15,6 +15,15 @@ polygons_dict:
     polygon_pub_topic: polygon_stop
     enabled: true
 
+planar:
+  velocity: {linear: [-0.4, 0.4], lateral: [0.0, 0.0], angular: [-1.9, 1.9]}
+  acceleration: {linear: .inf, lateral: .inf, angular: .inf}
+  gain: {linear: 1.0, lateral: 1.0, angular: 1.0}
+  lag: 0.0
+  traction: 9.81
+  pivot: 0.0
+  timeout: 0.25
+
 actions:
   continuous:
     linear:

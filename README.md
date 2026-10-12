@@ -55,6 +55,16 @@ Both `Identifier`s are registered at import time, so third-party code can
 use them by name without touching this package's filesystem layout
 directly.
 
+The robot audio contract shared by acoustic simulators and hearing stacks
+lives here too: [audio.py](arena_robots/arena_robots/audio.py) holds the
+microphone array geometry (`ArraySpec`, presets in `config/audio/arrays/`),
+level math, `gcc_phat` and the `<robot>/audio/<stream>` topic names, and
+[fleet.py](arena_robots/arena_robots/fleet.py) binds `RobotFleet` members
+to their model-derived frames, odometry topics and drivetrain facts.
+Audio travels as `arena_robots_msgs/AudioFrame`, sound detections as
+`arena_robots_msgs/SoundDetection`, and `type: audio` (`SensorType.AUDIO`) is
+the sensor type of a microphone array in a robot's `sensors:` list.
+
 ## Driving a robot standalone
 
 Launch, CLI, and Python examples for sending goals to a robot without

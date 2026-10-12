@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from typing import ClassVar
 
+import attrs
 from launch import Action
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -11,6 +12,7 @@ from launch_ros.substitutions import FindPackageShare
 
 from arena_robots.bringup import Bringup, BringupMeta
 from arena_robots.Sensor import SensorSpec, SensorType
+from arena_robots.sensor_geometry import sensor_geometry
 from arena_robots.task_kinds import TaskKind
 
 
@@ -45,8 +47,13 @@ class Nav2Bringup(Bringup):
         task_generator_node: str = "",
         env_namespace: str = "",
         sensors: list[SensorSpec] | None = None,
+        params_overlay: str = "",
+        agent: str = "",
         **_: object,
     ) -> list[Action]:
+        agent_name = agent or str(self.robot.caps.mobile.sub("rosnav_rl").get("agent", ""))
+        if local_planner == "rosnav_rl" and not agent_name:
+            raise ValueError(f"nav2 bringup for '{self.robot.name}' with local_planner=rosnav_rl missing required 'agent': set caps/mobile.yaml 'rosnav_rl.agent' or pass robot.mobile.agent:=<name>")
         launch_file = PathJoinSubstitution(
             [
                 FindPackageShare("arena_robots"),
@@ -67,14 +74,19 @@ class Nav2Bringup(Bringup):
             "train_mode": str(train_mode).lower(),
             "task_generator_node": task_generator_node,
             "env_namespace": env_namespace,
+            "params_overlay": params_overlay,
+            "agent": agent_name,
         }
         if sensors is not None:
+            geometry = sensor_geometry(self.robot, self.parts)
             launch_arguments["sensors_json"] = json.dumps(
                 [
                     {
                         "name": s.name,
                         "type": s.type.value if isinstance(s.type, SensorType) else str(s.type),
                         "topic": s.topic,
+                        "sensor": s.sensor,
+                        "geometry": attrs.asdict(geometry[s.sensor]) if s.sensor in geometry else None,
                     }
                     for s in sensors
                 ]

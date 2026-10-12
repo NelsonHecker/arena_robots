@@ -1,0 +1,28 @@
+variants: [vln_navid, vln_uninavid, vln_streamvln, vln_navila]
+
+xacro:
+  include: "$(find arena_robots)/components/camera/vln_rgb/vln_rgb.urdf.xacro"
+  macro: vln_rgb
+  attach:
+    name: "${prefix}${mount}"
+    parent_link: "${prefix}${parent}"
+    sensor: "${mount}"
+    topic: "${topic:-vln_camera}"
+    height: "${height:-0.9815}"
+    optics_file: "$(find arena_robots)/components/camera/vln_rgb/optics/${variant}.yaml"
+  args:
+    height: 0.9815
+sensor:
+  gz:
+    - name: "${name:-vln_camera}_image"
+      type: image
+      topic: "${topic:-vln_camera}/image"
+      frame: "${prefix}${mount}_rgb_camera_frame"
+      sensor: "${mount}_rgb_camera"
+    - name: "${name:-vln_camera}_info"
+      type: camera_info
+      topic: "${topic:-vln_camera}/camera_info"
+      frame: "${prefix}${mount}_rgb_camera_frame"
+      sensor: "${mount}_rgb_camera"
+power:
+  static_power_w: 2.0

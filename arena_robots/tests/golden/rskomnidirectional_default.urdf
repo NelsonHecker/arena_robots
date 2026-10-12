@@ -810,7 +810,7 @@
     <parent link="base"/>
     <child link="wheel_no_passives"/>
     <axis xyz="0 0 1"/>
-    <limit effort="10" velocity="10"/>
+    <limit effort="0.035" velocity="100"/>
   </joint>
   <!-- Link wheel_no_passives_2 -->
   <link name="wheel_no_passives_2">
@@ -1582,7 +1582,7 @@
     <parent link="base"/>
     <child link="wheel_no_passives_2"/>
     <axis xyz="0 0 1"/>
-    <limit effort="10" velocity="10"/>
+    <limit effort="0.035" velocity="100"/>
   </joint>
   <!-- Link wheel_no_passives_3 -->
   <link name="wheel_no_passives_3">
@@ -2354,7 +2354,7 @@
     <parent link="base"/>
     <child link="wheel_no_passives_3"/>
     <axis xyz="0 0 1"/>
-    <limit effort="10" velocity="10"/>
+    <limit effort="0.035" velocity="100"/>
   </joint>
   <!-- Link kicker_front -->
   <link name="kicker_front">

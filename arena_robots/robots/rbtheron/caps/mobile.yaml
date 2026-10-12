@@ -3,6 +3,15 @@ sensor_frame: robot_front_laser_link
 radius: 0.35
 is_holonomic: false
 
+planar:
+  velocity: {linear: [-1.0, 1.0], lateral: [0.0, 0.0], angular: [-1.0, 1.0]}
+  acceleration: {linear: 5.0, lateral: .inf, angular: 5.0}
+  gain: {linear: 1.0, lateral: 1.0, angular: 1.0}
+  lag: 0.0
+  traction: 9.81
+  pivot: 0.0
+  timeout: 0.25
+
 actions:
   continuous:
     linear:

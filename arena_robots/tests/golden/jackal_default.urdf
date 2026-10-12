@@ -270,23 +270,23 @@
     <child link="imu_link"/>
   </joint>
   <frame attached_to="chassis_link" name="lidar_frame">
-    <pose>0.0 0.0 0.14200000000000002 0 0 0</pose>
+    <pose>0.0 0.0 0.284 0 0 0</pose>
   </frame>
   <link name="lidar_link">
     <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.142"/>
       <mass value="0.1"/>
       <inertia ixx="1e-5" ixy="0" ixz="0" iyy="1e-5" iyz="0" izz="1e-5"/>
     </inertial>
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.142"/>
       <geometry>
         <cylinder length="0.1" radius="0.05"/>
       </geometry>
       <material name="black"/>
     </visual>
     <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.142"/>
       <geometry>
         <cylinder length="0.1" radius="0.05"/>
       </geometry>
@@ -296,7 +296,7 @@
   <joint name="lidar_joint" type="fixed">
     <parent link="chassis_link"/>
     <child link="lidar_link"/>
-    <origin rpy="0 0 0" xyz="0.0 0.0 0.14200000000000002"/>
+    <origin rpy="0 0 0" xyz="0.0 0.0 0.284"/>
   </joint>
   <!-- TODO: Same note as applies to imu_link -->
   <link name="navsat_link">
@@ -446,7 +446,7 @@
   <gazebo reference="lidar_link">
     <sensor name="gpu_lidar" type="gpu_lidar">
       <gz_frame_id>/lidar_link</gz_frame_id>
-      <pose>0 0 0.142 0 0 0</pose>
+      <pose>0 0 0 0 0 0</pose>
       <update_rate>10</update_rate>
       <lidar>
         <scan>

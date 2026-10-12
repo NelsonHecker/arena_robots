@@ -97,7 +97,7 @@
   <joint name="robot_front_right_wheel_joint" type="continuous">
     <parent link="robot_base_link"/>
     <child link="robot_front_right_wheel_link"/>
-    <origin rpy="0.0 0.0 0.7853981633975" xyz="0.558 -0.2865 0.0"/>
+    <origin rpy="0.0 0.0 0.0" xyz="0.558 -0.2865 0.0"/>
     <limit effort="100000" velocity="100"/>
     <axis xyz="0 1 0"/>
   </joint>
@@ -121,7 +121,7 @@
           <ode>
             <mu>1.0</mu>
             <mu2>0.0</mu2>
-            <fdir1 gz:expressed_in="robot_base_link">1 0 0</fdir1>
+            <fdir1 gz:expressed_in="robot_base_footprint">0.70710678 0.70710678 0</fdir1>
           </ode>
         </friction>
       </surface>
@@ -146,7 +146,7 @@
   <joint name="robot_front_left_wheel_joint" type="continuous">
     <parent link="robot_base_link"/>
     <child link="robot_front_left_wheel_link"/>
-    <origin rpy="0.0 0.0 -0.7853981633975" xyz="0.558 0.2865 0.0"/>
+    <origin rpy="0.0 0.0 0.0" xyz="0.558 0.2865 0.0"/>
     <limit effort="100000" velocity="100"/>
     <axis xyz="0 1 0"/>
   </joint>
@@ -170,7 +170,7 @@
           <ode>
             <mu>1.0</mu>
             <mu2>0.0</mu2>
-            <fdir1 gz:expressed_in="robot_base_link">1 0 0</fdir1>
+            <fdir1 gz:expressed_in="robot_base_footprint">0.70710678 -0.70710678 0</fdir1>
           </ode>
         </friction>
       </surface>
@@ -195,7 +195,7 @@
   <joint name="robot_back_left_wheel_joint" type="continuous">
     <parent link="robot_base_link"/>
     <child link="robot_back_left_wheel_link"/>
-    <origin rpy="0.0 0.0 0.7853981633975" xyz="-0.558 0.2865 0.0"/>
+    <origin rpy="0.0 0.0 0.0" xyz="-0.558 0.2865 0.0"/>
     <limit effort="100000" velocity="100"/>
     <axis xyz="0 1 0"/>
   </joint>
@@ -219,7 +219,7 @@
           <ode>
             <mu>1.0</mu>
             <mu2>0.0</mu2>
-            <fdir1 gz:expressed_in="robot_base_link">1 0 0</fdir1>
+            <fdir1 gz:expressed_in="robot_base_footprint">0.70710678 0.70710678 0</fdir1>
           </ode>
         </friction>
       </surface>
@@ -244,7 +244,7 @@
   <joint name="robot_back_right_wheel_joint" type="continuous">
     <parent link="robot_base_link"/>
     <child link="robot_back_right_wheel_link"/>
-    <origin rpy="0.0 0.0 -0.7853981633975" xyz="-0.558 -0.2865 0.0"/>
+    <origin rpy="0.0 0.0 0.0" xyz="-0.558 -0.2865 0.0"/>
     <limit effort="100000" velocity="100"/>
     <axis xyz="0 1 0"/>
   </joint>
@@ -268,7 +268,7 @@
           <ode>
             <mu>1.0</mu>
             <mu2>0.0</mu2>
-            <fdir1 gz:expressed_in="robot_base_link">1 0 0</fdir1>
+            <fdir1 gz:expressed_in="robot_base_footprint">0.70710678 -0.70710678 0</fdir1>
           </ode>
         </friction>
       </surface>

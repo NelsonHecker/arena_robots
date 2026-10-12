@@ -4,7 +4,7 @@
        Hokuyo UAM-05LP mesh. Body copied verbatim from boxer's sensors.urdf.xacro
        inline block, including the <ray> scan tag (a still-valid gz-sim
        gpu_lidar alias) and the classic libgazebo_ros_laser.so plugin (inert under
-       gz-sim, kept as-is like jackal's odd internal <pose>). frame has no "_link" suffix:
+       gz-sim, kept as-is). frame has no "_link" suffix:
        the link/joint names are "front_laser"/"front_laser_joint" verbatim,
        matching the mount name. sim_path forwarded like every other component's
        gz_frame_id. -->

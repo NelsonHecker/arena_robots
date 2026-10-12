@@ -3,7 +3,7 @@ prefix: ""
 mounts:
   front:
     parent: chassis_link
-    xyz: [0.0, 0.0, 0.142]
+    xyz: [0.0, 0.0, 0.284]
     rpy: [0, 0, 0]
     accepts: [lidar]
     frame: lidar

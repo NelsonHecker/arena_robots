@@ -104,11 +104,13 @@ class PowerSpec:
 class RequestPart:
     """One requested part instance from a fleet-def morphology item; ``mount`` set only
     for an explicit pin. ``params`` is reserved for later bracket-level tuning and is
-    accepted but not propagated into the resolved assembly."""
+    accepted but not propagated into the resolved assembly. ``overrides`` carries into
+    the placement like a default part's."""
 
     variant: str
     mount: str | None = None
     params: dict[str, object] = attrs.field(factory=dict)
+    overrides: dict[str, str] = attrs.field(factory=dict)
 
 
 def _validate_mount_dag(mounts: dict[str, Mount]) -> None:
@@ -211,8 +213,8 @@ class Placement:
     mount: Mount
     params: dict[str, object] = attrs.field(factory=dict)
     overrides: dict[str, str] = attrs.field(factory=dict)
-    """Copied verbatim from the originating ``DefaultPart`` (empty for request-sourced
-    placements); consumed only by ``catalog.render_effective_sensors``."""
+    """Copied verbatim from the originating ``DefaultPart`` or ``RequestPart``; consumed
+    only by ``catalog.render_effective_sensors``."""
 
 
 @attrs.define
@@ -386,7 +388,7 @@ def resolve(
                 continue
             inventory = ", ".join(f"{m.name} accepts {sorted(m.accepts)}" for m in spec.mounts.values()) or "(no mounts declared)"
             raise AssemblyError(f"robot declares no '{t}' mounts; mount inventory: {inventory}")
-        effective.setdefault(t, []).extend(_Item(type=t, variant=p.variant, mount=p.mount, params={}, local_index=i) for i, p in enumerate(requested))
+        effective.setdefault(t, []).extend(_Item(type=t, variant=p.variant, mount=p.mount, params={}, overrides=p.overrides, local_index=i) for i, p in enumerate(requested))
 
     flat: list[_Item] = [item for parts in effective.values() for item in parts]
 

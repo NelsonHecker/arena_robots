@@ -21,6 +21,7 @@ class SensorType(enum.StrEnum):
     CAMERA_INFO = "camera_info"
     IMU = "imu"
     CONTACT = "contact"
+    AUDIO = "audio"
 
 
 @attrs.define(frozen=True)

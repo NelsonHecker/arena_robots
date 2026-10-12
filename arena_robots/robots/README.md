@@ -19,19 +19,28 @@ files, and the `arena feature robots` CLI all look robots up by this name.
 
 Robot-wide identity. Cap data does not live here except for fields that apply
 to any robot regardless of cap: `base_frame` (every robot has a base link),
-`z_offset` (spawn-placement offset, defaults to 0.0), and `sensors` (hardware
+`z_offset` (height of the model root when the robot rests on the ground, defaults to 0.0), and `sensors` (hardware
 sensor declarations, defaults to `[]`).
 
 ```yaml
 robot_model: my_robot       # required; matches the directory name
 base_frame: base_link       # required; TF frame of the robot's base link
-z_offset: 0.37              # optional; metres to lift the robot above the ground plane at spawn
+z_offset: 0.0635            # optional; metres from the ground to the model root with the robot at rest, spawn and teleport place it there
 sensors:                    # optional; declared sensors parsed into SensorSpec entries
   - {name: lidar, type: laserscan, topic: ${namespace}/scan, frame: base_scan}
 ```
 
 Parsed by [`arena_robots.Robot.ModelParams`](../arena_robots/Robot.py). Additional keys pass
 through unchanged; nothing in-tree consumes them.
+
+`sensors` also drives the Nav2 costmap sources ([`arena_robots.nav2`](../arena_robots/nav2.py)).
+The local costmap raytraces planar lidars in a 2D obstacle layer and runs multi-ring lidars
+and depth cameras through a spatio-temporal voxel layer, which clears inside a frustum fitted
+to the sensor's field of view. Field of view and range are read from the gz `<sensor>` element
+of the rendered URDF that the entry's `sensor:` key names, or its `name` when the key is absent
+([`arena_robots.sensor_geometry`](../arena_robots/sensor_geometry.py)). A sensor without such
+an element counts as planar when it only declares a `laserscan`. Otherwise it marks without
+clearing and its obstacles expire after the layer's `voxel_decay`.
 
 ### `caps/`: capability declarations
 
@@ -69,7 +78,7 @@ is_holonomic: false
 
 footprint: [[0.5, 0.35], [0.5, -0.35], [-0.5, -0.35], [-0.5, 0.35]]
 footprint_padding: 0.1        # optional
-inflation_radius: 0.25        # optional
+inflation_radius: 0.9         # optional, default: outer radius of the padded footprint or radius, + 0.4
 polygons_dict:
   StopPolygon: {type: polygon, points: [...], action_type: stop}
 
@@ -86,6 +95,15 @@ actions:
 
 laser: {angle: {min: -2.35619, max: 2.35619}, num_beams: 720, range: 30.0, update_rate: 10}
 
+planar:
+  velocity: {linear: [-2.0, 2.0], lateral: [0.0, 0.0], angular: [-4.0, 4.0]}
+  acceleration: {linear: 20.0, lateral: .inf, angular: 25.0}
+  gain: {linear: 1.0, lateral: 1.0, angular: 1.36}
+  lag: 0.0
+  traction: 7.85
+  pivot: 0.131
+  timeout: 0.25
+
 nav2:                      # planner plugin wiring only
   planner_plugins: [GridBased]
   planner_plugins_dict: {...}
@@ -96,6 +114,12 @@ via `Nav2KinematicsDerivedYAML` substitution; controller YAMLs reference them
 as `${max_linear_vel:-default}` etc. To override a specific controller without
 touching `mobile.yaml`, replace the substitution with a literal value in that
 controller YAML.
+
+`planar` is the body response `sim:=flatsim` drives the robot with, the same keys
+for every robot: per-axis velocity bounds, acceleration and gain, a first-order
+`lag`, a `traction` cap on planar acceleration, the `pivot` x the body turns
+about and the command `timeout`. It is the drive's envelope, not the planner's,
+so it can exceed `velocity_limits`.
 
 #### `caps/arm.yaml`, `caps/lift.yaml`, `caps/gripper.yaml`: dict-keyed
 

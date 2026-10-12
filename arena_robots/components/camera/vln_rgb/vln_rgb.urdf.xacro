@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
+  <xacro:include filename="$(find arena_robots)/components/utils/inertia.urdf.xacro" />
+
+  <xacro:macro name="vln_rgb" params="name parent_link sensor topic height optics_file *origin mast_radius:=0.0125 mast_mass:=0.3 forward:=0.03 update_rate:=15">
+    <xacro:property name="M_PI" value="3.1415926535897931" />
+    <xacro:property name="optics" value="${xacro.load_yaml(optics_file)}" />
+
+    <joint name="${name}_mast_joint" type="fixed">
+      <xacro:insert_block name="origin" />
+      <parent link="${parent_link}" />
+      <child link="${name}_mast_link" />
+    </joint>
+
+    <link name="${name}_mast_link">
+      <visual>
+        <origin xyz="0 0 ${height/2}" rpy="0 0 0" />
+        <geometry>
+          <cylinder radius="${mast_radius}" length="${height}" />
+        </geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${height/2}" rpy="0 0 0" />
+        <geometry>
+          <cylinder radius="${mast_radius}" length="${height}" />
+        </geometry>
+      </collision>
+      <inertial>
+        <origin xyz="0 0 ${height/2}" rpy="0 0 0" />
+        <mass value="${mast_mass}" />
+        <xacro:solid_cylinder_inertia m="${mast_mass}" r="${mast_radius}" h="${height}" />
+      </inertial>
+    </link>
+
+    <link name="${name}_rgb_camera_frame" />
+    <joint name="${name}_rgb_camera_joint" type="fixed">
+      <origin xyz="${forward} 0 ${height}" rpy="0 0 0" />
+      <parent link="${name}_mast_link" />
+      <child link="${name}_rgb_camera_frame" />
+    </joint>
+
+    <link name="${name}_rgb_camera_optical_frame" />
+    <joint name="${name}_rgb_camera_optical_joint" type="fixed">
+      <origin xyz="0 0 0" rpy="-${M_PI/2} 0 -${M_PI/2}" />
+      <parent link="${name}_rgb_camera_frame" />
+      <child link="${name}_rgb_camera_optical_frame" />
+    </joint>
+
+    <gazebo reference="${name}_rgb_camera_frame">
+      <sensor name="${sensor}_rgb_camera" type="camera">
+        <gz_frame_id>$(arg sim_path)/${name}_rgb_camera_frame</gz_frame_id>
+        <always_on>1</always_on>
+        <update_rate>${update_rate}</update_rate>
+        <visualize>false</visualize>
+        <topic>${topic}/image</topic>
+        <camera>
+          <camera_info_topic>${topic}/camera_info</camera_info_topic>
+          <horizontal_fov>${optics['hfov_deg'] * M_PI / 180}</horizontal_fov>
+          <image>
+            <width>${optics['width']}</width>
+            <height>${optics['height']}</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.01</near>
+            <far>100.0</far>
+          </clip>
+        </camera>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+</robot>
