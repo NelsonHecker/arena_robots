@@ -6,7 +6,9 @@ from pathlib import Path
 import attrs
 import yaml
 from ament_index_python.packages import get_package_share_path
+from arena_simulation_setup.shared import Light
 from arena_simulation_setup.tree import Identifier, PathView, SimplePathResolver
+from arena_simulation_setup.utils.cattrs import converter
 from arena_simulation_setup.utils.models import ModelWrapper
 from arena_simulation_setup.utils.models.model_loader import (
     ModelProvider_URDF,
@@ -140,6 +142,24 @@ class ModelParams(dict[str, typing.Any]):
                     sensor=str(entry['sensor']) if 'sensor' in entry else None,
                 )
             )
+        return out
+
+    @property
+    def lights(self) -> list[Light]:
+        """Lights the robot carries, each on a frame of the robot and intrinsic, so the world keeps its default lighting."""
+        raw = self.get('lights', [])
+        if not isinstance(raw, list):
+            raise ValueError(f"model_params 'lights' must be a list; got {type(raw).__name__}")
+        out: list[Light] = []
+        for i, entry in enumerate(raw):
+            if not isinstance(entry, dict):
+                raise ValueError(f"model_params 'lights[{i}]' must be a mapping; got {type(entry).__name__}")
+            if 'frame' not in entry:
+                raise ValueError(f"model_params 'lights[{i}]' needs a frame of the robot")
+            light = converter.structure({**entry, 'intrinsic': True}, Light)
+            if any(light.name == other.name for other in out):
+                raise ValueError(f"model_params 'lights' declares {light.name!r} twice")
+            out.append(light)
         return out
 
     @property
