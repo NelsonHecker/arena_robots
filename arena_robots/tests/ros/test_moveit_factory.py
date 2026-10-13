@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import shutil
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 
 import pytest
 
@@ -48,9 +49,10 @@ class TestBuildMoveitParamsInstanceAgreement:
     """rbvogui_plus is single-arm (author key "arm"): instance=None and the
     explicit instance="arm" must build byte-identical params."""
 
-    def test_none_and_explicit_instance_agree(self):
+    def test_none_and_explicit_instance_agree(self, require_installed: Callable[[str], None]):
         from arena_robots.moveit_factory import build_moveit_params
 
+        require_installed("rbvogui_plus")
         default_params = build_moveit_params("rbvogui_plus")
         explicit_params = build_moveit_params("rbvogui_plus", instance="arm")
         assert default_params is not None
@@ -99,10 +101,11 @@ class TestBuildMoveitParamsAllocationMatchesPlus:
     (arm0_ -> arm_, group arm0_manipulator -> ur_manipulator)."""
 
     @pytest.fixture(scope="class")
-    def params_pair(self) -> tuple[dict, dict]:
+    def params_pair(self, require_installed: Callable[[str], None]) -> tuple[dict, dict]:
         from arena_robots.assembly import RequestPart
         from arena_robots.moveit_factory import build_moveit_params
 
+        require_installed("rbvogui_plus")
         mine = build_moveit_params("rbvogui", tf_prefix="robot_", parts={"arm": [RequestPart(variant="ur5e")]})
         plus = build_moveit_params("rbvogui_plus", tf_prefix="robot_")
         assert mine is not None
@@ -147,10 +150,11 @@ class TestBuildMoveitParamsZeroPrefixChassis:
     robot_ (``_compose_srdf`` now renders via the xacro python API, which honors "")."""
 
     @pytest.fixture(scope="class")
-    def params(self) -> dict:
+    def params(self, require_installed: Callable[[str], None]) -> dict:
         from arena_robots.assembly import RequestPart
         from arena_robots.moveit_factory import build_moveit_params
 
+        require_installed("arm/ur")
         p = build_moveit_params("jackal", tf_prefix="", parts={"arm": [RequestPart(variant="ur5e", mount="top")]}, instance="top")
         assert p is not None
         return p
@@ -181,10 +185,12 @@ class TestBuildMoveitParamsWithGripper:
     disables, all referencing links that exist in the wrapper-rendered URDF."""
 
     @pytest.fixture(scope="class")
-    def params(self) -> dict:
+    def params(self, require_installed: Callable[[str], None]) -> dict:
         from arena_robots.assembly import RequestPart
         from arena_robots.moveit_factory import build_moveit_params
 
+        require_installed("arm/ur")
+        require_installed("gripper/robotiq_2f_85")
         p = build_moveit_params(
             "jackal",
             tf_prefix="",
@@ -207,10 +213,12 @@ class TestBuildMoveitParamsWithGripper:
         pairs = {frozenset({dc.get("link1"), dc.get("link2")}) for dc in srdf.iter("disable_collisions")}
         assert frozenset({"top_wrist_3_link", "top_tool_robotiq_85_base_link"}) in pairs
 
-    def test_tf_prefix_reaches_end_effector_parent_link(self) -> None:
+    def test_tf_prefix_reaches_end_effector_parent_link(self, require_installed: Callable[[str], None]) -> None:
         from arena_robots.assembly import RequestPart
         from arena_robots.moveit_factory import build_moveit_params
 
+        require_installed("arm/ur")
+        require_installed("gripper/robotiq_2f_85")
         p = build_moveit_params(
             "jackal",
             tf_prefix="env_0/jackal/",
@@ -240,10 +248,11 @@ class TestBuildMoveitParamsSmallUrComponents:
     SRDF whose links exist in the variant-parametrized URDF (zero-prefix jackal[top=arm/<v>])."""
 
     @pytest.fixture(scope="class", params=["ur3e", "ur3"])
-    def params(self, request: pytest.FixtureRequest) -> dict:
+    def params(self, request: pytest.FixtureRequest, require_installed: Callable[[str], None]) -> dict:
         from arena_robots.assembly import RequestPart
         from arena_robots.moveit_factory import build_moveit_params
 
+        require_installed("arm/ur")
         p = build_moveit_params("jackal", tf_prefix="", parts={"arm": [RequestPart(variant=request.param, mount="top")]}, instance="top")
         assert p is not None
         return p

@@ -55,8 +55,9 @@ def test_every_ranging_sensor_has_golden_geometry(robot):
 
 
 @pytest.mark.parametrize("robot", ALL_ROBOTS)
-def test_rendered_urdf_geometry_covers_every_ranging_sensor(robot):
+def test_rendered_urdf_geometry_covers_every_ranging_sensor(robot, require_installed):
     pytest.importorskip("xacro")
+    require_installed(robot)
     view = RobotIdentifier(robot).resolve_sync()
     shapes = sensor_geometry(view, {})
     backing = {s.sensor for s in view.effective_sensors({}) if str(s.type) in _RANGING}

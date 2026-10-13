@@ -9,6 +9,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -56,7 +57,8 @@ def _arm_elements(root: ET.Element) -> dict[tuple[str, str], dict]:
 @pytest.mark.skipif(_XACRO is None, reason="xacro CLI not on PATH; run under the Arena container (bash arena -c pytest)")
 class TestRbvoguiArmCollapseMatchesPlus:
     @pytest.fixture(scope="class")
-    def rendered(self, tmp_path_factory: pytest.TempPathFactory) -> tuple[ET.Element, ET.Element]:
+    def rendered(self, tmp_path_factory: pytest.TempPathFactory, require_installed: Callable[[str], None]) -> tuple[ET.Element, ET.Element]:
+        require_installed("rbvogui_plus")
         view = RobotIdentifier("rbvogui").resolve_sync()
         assert view.assembly is not None
         resolved = resolve(view.assembly, {"arm": [RequestPart(variant="ur5e")]})
