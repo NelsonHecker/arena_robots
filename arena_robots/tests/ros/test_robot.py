@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
+
 import pytest
 import yaml
 
@@ -47,6 +49,40 @@ class TestModelParamsFromYaml:
 
         with pytest.raises((FileNotFoundError, OSError)):
             ModelParams.from_yaml(tmp_path / "nonexistent.yaml")
+
+
+class TestModelParamsLights:
+    def test_lights_parse_on_robot_frames_and_are_intrinsic(self, tmp_path: Path) -> None:
+        from arena_robots.Robot import ModelParams
+
+        data = {"lights": [{"name": "headlight", "fixture": "spot", "frame": "base_link", "offset": {"x": 0.2, "y": 0.0, "z": 0.3, "pitch": -math.pi / 2}, "lumens": 1500}]}
+        (light,) = ModelParams.from_yaml(_write(tmp_path, data)).lights
+        assert (light.name, light.fixture, light.frame) == ("headlight", "spot", "base_link")
+        assert light.intrinsic
+        assert light.pose is None
+        assert (light.offset.position.x, light.offset.position.z) == (0.2, 0.3)
+        assert light.direction == pytest.approx((1.0, 0.0, 0.0))
+
+    def test_no_lights_key_means_no_lights(self, tmp_path: Path) -> None:
+        from arena_robots.Robot import ModelParams
+
+        assert ModelParams.from_yaml(_write(tmp_path, {})).lights == []
+
+    @pytest.mark.parametrize(
+        ("lights", "match"),
+        [
+            ("headlight", "must be a list"),
+            (["headlight"], "must be a mapping"),
+            ([{"name": "headlight", "fixture": "spot", "pose": {"x": 1, "y": 0, "z": 0.5}, "lumens": 900}], "needs a frame of the robot"),
+            ([{"name": "headlight", "fixture": "spot", "frame": "base_link", "pose": {"x": 1, "y": 0, "z": 0.5}, "lumens": 900}], "exactly one of pose, attach or frame"),
+            ([{"name": "headlight", "fixture": "spot", "frame": "base_link", "lumens": 900}, {"name": "headlight", "fixture": "bulb", "frame": "top_link", "lumens": 400}], "declares 'headlight' twice"),
+        ],
+    )
+    def test_malformed_lights_raise(self, tmp_path: Path, lights: object, match: str) -> None:
+        from arena_robots.Robot import ModelParams
+
+        with pytest.raises(ValueError, match=match):
+            ModelParams.from_yaml(_write(tmp_path, {"lights": lights})).lights
 
 
 class TestModelParamsSensors:
@@ -145,9 +181,8 @@ class TestModelParamsCapabilities:
 
 class TestRobotView:
     def test_model_params_loaded(self, temp_robot_dir):
-        from arena_simulation_setup.tree import PathView
-
         from arena_robots.Robot import RobotView
+        from arena_simulation_setup.tree import PathView
 
         rd = temp_robot_dir(model_params={"base_frame": "bl"}, control={"cmd_vel": "/cmd"})
         view = RobotView(rd)
