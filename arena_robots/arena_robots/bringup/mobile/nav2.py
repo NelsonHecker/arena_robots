@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import ClassVar
 
 import attrs
+from ament_index_python.packages import get_package_share_directory
 from launch import Action
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -47,7 +49,6 @@ class Nav2Bringup(Bringup):
         task_generator_node: str = "",
         env_namespace: str = "",
         sensors: list[SensorSpec] | None = None,
-        social_cost_layer: bool = False,
         params_overlay: str = "",
         agent: str = "",
         **_: object,
@@ -64,6 +65,8 @@ class Nav2Bringup(Bringup):
                 "nav2.launch.py",
             ]
         )
+        if params_overlay and "/" not in params_overlay:
+            params_overlay = os.path.join(get_package_share_directory("arena_robots"), "config", "nav2", "overlays", f"{params_overlay}.yaml")
         launch_arguments = {
             "robot": self.robot.name,
             "namespace": self.namespace,
@@ -75,7 +78,6 @@ class Nav2Bringup(Bringup):
             "train_mode": str(train_mode).lower(),
             "task_generator_node": task_generator_node,
             "env_namespace": env_namespace,
-            "social_cost_layer": str(social_cost_layer).lower(),
             "params_overlay": params_overlay,
             "agent": agent_name,
         }

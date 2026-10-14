@@ -20,6 +20,7 @@ from arena_robots.sensor_geometry import SensorGeometry
 PKG = Path(__file__).resolve().parents[2] / "arena_robots"
 ROBOTS_DIR = PKG / "robots"
 NAV2_YAML = PKG / "config" / "nav2" / "nav2.yaml"
+SOCIAL_OVERLAY = PKG / "config" / "nav2" / "overlays" / "social_cost_layer.yaml"
 
 
 def _spec(name: str, type_: SensorType, topic: str) -> SensorSpec:
@@ -127,7 +128,7 @@ def _costmap_layers(robot: str) -> tuple[dict, dict, dict]:
     variables = {"namespace": "ns", **yaml.safe_load(Path(derived).read_text())}
     nav2 = yaml.safe_load(NAV2_YAML.read_text())
     local = nav2["local_costmap"]["local_costmap"]["ros__parameters"]
-    assert local["plugins"] == ["obstacle_layer", "voxel_layer", "${*social_cost_layer_plugins}", "inflation_layer"]
+    assert local["plugins"] == ["obstacle_layer", "voxel_layer", "inflation_layer"]
     global_ = nav2["global_costmap"]["global_costmap"]["ros__parameters"]["obstacle_layer"]
     replacer = YAMLReplacer(variables)
     return replacer.replace(local["obstacle_layer"]), replacer.replace(local["voxel_layer"]), replacer.replace(global_)
@@ -162,3 +163,15 @@ def test_costmap_layers_list_their_own_sources(robot, planar_sources, voxel_sour
     for layer, names in ((planar, planar_sources), (global_, global_sources)):
         for name in names:
             assert (layer[name]["marking"], layer[name]["clearing"]) == (True, True)
+
+
+def test_social_cost_layer_overlay_adds_the_layer_to_both_costmaps():
+    nav2 = yaml.safe_load(NAV2_YAML.read_text())
+    overlay = yaml.safe_load(SOCIAL_OVERLAY.read_text())
+    for costmap in ("local_costmap", "global_costmap"):
+        base = nav2[costmap][costmap]["ros__parameters"]
+        over = overlay[costmap][costmap]["ros__parameters"]
+        assert "social_cost_layer" not in base["plugins"]
+        assert over["plugins"] == [*base["plugins"][: base["plugins"].index("inflation_layer")], "social_cost_layer", *base["plugins"][base["plugins"].index("inflation_layer") :]]
+        assert over["social_cost_layer"]["plugin"] == "arena_social_cost_layer/SocialCostLayer"
+        assert over["social_cost_layer"]["max_cost_value"] <= 252

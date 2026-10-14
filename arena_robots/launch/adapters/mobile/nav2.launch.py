@@ -2,7 +2,7 @@
 
 import os
 
-from arena_bringup.future import IfElseSubstitution, PythonExpression
+from arena_bringup.future import PythonExpression
 from arena_bringup.substitutions import (
     LaunchArgument,
     YAMLFileSubstitution,
@@ -44,10 +44,6 @@ def generate_launch_description():
     train_mode = LaunchArgument('train_mode', default_value='false')
     planner_only = LaunchArgument('planner_only', default_value='false')
     sensors_json = LaunchArgument('sensors_json', default_value='')
-    social_cost_layer = LaunchArgument(
-        'social_cost_layer', default_value='false',
-        description='add arena_social_cost_layer to the local and global costmaps',
-    )
     params_overlay = LaunchArgument('params_overlay', default_value='')
     agent = LaunchArgument('agent', default_value='')
 
@@ -79,13 +75,6 @@ def generate_launch_description():
         YAMLFileSubstitution(nav2_cfg('planners', global_planner.substitution, 'planner_config.yaml')),
         YAMLFileSubstitution(nav2_cfg('defaults', 'interplanner_config.yaml')),
         YAMLFileSubstitution(interplanner_cfg),
-        YAMLFileSubstitution(
-            IfElseSubstitution(
-                condition=social_cost_layer.substitution,
-                if_value=nav2_cfg('social_cost_layer_enabled.yaml'),
-                else_value=nav2_cfg('social_cost_layer_disabled.yaml'),
-            )
-        ),
         YAMLFileSubstitution.from_dict(
             {
                 'frame': frame.substitution,
