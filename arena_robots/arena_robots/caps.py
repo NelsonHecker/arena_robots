@@ -498,6 +498,20 @@ class ArmSpec(InstanceSpec):
         return ws if isinstance(ws, dict) else None
 
     @property
+    def joint_limits(self) -> dict[str, dict[str, object]]:
+        """``{joint_name: limits}`` from the moveit joint_limits file, empty when not declared."""
+        mv = self.raw.get("moveit")
+        if not isinstance(mv, dict):
+            return {}
+        jl = mv.get("joint_limits")
+        if not isinstance(jl, dict):
+            return {}
+        full = _resolve_find_ref(f"$(find {jl.get('package', mv.get('package'))})/{jl.get('path', 'config/joint_limits.yaml')}")
+        with open(full) as f:
+            data = yaml.safe_load(f) or {}
+        return data.get("joint_limits", {})
+
+    @property
     def named_poses(self) -> dict[str, dict[str, float]]:
         """``{pose_name: {joint_name: radians}}``. Empty dict if not declared.
 

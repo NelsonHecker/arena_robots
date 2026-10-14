@@ -48,11 +48,11 @@ actions:
 
 laser:
   angle:
-    min: -2.26892803
-    max: 2.26892803
-    increment: 0.00575
-  num_beams: 270
-  range: 10.0
+    increment: 0.00872665
+    max: 2.3561945
+    min: -2.3561945
+  num_beams: 541
+  range: 30.0
   update_rate: 25
 
 nav2:

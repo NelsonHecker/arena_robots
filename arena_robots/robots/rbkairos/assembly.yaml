@@ -24,6 +24,25 @@ mounts:
     rpy: [0, 0, 0]
     accepts: [camera]
     frame: front_rgbd_camera
+  arm_mount:
+    parent: top_cover
+    xyz: [0, 0, 0]
+    rpy: [0, 0, 0]
+    accepts: [arm]
+    frame: arm
+  wrist_cam:
+    parent: "@arm_mount:tip"
+    xyz: [0.0, -0.04, 0.00]
+    rpy: [0, -1.5708, 1.5708]
+    accepts: [camera]
+    frame: wrist_camera
+  arm_base_cam:
+    parent: top_cover
+    xyz: [0.2, -0.25, 0.1]
+    rpy: [0.0, -0.96, 1.5708]
+    accepts: [camera]
+    frame: arm_base_camera
+
 defaults:
   lidar:
     - variant: sick_s300
