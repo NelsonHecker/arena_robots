@@ -41,7 +41,7 @@ def test_boxer_lasers_are_planar_and_its_realsense_is_a_camera():
 
 def test_turtlebot_cliff_rays_and_rgbd_camera_are_parsed():
     shapes = _golden("turtlebot")
-    assert shapes["rgbd_camera"].max_range == 100.0
+    assert shapes["oakd"].max_range == 100.0
     assert shapes["cliff_front_left"].max_range == 0.15
 
 

@@ -142,8 +142,8 @@ def _costmap_layers(robot: str) -> tuple[dict, dict, dict]:
         (
             "boxer",
             ["front_laser", "rear_laser"],
-            ["rgbd_camera_points", "rgbd_camera_points_clearing"],
-            ["front_laser", "front_laser_points", "rear_laser", "rear_laser_points", "rgbd_camera_points"],
+            ["front_realsense_mount_link_points", "front_realsense_mount_link_points_clearing"],
+            ["front_laser", "front_laser_points", "rear_laser", "rear_laser_points", "front_realsense_mount_link_points"],
         ),
     ],
 )
