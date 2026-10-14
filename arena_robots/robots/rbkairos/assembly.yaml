@@ -42,7 +42,6 @@ mounts:
     rpy: [0.0, -0.96, 1.5708]
     accepts: [camera]
     frame: arm_base_camera
-  
 
 defaults:
   lidar:

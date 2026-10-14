@@ -502,11 +502,9 @@ class ArmSpec(InstanceSpec):
         mv = self.raw.get("moveit")
         if not isinstance(mv, dict):
             return None
-        
         jl = mv.get("joint_limits")
         if not isinstance(jl, dict):
-            return None    
-        
+            return None
         full = _resolve_find_ref(f"$(find {jl['package']})/{jl['path']}")
         with open(full) as f:
             return yaml.safe_load(f) or {}
