@@ -13,32 +13,28 @@ sensor:
   gz:
     - name: "${imu_name:-${mount}}_imu"
       type: imu
-      topic: "rgbd_camera/${topic:-${mount}}/imu/data"
-      frame: "${prefix}${mount}_imu_frame"
-      sensor: "${name:-${mount}}_imu"
-
+      topic: "${topic:-${mount}}/imu/data"
+      frame: "${prefix}${camera:-${mount}}_imu_frame"
+      sensor: "${camera:-${mount}}_imu"
     - name: "${name:-${mount}}_info"
       type: camera_info
-      topic: "rgbd_camera/${topic:-${mount}}/camera_info"
-      frame: "${prefix}${mount}_rgb_camera_frame"
-      sensor: "${name:-${mount}}"
-
+      topic: "${topic:-${mount}}/camera_info"
+      frame: "${prefix}${camera:-${mount}}_rgb_camera_frame"
+      sensor: "${camera:-${mount}}"
     - name: "${name:-${mount}}_depth"
       type: depth
-      topic: "rgbd_camera/${topic:-${mount}}/depth_image"
-      frame: "${prefix}${mount}_rgb_camera_frame"
-      sensor: "${name:-${mount}}"
-
+      topic: "${topic:-${mount}}/depth_image"
+      frame: "${prefix}${camera:-${mount}}_rgb_camera_frame"
+      sensor: "${camera:-${mount}}"
     - name: "${name:-${mount}}_image"
       type: image
-      topic: "rgbd_camera/${topic:-${mount}}/image"
-      frame: "${prefix}${mount}_rgb_camera_frame"
-      sensor: "${name:-${mount}}"
-
+      topic: "${topic:-${mount}}/image"
+      frame: "${prefix}${camera:-${mount}}_rgb_camera_frame"
+      sensor: "${camera:-${mount}}"
     - name: "${name:-${mount}}_points"
       type: pointcloud
-      topic: "rgbd_camera/${topic:-${mount}}/points"
-      frame: "${prefix}${mount}_rgb_camera_frame"
-      sensor: "${name:-${mount}}"
+      topic: "${topic:-${mount}}/points"
+      frame: "${prefix}${camera:-${mount}}_rgb_camera_frame"
+      sensor: "${camera:-${mount}}"
 power:
   static_power_w: 3.5
