@@ -1,0 +1,43 @@
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      plugins: ["obstacle_layer", "voxel_layer", "social_cost_layer", "inflation_layer"]
+      social_cost_layer:
+        plugin: "arena_social_cost_layer/SocialCostLayer"
+        enabled: true
+        peds_topic: "${env_namespace}/arena_peds"
+        personal_space_radius: 1.0
+        personal_space_sigma: 0.9
+        group_extra_radius: 2.0
+        group_sigma: 0.85
+        falloff_shape: 3.0
+        max_cost_value: 252
+        stale_timeout: 0.5
+        cost_scale: 0.8
+        cost_bias: 0.05
+        interaction_weights: [0.9, 1.2, 0.0, 0.8, 0.8, 0.8, 1.0, 0.6, 0.8, 0.8, 1.5, 0.8, 0.0]
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      plugins: ["static_layer", "obstacle_layer", "social_cost_layer", "inflation_layer", "mask_overlay_layer"]
+      social_cost_layer:
+        plugin: "arena_social_cost_layer/SocialCostLayer"
+        enabled: true
+        peds_topic: "${env_namespace}/arena_peds"
+        personal_space_radius: 1.5
+        personal_space_sigma: 1.0
+        group_extra_radius: 2.5
+        group_sigma: 1.0
+        falloff_shape: 2.0
+        max_cost_value: 200
+        stale_timeout: 1.0
+        cost_scale: 1.0
+        cost_bias: 0.0
+        interaction_weights: [0.9, 1.2, 0.0, 0.8, 0.8, 0.8, 1.0, 0.6, 0.8, 0.8, 1.5, 0.8, 0.0]
+
+substitutions:
+  controller_plugins_dict:
+    FollowPath:
+      BaseObstacle.sum_scores: true
+      BaseObstacle.scale: 0.3

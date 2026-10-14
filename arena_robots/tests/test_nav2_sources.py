@@ -6,6 +6,7 @@ from pathlib import Path
 import launch
 import pytest
 import yaml
+from arena_bringup.substitutions import YAMLMergeSubstitution
 from arena_rclpy_mixins.yaml_replace import YAMLReplacer
 from arena_robots.nav2 import (
     SensorsDerivedYAML,
@@ -20,6 +21,8 @@ from arena_robots.sensor_geometry import SensorGeometry
 PKG = Path(__file__).resolve().parents[2] / "arena_robots"
 ROBOTS_DIR = PKG / "robots"
 NAV2_YAML = PKG / "config" / "nav2" / "nav2.yaml"
+SOCIAL_OVERLAY = PKG / "config" / "nav2" / "overlays" / "social_cost_layer.yaml"
+DWB_CONTROLLER = PKG / "config" / "nav2" / "controllers" / "dwb" / "controller_config.yaml"
 
 
 def _spec(name: str, type_: SensorType, topic: str) -> SensorSpec:
@@ -162,3 +165,29 @@ def test_costmap_layers_list_their_own_sources(robot, planar_sources, voxel_sour
     for layer, names in ((planar, planar_sources), (global_, global_sources)):
         for name in names:
             assert (layer[name]["marking"], layer[name]["clearing"]) == (True, True)
+
+
+def test_social_cost_layer_overlay_adds_the_layer_to_both_costmaps():
+    nav2 = yaml.safe_load(NAV2_YAML.read_text())
+    overlay = yaml.safe_load(SOCIAL_OVERLAY.read_text())
+    for costmap in ("local_costmap", "global_costmap"):
+        base = nav2[costmap][costmap]["ros__parameters"]
+        over = overlay[costmap][costmap]["ros__parameters"]
+        assert "social_cost_layer" not in base["plugins"]
+        assert over["plugins"] == [*base["plugins"][: base["plugins"].index("inflation_layer")], "social_cost_layer", *base["plugins"][base["plugins"].index("inflation_layer") :]]
+        assert over["social_cost_layer"]["plugin"] == "arena_social_cost_layer/SocialCostLayer"
+        assert over["social_cost_layer"]["max_cost_value"] <= 252
+
+
+def test_social_cost_layer_overlay_retunes_the_dwb_obstacle_critic():
+    overlay = yaml.safe_load(SOCIAL_OVERLAY.read_text())
+    assert overlay["substitutions"] == {"controller_plugins_dict": {"FollowPath": {"BaseObstacle.sum_scores": True, "BaseObstacle.scale": 0.3}}}
+    dwb = yaml.safe_load(DWB_CONTROLLER.read_text())
+    assert "BaseObstacle.sum_scores" not in dwb["controller_plugins_dict"]["FollowPath"]
+    assert dwb["controller_plugins_dict"]["FollowPath"]["BaseObstacle.scale"] == 0.02
+    variables = YAMLMergeSubstitution._recursive_merge({"goal_checker_plugin_class": "nav2_controller::SimpleGoalChecker", **dwb}, overlay["substitutions"])
+    controller = YAMLReplacer(variables).replace(yaml.safe_load(NAV2_YAML.read_text())["controller_server"]["ros__parameters"])
+    follow_path = controller["FollowPath"]
+    assert follow_path["plugin"] == "dwb_core::DWBLocalPlanner"
+    assert (follow_path["BaseObstacle.sum_scores"], follow_path["BaseObstacle.scale"]) == (True, 0.3)
+    assert follow_path["PathAlign.scale"] == 32.0

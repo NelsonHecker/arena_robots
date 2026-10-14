@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import ClassVar
 
 import attrs
+from ament_index_python.packages import get_package_share_directory
 from launch import Action
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -63,6 +65,8 @@ class Nav2Bringup(Bringup):
                 "nav2.launch.py",
             ]
         )
+        if params_overlay and "/" not in params_overlay:
+            params_overlay = os.path.join(get_package_share_directory("arena_robots"), "config", "nav2", "overlays", f"{params_overlay}.yaml")
         launch_arguments = {
             "robot": self.robot.name,
             "namespace": self.namespace,

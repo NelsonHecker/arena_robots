@@ -24,7 +24,10 @@ not live under `task_generator_node`, such as `door_mask` for
 typically driven from
 [cap-scoped overrides](../../../../arena_bringup/BRINGUP.md#cap-scoped-overrides)
 at launch (`robot.mobile.local_planner:=teb`, etc.) which the task-generator
-forwards to this launch file.
+forwards to this launch file. `params_overlay` names a YAML file (a bare name
+resolves to `config/nav2/overlays/<name>.yaml`) merged over `nav2.yaml`. Its
+top-level `substitutions:` mapping is instead merged over the planner configs,
+where `${...}` values such as `controller_plugins_dict` come from.
 
 ### `none.launch.py`
 

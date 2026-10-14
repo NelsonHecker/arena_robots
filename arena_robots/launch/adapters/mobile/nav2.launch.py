@@ -5,10 +5,12 @@ import os
 from arena_bringup.future import PythonExpression
 from arena_bringup.substitutions import (
     LaunchArgument,
+    YAMLDropSubstitution,
     YAMLFileSubstitution,
     YAMLMergeSubstitution,
     YAMLReplaceSubstitution,
     YAMLRetrieveSubstitution,
+    YAMLSelectSubstitution,
 )
 from arena_robots.nav2 import (
     Nav2CollisionDerivedYAML,
@@ -58,6 +60,7 @@ def generate_launch_description():
     ])
     interplanner_cfg = nav2_cfg('interplanners', inter_planner.substitution, 'interplanner_config.yaml')
     interplanner_yaml = YAMLFileSubstitution(interplanner_cfg)
+    overlay = YAMLFileSubstitution(params_overlay.substitution, default={})
 
     def retrieve(key):
         return YAMLRetrieveSubstitution(interplanner_yaml, key)
@@ -75,6 +78,7 @@ def generate_launch_description():
         YAMLFileSubstitution(nav2_cfg('planners', global_planner.substitution, 'planner_config.yaml')),
         YAMLFileSubstitution(nav2_cfg('defaults', 'interplanner_config.yaml')),
         YAMLFileSubstitution(interplanner_cfg),
+        YAMLSelectSubstitution(overlay, 'substitutions'),
         YAMLFileSubstitution.from_dict(
             {
                 'frame': frame.substitution,
@@ -99,7 +103,7 @@ def generate_launch_description():
     substituted_parameters = YAMLReplaceSubstitution(
         obj=YAMLFileSubstitution(YAMLMergeSubstitution(
             YAMLFileSubstitution(nav2_cfg('nav2.yaml')),
-            YAMLFileSubstitution(params_overlay.substitution, default={}),
+            YAMLDropSubstitution(overlay, 'substitutions'),
         )),
         substitutions=YAMLFileSubstitution(substitutions)
     )
