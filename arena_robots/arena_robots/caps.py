@@ -498,11 +498,15 @@ class ArmSpec(InstanceSpec):
         return ws if isinstance(ws, dict) else None
 
     @property
-    def joint_limits(self) -> dict[str, dict[str, object]]:
+    def joint_limits(self) -> dict[str, dict[str, object]] | None:
         mv = self.raw.get("moveit")
+        if not isinstance(mv, dict):
+            return None
+        
         jl = mv.get("joint_limits")
-        if jl is None:
-            return {}    
+        if not isinstance(jl, dict):
+            return None    
+        
         full = _resolve_find_ref(f"$(find {jl['package']})/{jl['path']}")
         with open(full) as f:
             return yaml.safe_load(f) or {}
