@@ -58,4 +58,4 @@ defaults:
   camera:
     - variant: d435_color
       mount: front_cam
-      overrides: {name: rgbd_camera, topic: rgbd_camera, node_name: front_rgbd_camera}
+      overrides: {name: rgbd_camera, topic: rgbd_camera, node_name: front_camera}
