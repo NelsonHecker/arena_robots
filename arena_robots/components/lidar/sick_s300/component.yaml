@@ -11,9 +11,9 @@ xacro:
     node_namespace: "${namespace}"
     gazebo_classic: "${gazebo_classic}"
     gazebo_ignition: "${gazebo_ignition}"
-    min_angle: "${min_angle:--2.2689280275926285}"
-    max_angle: "${max_angle:-2.2689280275926285}"
-  args: {min_angle: -2.2689280275926285, max_angle: 2.2689280275926285}
+    min_angle: "${min_angle:--2.356194490192345}"
+    max_angle: "${max_angle:-2.356194490192345}"
+  args: {min_angle: -2.356194490192345, max_angle: 2.356194490192345}
 sensor:
   gz:
     - name: "${name:-lidar}"
