@@ -34,7 +34,7 @@ actions:
 
 laser:
   angle:
-    increment: 0.00654497222
+    increment: 0.01745325926
     max: 2.35619
     min: -2.35619
   num_beams: 270
