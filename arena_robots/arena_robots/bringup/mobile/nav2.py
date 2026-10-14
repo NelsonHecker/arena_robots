@@ -67,6 +67,8 @@ class Nav2Bringup(Bringup):
         )
         if params_overlay and "/" not in params_overlay:
             params_overlay = os.path.join(get_package_share_directory("arena_robots"), "config", "nav2", "overlays", f"{params_overlay}.yaml")
+        if params_overlay and not os.path.isfile(params_overlay):
+            raise FileNotFoundError(f"params_overlay {params_overlay!r} does not exist")
         launch_arguments = {
             "robot": self.robot.name,
             "namespace": self.namespace,
