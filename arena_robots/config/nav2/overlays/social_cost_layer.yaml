@@ -35,3 +35,9 @@ global_costmap:
         cost_scale: 1.0
         cost_bias: 0.0
         interaction_weights: [0.9, 1.2, 0.0, 0.8, 0.8, 0.8, 1.0, 0.6, 0.8, 0.8, 1.5, 0.8, 0.0]
+
+substitutions:
+  controller_plugins_dict:
+    FollowPath:
+      BaseObstacle.sum_scores: true
+      BaseObstacle.scale: 0.3
