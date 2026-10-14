@@ -127,7 +127,6 @@ def _costmap_layers(robot: str) -> tuple[dict, dict, dict]:
     variables = {"namespace": "ns", **yaml.safe_load(Path(derived).read_text())}
     nav2 = yaml.safe_load(NAV2_YAML.read_text())
     local = nav2["local_costmap"]["local_costmap"]["ros__parameters"]
-    # the optional social cost layer splices in before inflation, nothing when social_cost_layer:=false
     assert local["plugins"] == ["obstacle_layer", "voxel_layer", "${*social_cost_layer_plugins}", "inflation_layer"]
     global_ = nav2["global_costmap"]["global_costmap"]["ros__parameters"]["obstacle_layer"]
     replacer = YAMLReplacer(variables)

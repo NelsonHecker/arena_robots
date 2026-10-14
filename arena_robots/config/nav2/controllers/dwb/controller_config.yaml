@@ -30,12 +30,6 @@ controller_plugins_dict:
     short_circuit_trajectory_evaluation: True
     stateful: True
     critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
-    # sum_scores defaults false, which makes BaseObstacleCritic::scoreTrajectory
-    # keep only the LAST pose's score (dwb_critics/base_obstacle.cpp) - i.e. it
-    # was blind to any obstacle cost a trajectory passed through mid-rollout,
-    # only seeing whatever's under its sim_time-out endpoint. With sum_scores
-    # true it now accumulates cost across every simulated pose, so scale had to
-    # come down from a single-pose-calibrated 0.02 - retune from here.
     BaseObstacle.sum_scores: true
     BaseObstacle.scale: 0.3
     PathAlign.scale: 32.0

@@ -137,25 +137,11 @@ local_costmap:
       resolution: 0.1
       footprint: ${footprint}
       footprint_padding: ${footprint_padding:-0.01}
-      # "${*social_cost_layer_plugins}" splices in "social_cost_layer" (else
-      # nothing) - see social_cost_layer_enabled.yaml/social_cost_layer_disabled.yaml
-      # and the social_cost_layer launch arg. Off by default: pluginlib never
-      # loads the class at all unless social_cost_layer:=true.
       plugins: ["obstacle_layer", "voxel_layer", "${*social_cost_layer_plugins}", "inflation_layer"]
       social_cost_layer:
         plugin: "arena_social_cost_layer/SocialCostLayer"
         enabled: ${social_cost_layer_enabled}
         peds_topic: "${env_namespace}/arena_peds"
-        # radius = hard outer clip (cost is exactly 0 beyond it); sigma =
-        # falloff scale, independent of radius. falloff_shape controls the
-        # curve's SHAPE, not cost_scale/cost_bias below - shape=1.0 is a
-        # standard Gaussian bell (decays fastest right around sigma);
-        # shape>1.0 is a "super-Gaussian": flattens into a plateau out to
-        # ~sigma (most of that reads as high cost), then falls off faster
-        # past it. This is what actually grows the "feels maxed" area -
-        # cost_scale stretches the WHOLE curve toward saturation more or
-        # less uniformly and washes out the gradient instead of widening
-        # the high-cost region specifically.
         personal_space_radius: 1.0
         personal_space_sigma: 0.9
         group_extra_radius: 2.0
@@ -163,13 +149,6 @@ local_costmap:
         falloff_shape: 3.0
         max_cost_value: 252
         stale_timeout: 0.5
-        # Gain/floor on the normalized (0,1] cost before max_cost_value scaling.
-        # Left near-neutral now that falloff_shape does the widening - only
-        # raise these if the peak itself needs to hit max sooner/the far edge
-        # needs a floor. DWB's BaseObstacle.scale (controllers/dwb/
-        # controller_config.yaml) is the other lever entirely: it decides how
-        # much this layer's cost actually outweighs path/goal critics when
-        # DWB picks a trajectory.
         cost_scale: 0.8
         cost_bias: 0.05
       inflation_layer:
@@ -217,23 +196,11 @@ global_costmap:
       resolution: 0.05
       track_unknown_space: true
       rolling_window: false
-      # plugins: ["static_layer", "obstacle_layer", "inflation_layer", "mask_overlay_layer"]
-      # "${*social_cost_layer_plugins}" splices in "social_cost_layer" (else
-      # nothing), same toggle as local_costmap above. Without this the global
-      # planner (Navfn/Smac) is entirely blind to personal space/O-space and
-      # will route the shortest path straight through people - local DWB/MPPI
-      # critics then fight to stay near that path instead of routing around,
-      # which is what caused "slams into it" / "stalls near groups".
       plugins: ["static_layer", "obstacle_layer", "${*social_cost_layer_plugins}", "inflation_layer", "mask_overlay_layer"]
       social_cost_layer:
         plugin: "arena_social_cost_layer/SocialCostLayer"
         enabled: ${social_cost_layer_enabled}
         peds_topic: "${env_namespace}/arena_peds"
-        # Wider/gentler than the local instance on purpose: this feeds a
-        # Dijkstra/A*-style path-cost search (Navfn/Smac), not a rolling
-        # trajectory rollout, so the goal is to bend the GLOBAL path away
-        # from people well before the robot gets close, not to shape a tight
-        # last-mile avoidance envelope (that's still the local layer's job).
         personal_space_radius: 1.5
         personal_space_sigma: 1.0
         group_extra_radius: 2.5

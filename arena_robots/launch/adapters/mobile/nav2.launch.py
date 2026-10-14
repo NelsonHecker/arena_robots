@@ -46,7 +46,7 @@ def generate_launch_description():
     sensors_json = LaunchArgument('sensors_json', default_value='')
     social_cost_layer = LaunchArgument(
         'social_cost_layer', default_value='false',
-        description='enable arena_social_cost_layer in the local costmap (off by default)',
+        description='add arena_social_cost_layer to the local and global costmaps',
     )
     params_overlay = LaunchArgument('params_overlay', default_value='')
     agent = LaunchArgument('agent', default_value='')
@@ -79,9 +79,6 @@ def generate_launch_description():
         YAMLFileSubstitution(nav2_cfg('planners', global_planner.substitution, 'planner_config.yaml')),
         YAMLFileSubstitution(nav2_cfg('defaults', 'interplanner_config.yaml')),
         YAMLFileSubstitution(interplanner_cfg),
-        # Off by default: pluginlib never even loads SocialCostLayer's class
-        # unless social_cost_layer:=true, so devs without arena_social_cost_layer
-        # built are unaffected. See ${*social_cost_layer_plugins} in nav2.yaml.
         YAMLFileSubstitution(
             IfElseSubstitution(
                 condition=social_cost_layer.substitution,
