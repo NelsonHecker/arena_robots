@@ -31,7 +31,7 @@ def test_jackal_lidar_is_a_16_ring_360_degree_scanner():
 def test_boxer_lasers_are_planar_and_its_realsense_is_a_camera():
     shapes = _golden("boxer")
     assert shapes["front_laser"].planar
-    assert shapes["rear_laser"].horizontal_fov == pytest.approx(math.pi / 2)
+    assert shapes["rear_laser"].horizontal_fov == pytest.approx(math.radians(80))
     camera = shapes["realsense_front_camera"]
     assert camera.kind == "camera"
     assert camera.horizontal_fov == pytest.approx(1.5184351666666667)
