@@ -63,3 +63,12 @@ nav2:
       tolerance: 0.5
       use_astar: false
       allow_unknown: true
+
+laser:
+  angle:
+    increment: 0.0034906585
+    max: 3.14159265
+    min: -3.14159265
+  num_beams: 1800
+  range: 150.0
+  update_rate: 10
