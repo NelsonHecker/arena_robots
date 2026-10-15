@@ -46,6 +46,20 @@ def test_turtlebot_cliff_rays_and_rgbd_camera_are_parsed():
 
 
 @pytest.mark.parametrize("robot", GOLDEN_ROBOTS)
+def test_caps_laser_matches_the_rendered_lidar(robot):
+    view = RobotIdentifier(robot).resolve_sync()
+    laser = view.mobile.laser
+    scan = next(s for s in view.model_params.sensors if str(s.type) == "laserscan")
+    shape = _golden(robot)[scan.sensor]
+    fov = laser.angle.max - laser.angle.min
+    assert fov == pytest.approx(shape.horizontal_fov, abs=1e-4)
+    assert laser.num_beams == shape.samples
+    assert laser.range == pytest.approx(shape.max_range)
+    assert laser.update_rate == int(shape.update_rate)
+    assert abs(laser.angle.increment * (laser.num_beams - 1) - fov) <= laser.angle.increment + 1e-6
+
+
+@pytest.mark.parametrize("robot", GOLDEN_ROBOTS)
 def test_every_ranging_sensor_has_golden_geometry(robot):
     shapes = _golden(robot)
     view = RobotIdentifier(robot).resolve_sync()

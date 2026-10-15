@@ -29,6 +29,8 @@ class SensorGeometry:
     vertical_max: float
     min_range: float
     max_range: float
+    samples: int = 0
+    update_rate: float = 0.0
 
     @property
     def planar(self) -> bool:
@@ -61,6 +63,8 @@ def _lidar(sensor: ET.Element) -> SensorGeometry | None:
         vertical_max=max(v_min, v_max),
         min_range=_float(block, "range/min", 0.0),
         max_range=_float(block, "range/max", 0.0),
+        samples=int(_float(block, "scan/horizontal/samples", 0.0)),
+        update_rate=_float(sensor, "update_rate", 0.0),
     )
 
 
