@@ -15,6 +15,7 @@ from arena_runtime_msgs.srv import LockstepRegister
 from builtin_interfaces.msg import Time as TimeMsg
 from rclpy.clock import Clock
 from rclpy.duration import Duration
+from rclpy.time import Time
 
 from arena_robots.task_server_handlers import _executor_sleep
 
@@ -47,6 +48,9 @@ class LockstepBeat:
         self._starved = False
         self._wall = Clock()
         self._last_pulse = self._wall.now()
+        self._period_ns = 0
+        self._horizon_ns = 0
+        self._keepalive_at = self._wall.now()
         if grace_s is not None:
             node.create_timer(_WATCHDOG_PERIOD, self._watchdog, clock=self._wall)
 
@@ -57,6 +61,7 @@ class LockstepBeat:
             return
         self._starved = False
         self._last_pulse = self._wall.now()
+        self._period_ns = round(period_s * 1e9)
         self._registered = await self._apply(
             [
                 LockstepChannel(
@@ -94,14 +99,20 @@ class LockstepBeat:
     def _watchdog(self) -> None:
         if self._active <= 0 or not self._registered:
             return
-        silent = (self._wall.now() - self._last_pulse).nanoseconds * 1e-9
+        wall = self._wall.now()
+        silent = (wall - self._last_pulse).nanoseconds * 1e-9
         if silent < self._grace_s:
             return
+        sim_ns = self._node.get_clock().now().nanoseconds
         if not self._starved:
             self._starved = True
+            self._horizon_ns = sim_ns
+            self._keepalive_at = wall - Duration(seconds=_WATCHDOG_PERIOD)
             self._node.get_logger().warning(f"lockstep beat {self._name}: silent {silent:.1f}s, keepalive engaged")
+        self._horizon_ns = min(self._horizon_ns, sim_ns + self._period_ns) + (wall - self._keepalive_at).nanoseconds
+        self._keepalive_at = wall
         msg = LockstepHeartbeat()
-        msg.header.stamp = (self._node.get_clock().now() + Duration(seconds=_WATCHDOG_PERIOD)).to_msg()
+        msg.header.stamp = Time(nanoseconds=max(self._horizon_ns - self._period_ns, 0)).to_msg()
         self._pub.publish(msg)
 
     async def _wait(self, seconds: float) -> None:
