@@ -57,12 +57,12 @@ actions:
 
 laser:
   angle:
-    increment: 0.00654497222
-    max: 2.35619
-    min: -2.35619
-  num_beams: 720
-  range: 30.0
-  update_rate: 10
+    increment: 0.00174532925
+    max: 2.39982772
+    min: -2.39982772
+  num_beams: 2751
+  range: 64.0
+  update_rate: 33
 
 nav2:
   planner_plugins:
