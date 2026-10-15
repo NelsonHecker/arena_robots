@@ -53,9 +53,7 @@
       node_namespace="$(arg namespace)"
       node_name="front_laser"
       gazebo_classic="false"
-      gazebo_ignition="true"
-      max_angle="2.1"
-      min_angle="-2.1">
+      gazebo_ignition="true">
     <origin xyz="0.53 0.33 0.1145" rpy="0 ${-PI} ${-3/4*PI}"/>
   </xacro:sensor_sick_s300>
 
@@ -65,9 +63,7 @@
       node_namespace="$(arg namespace)"
       node_name="rear_laser"
       gazebo_classic="false"
-      gazebo_ignition="true"
-      max_angle="2.1"
-      min_angle="-2.1">
+      gazebo_ignition="true">
     <origin xyz="-0.53 -0.33 0.1145" rpy="0 ${-PI} ${1/4*PI}"/>
   </xacro:sensor_sick_s300>
 
