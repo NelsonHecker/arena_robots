@@ -8,6 +8,7 @@ that pace the sim at wall rate, `grace_s=None` lets silence hold the sim.
 
 from __future__ import annotations
 
+import contextlib
 import typing
 
 from arena_runtime_msgs.msg import LockstepChannel, LockstepHeartbeat, LockstepRegistration
@@ -15,6 +16,7 @@ from arena_runtime_msgs.srv import LockstepRegister
 from builtin_interfaces.msg import Time as TimeMsg
 from rclpy.clock import Clock
 from rclpy.duration import Duration
+from rclpy.exceptions import InvalidHandle
 from rclpy.time import Time
 
 from arena_robots.task_server_handlers import _executor_sleep
@@ -84,7 +86,8 @@ class LockstepBeat:
         if self._active > 0 or not self._registered:
             return
         self._registered = False
-        await self._apply([])
+        with contextlib.suppress(InvalidHandle):
+            await self._apply([])
 
     def pulse(self, stamp: TimeMsg | None = None) -> None:
         """Publish one coverage stamp, defaulting to current sim time."""
