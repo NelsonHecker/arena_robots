@@ -4,6 +4,7 @@ import math
 from pathlib import Path
 
 import pytest
+from arena_robots.assembly import RequestPart
 from arena_robots.Robot import RobotIdentifier
 from arena_robots.sensor_geometry import parse_sensor_geometry, sensor_geometry
 
@@ -79,3 +80,17 @@ def test_rendered_urdf_geometry_covers_every_ranging_sensor(robot, require_insta
     if robot in GOLDEN_ROBOTS:
         golden = _golden(robot)
         assert {name: shapes[name] for name in backing} == {name: golden[name] for name in backing}
+
+
+@pytest.mark.parametrize("robot", ALL_ROBOTS)
+def test_pinned_default_request_renders_like_the_defaults(robot, require_installed):
+    pytest.importorskip("xacro")
+    require_installed(robot)
+    view = RobotIdentifier(robot).resolve_sync()
+    resolved = view._resolved({})
+    if resolved is None:
+        pytest.skip(f"{robot} has no assembly.yaml")
+    pinned: dict[str, list[RequestPart]] = {}
+    for placement in resolved.placements:
+        pinned.setdefault(placement.type, []).append(RequestPart(variant=placement.variant, mount=placement.mount.name, overrides=placement.overrides))
+    assert sensor_geometry(view, pinned) == sensor_geometry(view, {})

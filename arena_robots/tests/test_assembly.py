@@ -295,6 +295,16 @@ class TestResolveParams:
         resolved = resolve(spec, {"lidar": [RequestPart(variant="sick", params={"max_angle": 1.0})]})
         assert resolved.placements[0].params == {}
 
+    def test_pinned_request_of_a_default_keeps_its_params(self):
+        from arena_robots.assembly import AssemblySpec, DefaultPart, RequestPart, resolve
+
+        spec = AssemblySpec(
+            mounts={"top": _mount("top", ["lidar"]), "rear": _mount("rear", ["lidar"])},
+            defaults={"lidar": [DefaultPart(variant="sick_s300", mount="top", params={"max_angle": 2.1})]},
+        )
+        resolved = resolve(spec, {"lidar": [RequestPart(variant="sick_s300", mount="top"), RequestPart(variant="sick_s300", mount="rear")]})
+        assert {p.mount.name: p.params for p in resolved.placements} == {"top": {"max_angle": 2.1}, "rear": {}}
+
 
 class TestWarnIfBlind:
     def test_warns_when_required_type_absent(self):

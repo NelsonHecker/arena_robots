@@ -5,7 +5,7 @@ xacro:
   include: include/depthcamera.xacro
   macro: go1_depth_camera
   attach:
-    camID: "${camID}"
+    camID: "${camID:-1}"
     name: "${mount}"
   args:
     camID: 1

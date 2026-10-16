@@ -104,8 +104,8 @@ class PowerSpec:
 class RequestPart:
     """One requested part instance from a fleet-def morphology item; ``mount`` set only
     for an explicit pin. ``params`` is reserved for later bracket-level tuning and is
-    accepted but not propagated into the resolved assembly. ``overrides`` carries into
-    the placement like a default part's."""
+    accepted but not propagated: a part pinned to a default's own mount and variant takes
+    that default's params. ``overrides`` carries into the placement like a default part's."""
 
     variant: str
     mount: str | None = None
@@ -388,7 +388,8 @@ def resolve(
                 continue
             inventory = ", ".join(f"{m.name} accepts {sorted(m.accepts)}" for m in spec.mounts.values()) or "(no mounts declared)"
             raise AssemblyError(f"robot declares no '{t}' mounts; mount inventory: {inventory}")
-        effective.setdefault(t, []).extend(_Item(type=t, variant=p.variant, mount=p.mount, params={}, overrides=p.overrides, local_index=i) for i, p in enumerate(requested))
+        default_params = {(d.mount, d.variant): d.params for d in spec.defaults.get(t, []) if d.mount is not None}
+        effective.setdefault(t, []).extend(_Item(type=t, variant=p.variant, mount=p.mount, params=dict(default_params.get((p.mount, p.variant), {})), overrides=p.overrides, local_index=i) for i, p in enumerate(requested))
 
     flat: list[_Item] = [item for parts in effective.values() for item in parts]
 
