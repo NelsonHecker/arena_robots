@@ -17,6 +17,11 @@ polygons_dict:
 
 footprint_padding: 0.1
 
+velocity_limits:
+  linear: [-1.1, 1.1]
+  lateral: [-1.1, 1.1]
+  angular: [-2.0, 2.0]
+
 planar:
   velocity: {linear: [-1.3, 1.3], lateral: [0.0, 0.0], angular: [-4.0, 4.0]}
   acceleration: {linear: 1.0, lateral: .inf, angular: 2.0}

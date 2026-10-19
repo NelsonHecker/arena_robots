@@ -15,6 +15,10 @@ polygons_dict:
     polygon_pub_topic: polygon_stop
     enabled: true
 
+velocity_limits:
+  linear: [-2.5, 2.5]
+  angular: [-2.0, 2.0]
+
 planar:
   velocity: {linear: [-.inf, .inf], lateral: [-.inf, .inf], angular: [-.inf, .inf]}
   acceleration: {linear: .inf, lateral: .inf, angular: .inf}

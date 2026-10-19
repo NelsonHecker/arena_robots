@@ -3,6 +3,10 @@ sensor_frame: robot_front_laser_link
 radius: 0.35
 is_holonomic: false
 
+velocity_limits:
+  linear: [-1.25, 1.25]
+  angular: [-3.0, 3.0]
+
 planar:
   velocity: {linear: [-1.0, 1.0], lateral: [0.0, 0.0], angular: [-1.0, 1.0]}
   acceleration: {linear: 5.0, lateral: .inf, angular: 5.0}

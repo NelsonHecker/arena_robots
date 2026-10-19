@@ -12,6 +12,10 @@ polygons_dict:
     action_type: stop
     min_points: 4
 
+velocity_limits:
+  linear: [-1.5, 1.5]
+  angular: [-3.0, 3.0]
+
 planar:
   velocity: {linear: [-1.5, 1.5], lateral: [-1.5, 1.5], angular: [-4.0, 4.0]}
   acceleration: {linear: 10.0, lateral: 10.0, angular: 20.0}
