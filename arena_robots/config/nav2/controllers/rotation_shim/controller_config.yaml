@@ -7,7 +7,7 @@ controller_plugins_dict:
       angular_dist_threshold: 0.785
       forward_sampling_distance: 0.5
       angular_disengage_threshold: 0.3925
-      rotate_to_heading_angular_vel: 1.8
-      max_angular_accel: 3.2
+      rotate_to_heading_angular_vel: ${rotate_to_heading_angular_vel:-1.8}
+      max_angular_accel: ${max_angular_accel:-3.2}
       simulate_ahead_time: 1.0
       rotate_to_goal_heading: false

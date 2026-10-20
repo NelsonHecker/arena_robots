@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from launch import LaunchDescription
 
 ROSNAV_RL_SIDECAR = Path(__file__).resolve().parents[2] / "config" / "nav2" / "controllers" / "rosnav_rl" / "controller.launch.py"
+NAV2_ADAPTER_LAUNCH = Path(__file__).resolve().parents[2] / "launch" / "adapters" / "mobile" / "nav2.launch.py"
 
 
 def _make_mock_robot(name: str = "test_robot") -> object:
@@ -108,6 +109,47 @@ class TestNav2LaunchActions:
         actions = b._launch_actions(unknown_kwarg="ignored")
         assert isinstance(actions, list)
 
+    def test_kinematics_overrides_forwarded(self) -> None:
+        b = self._make_bringup()
+        actions = b._launch_actions(
+            max_linear_vel="0.42",
+            min_linear_vel="-0.42",
+            linear_acc="0.6",
+            linear_decel="-0.6",
+            max_angular_vel="0.9",
+            min_angular_vel="-0.9",
+            angular_acc="1.2",
+            angular_decel="-1.2",
+            v_linear_min="0.05",
+            v_linear_max="0.35",
+            v_angular_max="0.8",
+            v_angular_min_in_place="0.4",
+            rotate_to_heading_angular_vel="0.9",
+            max_angular_accel="1.1",
+        )
+        args = dict(actions[0].launch_arguments)
+        assert args["max_linear_vel"] == "0.42"
+        assert args["min_linear_vel"] == "-0.42"
+        assert args["linear_acc"] == "0.6"
+        assert args["linear_decel"] == "-0.6"
+        assert args["max_angular_vel"] == "0.9"
+        assert args["min_angular_vel"] == "-0.9"
+        assert args["angular_acc"] == "1.2"
+        assert args["angular_decel"] == "-1.2"
+        assert args["v_linear_min"] == "0.05"
+        assert args["v_linear_max"] == "0.35"
+        assert args["v_angular_max"] == "0.8"
+        assert args["v_angular_min_in_place"] == "0.4"
+        assert args["rotate_to_heading_angular_vel"] == "0.9"
+        assert args["max_angular_accel"] == "1.1"
+
+    def test_blank_kinematics_overrides_not_forwarded(self) -> None:
+        b = self._make_bringup()
+        actions = b._launch_actions(max_linear_vel="", linear_acc=None)
+        args = dict(actions[0].launch_arguments)
+        assert "max_linear_vel" not in args
+        assert "linear_acc" not in args
+
     def test_robot_name_forwarded(self):
         b = self._make_bringup()
         actions = b._launch_actions()
@@ -179,3 +221,19 @@ class TestRosnavRlControllerSidecar:
         (node,) = setup.execute(context)
         assert node.node_package == "rosnav_rl"
         assert node.node_executable == "action_server.py"
+
+
+class TestNav2AdapterLaunch:
+    def _load(self) -> LaunchDescription:
+        spec = importlib.util.spec_from_file_location("nav2_adapter_launch", NAV2_ADAPTER_LAUNCH)
+        assert spec is not None
+        assert spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.generate_launch_description()
+
+    def test_declares_kinematic_launch_arguments(self) -> None:
+        from arena_robots.nav2 import KINEMATIC_KEYS
+
+        ld = self._load()
+        assert set(KINEMATIC_KEYS) <= {a.name for a in ld.get_launch_arguments()}
