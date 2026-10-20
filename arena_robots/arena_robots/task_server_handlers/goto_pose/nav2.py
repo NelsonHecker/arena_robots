@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from action_msgs.msg import GoalStatus
 from arena_robots_msgs.action import GotoPose
@@ -40,6 +40,7 @@ class GotoPoseHandlerNav2(TaskHandler[GotoPose.Goal, GotoPose.Feedback, GotoPose
         self._native_client = ActionClient(node, NavigateToPose, bringup.native_action_name)
         self._beat = LockstepBeat(node, "nav")
         self._beat_period: float | None = None
+        self.nav2_max_retries = max(1, cast(int, node.get_parameter("nav2_max_retries").value))
         node.create_subscription(Twist, str(bringup.namespace("cmd_vel")), lambda _msg: self._beat.pulse(), 10)
 
     async def _controller_period(self) -> float:
@@ -91,6 +92,7 @@ class GotoPoseHandlerNav2(TaskHandler[GotoPose.Goal, GotoPose.Feedback, GotoPose
             arena_fb.eta_seconds = eta.sec + eta.nanosec * 1e-9
             goal_handle.publish_feedback(arena_fb)
 
+        attempts = 0
         while True:
             if not goal_handle.is_active:
                 result.status = GotoPose.Result.STATUS_CANCELED
@@ -101,7 +103,14 @@ class GotoPoseHandlerNav2(TaskHandler[GotoPose.Goal, GotoPose.Feedback, GotoPose
                 result.status = GotoPose.Result.STATUS_CANCELED
                 result.reason = "goal canceled"
                 return result
+            if attempts >= self.nav2_max_retries:
+                self._node.get_logger().warn(f"nav2 gave up after {attempts} attempts")
+                goal_handle.abort()
+                result.status = GotoPose.Result.STATUS_ABORTED
+                result.reason = "Nav2: retry limit exceeded"
+                return result
 
+            attempts += 1
             send_future = self._native_client.send_goal_async(nav2_goal, feedback_callback=_on_nav2_feedback)
             nav2_goal_handle = await send_future
 

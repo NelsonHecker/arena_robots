@@ -3,10 +3,17 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+if TYPE_CHECKING:
+    from arena_robots_msgs.action import GotoPose
+    from nav2_msgs.action import NavigateToPose
+    from rclpy.clock import Clock
 
 
 def _make_bringup(native_action_name: str = "/robot1/navigate_to_pose"):
@@ -33,7 +40,98 @@ def _make_node():
     node.get_logger.return_value = MagicMock(info=lambda m: None, warn=lambda m: None)
     node.get_namespace.return_value = "/env_0/robot1"
     node.create_client.side_effect = _make_client
+    node.get_parameter.return_value = SimpleNamespace(value=5)
     return node
+
+
+class _FakeLogger:
+    def __init__(self) -> None:
+        self.messages: list[tuple[str, str]] = []
+
+    def info(self, message: str) -> None:
+        self.messages.append(("info", message))
+
+    def warn(self, message: str) -> None:
+        self.messages.append(("warn", message))
+
+
+class _FakeNode:
+    def __init__(self) -> None:
+        self.logger = _FakeLogger()
+        self.parameters: dict[str, int] = {"nav2_max_retries": 5}
+
+    def get_logger(self) -> _FakeLogger:
+        return self.logger
+
+    def get_namespace(self) -> str:
+        return "/env_0/robot1"
+
+    def get_parameter(self, name: str) -> SimpleNamespace:
+        return SimpleNamespace(value=self.parameters[name])
+
+    def create_publisher(self, *_args, **_kwargs) -> object:
+        return object()
+
+    def create_client(self, *_args, **_kwargs) -> object:
+        return object()
+
+    def create_subscription(self, *_args, **_kwargs) -> object:
+        return object()
+
+    def create_timer(self, period: float, callback: Callable[[], None], clock: Clock | None = None) -> object:
+        callback()
+        return object()
+
+    def destroy_timer(self, timer: object) -> None:
+        pass
+
+
+class _RejectedGoalHandle:
+    accepted: bool = False
+
+
+class _RejectingActionClient:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def server_is_ready(self) -> bool:
+        return True
+
+    async def send_goal_async(self, goal: NavigateToPose.Goal, feedback_callback: Callable[[object], None] | None = None) -> _RejectedGoalHandle:
+        self.calls += 1
+        return _RejectedGoalHandle()
+
+
+class _FakeActionClient:
+    def __init__(self, *_args, **_kwargs) -> None:
+        pass
+
+
+class _RecordingGoalHandle:
+    def __init__(self) -> None:
+        self.is_active = True
+        self.is_cancel_requested = False
+        self.aborted = False
+
+    def abort(self) -> None:
+        self.aborted = True
+
+    def publish_feedback(self, feedback: GotoPose.Feedback) -> None:
+        pass
+
+
+def test_max_retries_reads_declared_parameter():
+    from arena_robots.task_server_handlers.goto_pose import nav2
+
+    node = _FakeNode()
+    node.parameters["nav2_max_retries"] = 7
+    original = nav2.ActionClient
+    nav2.ActionClient = _FakeActionClient
+    try:
+        handler = nav2.GotoPoseHandlerNav2(_make_bringup(), tf_buffer=None, node=node)
+    finally:
+        nav2.ActionClient = original
+    assert handler.nav2_max_retries == 7
 
 
 class TestTranslateNav2Status:
@@ -246,6 +344,24 @@ class TestGotoPoseHandlerNav2Execute:
             result = asyncio.run(handler.execute(goal_handle))
         assert call_count[0] == 2
         assert result.status == GotoPose.Result.STATUS_SUCCEEDED
+
+    def test_retries_stop_after_max_retries(self):
+        from arena_robots.task_server_handlers.goto_pose.nav2 import GotoPoseHandlerNav2
+        from arena_robots_msgs.action import GotoPose
+        from nav2_msgs.action import NavigateToPose
+
+        handler = GotoPoseHandlerNav2.__new__(GotoPoseHandlerNav2)
+        handler._node = _FakeNode()
+        handler._native_client = _RejectingActionClient()
+        handler.nav2_max_retries = 3
+
+        goal_handle = _RecordingGoalHandle()
+        result = asyncio.run(handler._dispatch(goal_handle, NavigateToPose.Goal(), GotoPose.Result()))
+
+        assert handler._native_client.calls == 3
+        assert result.status == GotoPose.Result.STATUS_ABORTED
+        assert result.reason
+        assert goal_handle.aborted
 
     def test_feedback_translation(self):
         from action_msgs.msg import GoalStatus
