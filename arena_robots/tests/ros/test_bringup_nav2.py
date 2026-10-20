@@ -110,38 +110,14 @@ class TestNav2LaunchActions:
         assert isinstance(actions, list)
 
     def test_kinematics_overrides_forwarded(self) -> None:
+        from arena_robots.nav2 import KINEMATIC_KEYS
+
+        overrides = {key: f"{i * 0.1:.2f}" for i, key in enumerate(KINEMATIC_KEYS, start=1)}
         b = self._make_bringup()
-        actions = b._launch_actions(
-            max_linear_vel="0.42",
-            min_linear_vel="-0.42",
-            linear_acc="0.6",
-            linear_decel="-0.6",
-            max_angular_vel="0.9",
-            min_angular_vel="-0.9",
-            angular_acc="1.2",
-            angular_decel="-1.2",
-            v_linear_min="0.05",
-            v_linear_max="0.35",
-            v_angular_max="0.8",
-            v_angular_min_in_place="0.4",
-            rotate_to_heading_angular_vel="0.9",
-            max_angular_accel="1.1",
-        )
+        actions = b._launch_actions(**overrides)
         args = dict(actions[0].launch_arguments)
-        assert args["max_linear_vel"] == "0.42"
-        assert args["min_linear_vel"] == "-0.42"
-        assert args["linear_acc"] == "0.6"
-        assert args["linear_decel"] == "-0.6"
-        assert args["max_angular_vel"] == "0.9"
-        assert args["min_angular_vel"] == "-0.9"
-        assert args["angular_acc"] == "1.2"
-        assert args["angular_decel"] == "-1.2"
-        assert args["v_linear_min"] == "0.05"
-        assert args["v_linear_max"] == "0.35"
-        assert args["v_angular_max"] == "0.8"
-        assert args["v_angular_min_in_place"] == "0.4"
-        assert args["rotate_to_heading_angular_vel"] == "0.9"
-        assert args["max_angular_accel"] == "1.1"
+        for key, expected in overrides.items():
+            assert args[key] == expected
 
     def test_blank_kinematics_overrides_not_forwarded(self) -> None:
         b = self._make_bringup()
