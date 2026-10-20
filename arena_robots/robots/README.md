@@ -120,9 +120,10 @@ nav2:                      # optional, nav2-only wiring
 
 `velocity_limits` and `acceleration_limits` flow into nav2 controller configs
 via `Nav2KinematicsDerivedYAML` substitution; controller YAMLs reference them
-as `${max_linear_vel:-default}` etc. To override a specific controller without
-touching `mobile.yaml`, replace the substitution with a literal value in that
-controller YAML.
+as `${max_linear_vel:-default}` etc., and `nav2.launch.py` accepts runtime
+overrides under the same keys (`robot.mobile.max_linear_vel:=0.4`, etc.). To
+override a specific controller without touching `mobile.yaml`, replace the
+substitution with a literal value in that controller YAML.
 
 `planar` is the body response `sim:=flatsim` drives the robot with, the same keys
 for every robot: per-axis velocity bounds, acceleration and gain, a first-order

@@ -13,6 +13,7 @@ from arena_bringup.substitutions import (
     YAMLSelectSubstitution,
 )
 from arena_robots.nav2 import (
+    KINEMATIC_KEYS,
     Nav2CollisionDerivedYAML,
     Nav2KinematicsDerivedYAML,
     Nav2SubBlockYAML,
@@ -48,6 +49,7 @@ def generate_launch_description():
     sensors_json = LaunchArgument('sensors_json', default_value='')
     params_overlay = LaunchArgument('params_overlay', default_value='')
     agent = LaunchArgument('agent', default_value='')
+    kinematic_args = {key: LaunchArgument(key, default_value='') for key in KINEMATIC_KEYS}
 
     def nav2_cfg(*parts):
         return PathJoinSubstitution([robots_root, 'config', 'nav2', *parts])
@@ -70,7 +72,10 @@ def generate_launch_description():
         YAMLFileSubstitution(mobile_path),
         Nav2SubBlockYAML(mobile_path),
         Nav2CollisionDerivedYAML(mobile_path),
-        Nav2KinematicsDerivedYAML(mobile_path),
+        Nav2KinematicsDerivedYAML(
+            mobile_path,
+            overrides={key: arg.substitution for key, arg in kinematic_args.items()},
+        ),
         SensorsDerivedYAML(model_params_path, mobile_path, sensors_json.substitution),
         YAMLFileSubstitution(nav2_cfg('defaults', 'controller_config.yaml')),
         YAMLFileSubstitution(nav2_cfg('controllers', local_planner.substitution, 'controller_config.yaml')),

@@ -10,6 +10,7 @@ import launch
 import launch.utilities
 import yaml
 from arena_bringup.substitutions import YAMLFileSubstitution
+from launch.substitutions import LaunchConfiguration, SubstitutionFailure
 
 from arena_robots.caps import MobileSpec, stringify_float_matrix
 from arena_robots.Robot import ModelParams, RobotIdentifier
@@ -27,6 +28,36 @@ _DEFAULT_LIDAR_RANGE = 10.0
 _CLEARING_SUFFIX = "_clearing"
 _STVL_X_FORWARD_FRUSTUM = 1
 _STVL_FULL_TURN = 6.29
+
+KINEMATIC_KEYS = (
+    "max_linear_vel",
+    "min_linear_vel",
+    "linear_acc",
+    "linear_decel",
+    "max_angular_vel",
+    "min_angular_vel",
+    "angular_acc",
+    "angular_decel",
+    "max_lateral_vel",
+    "min_lateral_vel",
+    "lateral_acc",
+    "lateral_decel",
+    "v_linear_min",
+    "v_linear_max",
+    "v_angular_max",
+    "v_angular_min_in_place",
+    "rotate_to_heading_angular_vel",
+    "max_angular_accel",
+)
+
+_SYMMETRIC_LIMIT_PAIRS = (
+    ("max_linear_vel", "min_linear_vel"),
+    ("max_angular_vel", "min_angular_vel"),
+    ("max_lateral_vel", "min_lateral_vel"),
+    ("linear_acc", "linear_decel"),
+    ("angular_acc", "angular_decel"),
+    ("lateral_acc", "lateral_decel"),
+)
 
 
 def compile_sensors_to_nav2(
@@ -197,6 +228,19 @@ def compile_sensors_to_collision_monitor(
     return out
 
 
+def _references_absent_launch_configuration(
+    context: launch.LaunchContext,
+    substitutions: list[launch.Substitution],
+) -> bool:
+    for substitution in substitutions:
+        if not isinstance(substitution, LaunchConfiguration):
+            continue
+        name = launch.utilities.perform_substitutions(context, substitution.variable_name)
+        if name not in context.launch_configurations:
+            return True
+    return False
+
+
 def _load_mobile(path_str: str) -> MobileSpec:
     with open(path_str) as f:
         data = yaml.safe_load(f) or {}
@@ -309,21 +353,16 @@ class Nav2SubBlockYAML(YAMLFileSubstitution):
 
 
 class Nav2KinematicsDerivedYAML(YAMLFileSubstitution):
-    """Emit controller-agnostic velocity/acceleration keys from the top-level
-    ``velocity_limits``/``acceleration_limits`` in caps/mobile.yaml.
+    """Emit the mobile caps' velocity and acceleration limits, with runtime overrides applied."""
 
-    These are the planner envelope (what nav2 may sample), not the hardware
-    envelope (motor firmware / ``diff_drive_controller`` clip downstream).
-
-    Controller plugin configs reference these via ``${max_linear_vel}`` etc.,
-    letting each controller map the generic envelope onto its plugin-specific
-    field names. Controllers wanting a lower cap can drop the ``${...}`` ref
-    and hardcode the literal instead.
-    """
-
-    def __init__(self, mobile_path: launch.SomeSubstitutionsType):
+    def __init__(
+        self,
+        mobile_path: launch.SomeSubstitutionsType,
+        overrides: dict[str, launch.SomeSubstitutionsType] | None = None,
+    ):
         super().__init__(path=[], default={}, substitute=False)
         self._path = launch.utilities.normalize_to_list_of_substitutions(mobile_path)
+        self._overrides = {k: launch.utilities.normalize_to_list_of_substitutions(v) for k, v in overrides.items()} if overrides is not None else {}
 
     def perform(self, context: launch.LaunchContext) -> str:
         path_str = launch.utilities.perform_substitutions(context, self._path)
@@ -349,6 +388,25 @@ class Nav2KinematicsDerivedYAML(YAMLFileSubstitution):
             if acc.lateral is not None:
                 out['lateral_acc'] = acc.lateral
                 out['lateral_decel'] = -acc.lateral
+
+        applied: set[str] = set()
+        for k, v_subs in self._overrides.items():
+            try:
+                val_str = launch.utilities.perform_substitutions(context, v_subs).strip()
+            except SubstitutionFailure:
+                if _references_absent_launch_configuration(context, v_subs):
+                    continue
+                raise
+            if val_str:
+                applied.add(k)
+                try:
+                    out[k] = float(val_str)
+                except ValueError:
+                    out[k] = val_str
+
+        for pos_key, neg_key in _SYMMETRIC_LIMIT_PAIRS:
+            if pos_key in applied and neg_key not in applied and pos_key in out:
+                out[neg_key] = -abs(float(out[pos_key]))
 
         tmp = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.yaml')
         yaml.dump(out if out else {}, tmp)

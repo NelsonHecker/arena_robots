@@ -13,6 +13,7 @@ from launch.substitutions import PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
 
 from arena_robots.bringup import Bringup, BringupMeta
+from arena_robots.nav2 import KINEMATIC_KEYS
 from arena_robots.Sensor import SensorSpec, SensorType
 from arena_robots.sensor_geometry import sensor_geometry
 from arena_robots.task_kinds import TaskKind
@@ -51,7 +52,7 @@ class Nav2Bringup(Bringup):
         sensors: list[SensorSpec] | None = None,
         params_overlay: str = "",
         agent: str = "",
-        **_: object,
+        **extra: object,
     ) -> list[Action]:
         agent_name = agent or str(self.robot.caps.mobile.sub("rosnav_rl").get("agent", ""))
         if local_planner == "rosnav_rl" and not agent_name:
@@ -83,6 +84,10 @@ class Nav2Bringup(Bringup):
             "params_overlay": params_overlay,
             "agent": agent_name,
         }
+        for key in KINEMATIC_KEYS:
+            value = extra.get(key)
+            if value is not None and str(value).strip() != "":
+                launch_arguments[key] = str(value)
         if sensors is not None:
             geometry = sensor_geometry(self.robot, self.parts)
             launch_arguments["sensors_json"] = json.dumps(
