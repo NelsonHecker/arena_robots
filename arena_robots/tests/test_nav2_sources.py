@@ -339,6 +339,16 @@ def test_nav2_kinematics_derived_yaml_skips_absent_launch_configurations() -> No
     assert overridden["linear_decel"] == -0.6
 
 
+@pytest.mark.parametrize("bad_value", ["not_a_float", "nan", "inf", "-inf"])
+def test_nav2_kinematics_derived_yaml_rejects_invalid_override(tmp_path: Path, bad_value: str) -> None:
+    sub = Nav2KinematicsDerivedYAML(
+        str(_kinematics_mobile(tmp_path)),
+        overrides={"max_linear_vel": bad_value},
+    )
+    with pytest.raises(ValueError):
+        sub.perform(launch.LaunchContext())
+
+
 def test_every_controller_directory_is_classified() -> None:
     found = {path.parent.name for path in CONTROLLERS_DIR.glob("*/controller_config.yaml")}
     assert found == _NAV2_CONTROLLERS | _DRL_CONTROLLERS

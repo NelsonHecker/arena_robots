@@ -10,7 +10,7 @@ import launch
 import launch.utilities
 import yaml
 from arena_bringup.substitutions import YAMLFileSubstitution
-from launch.substitutions import LaunchConfiguration, SubstitutionFailure
+from launch.substitutions import SubstitutionFailure
 
 from arena_robots.caps import MobileSpec, stringify_float_matrix
 from arena_robots.Robot import ModelParams, RobotIdentifier
@@ -228,19 +228,6 @@ def compile_sensors_to_collision_monitor(
     return out
 
 
-def _references_absent_launch_configuration(
-    context: launch.LaunchContext,
-    substitutions: list[launch.Substitution],
-) -> bool:
-    for substitution in substitutions:
-        if not isinstance(substitution, LaunchConfiguration):
-            continue
-        name = launch.utilities.perform_substitutions(context, substitution.variable_name)
-        if name not in context.launch_configurations:
-            return True
-    return False
-
-
 def _load_mobile(path_str: str) -> MobileSpec:
     with open(path_str) as f:
         data = yaml.safe_load(f) or {}
@@ -368,7 +355,7 @@ class Nav2KinematicsDerivedYAML(YAMLFileSubstitution):
         path_str = launch.utilities.perform_substitutions(context, self._path)
         mobile = _load_mobile(path_str)
 
-        out: dict[str, typing.Any] = {}
+        out: dict[str, float] = {}
         vel = mobile.velocity_limits
         if vel is not None:
             out['min_linear_vel'] = vel.linear.min
@@ -394,22 +381,21 @@ class Nav2KinematicsDerivedYAML(YAMLFileSubstitution):
             try:
                 val_str = launch.utilities.perform_substitutions(context, v_subs).strip()
             except SubstitutionFailure:
-                if _references_absent_launch_configuration(context, v_subs):
-                    continue
-                raise
-            if val_str:
-                applied.add(k)
-                try:
-                    out[k] = float(val_str)
-                except ValueError:
-                    out[k] = val_str
+                continue
+            if not val_str:
+                continue
+            val = float(val_str)
+            if not math.isfinite(val):
+                raise ValueError(f"{k} must be finite, got {val_str!r}")
+            out[k] = val
+            applied.add(k)
 
         for pos_key, neg_key in _SYMMETRIC_LIMIT_PAIRS:
-            if pos_key in applied and neg_key not in applied and pos_key in out:
-                out[neg_key] = -abs(float(out[pos_key]))
+            if pos_key in applied and neg_key not in applied:
+                out[neg_key] = -abs(out[pos_key])
 
         tmp = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.yaml')
-        yaml.dump(out if out else {}, tmp)
+        yaml.dump(out, tmp)
         tmp.close()
         return tmp.name
 
