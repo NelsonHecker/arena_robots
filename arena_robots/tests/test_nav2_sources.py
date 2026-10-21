@@ -53,24 +53,31 @@ _SUBSTITUTION_RE = re.compile(r"\$\{([^}]+)\}")
 
 
 def _substitution_names(value: object) -> set[str]:
-    if isinstance(value, dict):
-        names: set[str] = set()
-        for key, item in value.items():
-            names |= _substitution_names(key)
-            names |= _substitution_names(item)
-        return names
-    if isinstance(value, list):
-        names = set()
-        for item in value:
-            names |= _substitution_names(item)
-        return names
     if isinstance(value, str):
         return {match.group(1).split(":-", 1)[0].strip() for match in _SUBSTITUTION_RE.finditer(value)}
-    return set()
+    if isinstance(value, dict):
+        children: list[object] = [*value.keys(), *value.values()]
+    elif isinstance(value, list):
+        children = value
+    else:
+        return set()
+    return set().union(*(_substitution_names(child) for child in children))
 
 
 def _controller_config(controller: str) -> dict[str, object]:
     return yaml.safe_load((CONTROLLERS_DIR / controller / "controller_config.yaml").read_text())
+
+
+def _kinematics_mobile(tmp_path: Path) -> Path:
+    mobile_yaml = tmp_path / "mobile.yaml"
+    mobile_yaml.write_text("velocity_limits:\n  linear: [-1.5, 2.25]\n  lateral: [-0.8, 1.2]\n  angular: [-2.0, 3.5]\nacceleration_limits:\n  linear: 1.75\n  lateral: 1.1\n  angular: 2.25\n")
+    return mobile_yaml
+
+
+def _context(**values: str) -> launch.LaunchContext:
+    context = launch.LaunchContext()
+    context.launch_configurations.update(values)
+    return context
 
 
 def _resolve_controller(
@@ -78,12 +85,8 @@ def _resolve_controller(
     tmp_path: Path,
     overrides: dict[str, str],
 ) -> dict[str, object]:
-    derived = Nav2KinematicsDerivedYAML(
-        str(_kinematics_mobile(tmp_path)),
-        overrides=overrides,
-    ).perform(launch.LaunchContext())
-    variables = yaml.safe_load(Path(derived).read_text())
-    resolved = YAMLReplacer(variables).replace(_controller_config(controller))
+    derived = Nav2KinematicsDerivedYAML(str(_kinematics_mobile(tmp_path)), overrides=overrides).perform_load(_context(**overrides))
+    resolved = YAMLReplacer(derived).replace(_controller_config(controller))
     return resolved["controller_plugins_dict"]["FollowPath"]
 
 
@@ -255,16 +258,9 @@ def test_social_cost_layer_overlay_retunes_the_dwb_obstacle_critic():
     assert follow_path["PathAlign.scale"] == 32.0
 
 
-def _kinematics_mobile(tmp_path: Path) -> Path:
-    mobile_yaml = tmp_path / "mobile.yaml"
-    mobile_yaml.write_text("velocity_limits:\n  linear: [-1.5, 2.25]\n  lateral: [-0.8, 1.2]\n  angular: [-2.0, 3.5]\nacceleration_limits:\n  linear: 1.75\n  lateral: 1.1\n  angular: 2.25\n")
-    return mobile_yaml
-
-
 def test_nav2_kinematics_derived_yaml_baseline(tmp_path: Path) -> None:
-    path = Nav2KinematicsDerivedYAML(str(_kinematics_mobile(tmp_path))).perform(launch.LaunchContext())
+    data = Nav2KinematicsDerivedYAML(str(_kinematics_mobile(tmp_path))).perform_load(launch.LaunchContext())
 
-    data = yaml.safe_load(Path(path).read_text())
     assert data["max_linear_vel"] == 2.25
     assert data["min_linear_vel"] == -1.5
     assert data["max_lateral_vel"] == 1.2
@@ -280,26 +276,17 @@ def test_nav2_kinematics_derived_yaml_baseline(tmp_path: Path) -> None:
 
 
 def test_nav2_kinematics_derived_yaml_overrides(tmp_path: Path) -> None:
-    sub = Nav2KinematicsDerivedYAML(
-        str(_kinematics_mobile(tmp_path)),
-        overrides={
-            "max_linear_vel": "0.42",
-            "min_linear_vel": "",
-            "linear_acc": "0.6",
-            "linear_decel": "",
-            "max_lateral_vel": "0.3",
-            "min_lateral_vel": "",
-            "lateral_acc": "0.5",
-            "lateral_decel": "",
-            "max_angular_vel": "0.9",
-            "min_angular_vel": "",
-            "angular_acc": "1.4",
-            "angular_decel": "",
-        },
-    )
-    path = sub.perform(launch.LaunchContext())
+    overrides = {
+        "max_linear_vel": "0.42",
+        "linear_acc": "0.6",
+        "max_lateral_vel": "0.3",
+        "lateral_acc": "0.5",
+        "max_angular_vel": "0.9",
+        "angular_acc": "1.4",
+    }
+    sub = Nav2KinematicsDerivedYAML(str(_kinematics_mobile(tmp_path)), overrides=overrides)
+    data = sub.perform_load(_context(**overrides))
 
-    data = yaml.safe_load(Path(path).read_text())
     assert data["max_linear_vel"] == 0.42
     assert data["min_linear_vel"] == -0.42
     assert data["linear_acc"] == 0.6
@@ -314,26 +301,28 @@ def test_nav2_kinematics_derived_yaml_overrides(tmp_path: Path) -> None:
     assert data["angular_decel"] == -1.4
 
 
-def test_nav2_kinematics_derived_yaml_skips_absent_launch_configurations() -> None:
-    from launch.substitutions import LaunchConfiguration
+def test_nav2_kinematics_derived_yaml_keeps_explicit_negative_limit(tmp_path: Path) -> None:
+    overrides = {"max_linear_vel": "0.42", "min_linear_vel": "-0.2"}
+    sub = Nav2KinematicsDerivedYAML(str(_kinematics_mobile(tmp_path)), overrides=overrides)
+    data = sub.perform_load(_context(**overrides))
 
+    assert data["max_linear_vel"] == 0.42
+    assert data["min_linear_vel"] == -0.2
+
+
+def test_nav2_kinematics_derived_yaml_skips_unset_overrides() -> None:
     sub = Nav2KinematicsDerivedYAML(
         str(ROBOTS_DIR / "jackal" / "caps" / "mobile.yaml"),
-        overrides={
-            "max_linear_vel": LaunchConfiguration("max_linear_vel"),
-            "linear_acc": LaunchConfiguration("linear_acc"),
-        },
+        overrides=("max_linear_vel", "linear_acc"),
     )
 
-    baseline = yaml.safe_load(Path(sub.perform(launch.LaunchContext())).read_text())
+    baseline = sub.perform_load(launch.LaunchContext())
     assert baseline["max_linear_vel"] == 0.5
     assert baseline["min_linear_vel"] == -0.5
     assert baseline["linear_acc"] == 2.5
     assert baseline["linear_decel"] == -2.5
 
-    supplied = launch.LaunchContext()
-    supplied.launch_configurations["linear_acc"] = "0.6"
-    overridden = yaml.safe_load(Path(sub.perform(supplied)).read_text())
+    overridden = sub.perform_load(_context(linear_acc="0.6"))
     assert overridden["max_linear_vel"] == 0.5
     assert overridden["linear_acc"] == 0.6
     assert overridden["linear_decel"] == -0.6
@@ -341,12 +330,14 @@ def test_nav2_kinematics_derived_yaml_skips_absent_launch_configurations() -> No
 
 @pytest.mark.parametrize("bad_value", ["not_a_float", "nan", "inf", "-inf"])
 def test_nav2_kinematics_derived_yaml_rejects_invalid_override(tmp_path: Path, bad_value: str) -> None:
-    sub = Nav2KinematicsDerivedYAML(
-        str(_kinematics_mobile(tmp_path)),
-        overrides={"max_linear_vel": bad_value},
-    )
+    sub = Nav2KinematicsDerivedYAML(str(_kinematics_mobile(tmp_path)), overrides=("max_linear_vel",))
     with pytest.raises(ValueError):
-        sub.perform(launch.LaunchContext())
+        sub.perform_load(_context(max_linear_vel=bad_value))
+
+
+def test_nav2_kinematics_derived_yaml_rejects_unknown_override(tmp_path: Path) -> None:
+    with pytest.raises(ValueError):
+        Nav2KinematicsDerivedYAML(str(_kinematics_mobile(tmp_path)), overrides=("max_lin_vel",))
 
 
 def test_every_controller_directory_is_classified() -> None:
@@ -360,54 +351,43 @@ def test_nav2_controller_references_a_configured_cap(controller: str) -> None:
     assert referenced & set(KINEMATIC_KEYS)
 
 
+def test_every_kinematic_key_is_referenced() -> None:
+    referenced = _substitution_names(yaml.safe_load(NAV2_YAML.read_text()))
+    for controller in _NAV2_CONTROLLERS:
+        referenced |= _substitution_names(_controller_config(controller))
+    assert set(KINEMATIC_KEYS) <= referenced
+
+
 @pytest.mark.parametrize("controller", sorted(_DRL_CONTROLLERS))
 def test_drl_controller_is_explicitly_excluded(controller: str) -> None:
     referenced = _substitution_names(_controller_config(controller))
     assert not referenced & set(KINEMATIC_KEYS)
 
 
-def test_graceful_defaults_are_unchanged_without_overrides(tmp_path: Path) -> None:
-    follow_path = _resolve_controller("graceful", tmp_path, {})
-    assert follow_path["v_linear_min"] == 0.1
-    assert follow_path["v_linear_max"] == 0.5
-    assert follow_path["v_angular_max"] == 5.0
-    assert follow_path["v_angular_min_in_place"] == 0.25
+@pytest.mark.parametrize(
+    ("controller", "defaults"),
+    [
+        ("graceful", {"v_linear_min": 0.1, "v_linear_max": 0.5, "v_angular_max": 5.0, "v_angular_min_in_place": 0.25}),
+        ("rotation_shim", {"rotate_to_heading_angular_vel": 1.8, "max_angular_accel": 3.2}),
+    ],
+)
+def test_controller_defaults_are_unchanged_without_overrides(controller: str, defaults: dict[str, float], tmp_path: Path) -> None:
+    follow_path = _resolve_controller(controller, tmp_path, {})
+    for key, expected in defaults.items():
+        assert follow_path[key] == expected
 
 
-def test_graceful_accepts_controller_specific_overrides(tmp_path: Path) -> None:
-    follow_path = _resolve_controller(
-        "graceful",
-        tmp_path,
-        {
-            "v_linear_min": "0.05",
-            "v_linear_max": "0.35",
-            "v_angular_max": "0.8",
-            "v_angular_min_in_place": "0.4",
-        },
-    )
-    assert follow_path["v_linear_min"] == pytest.approx(0.05)
-    assert follow_path["v_linear_max"] == pytest.approx(0.35)
-    assert follow_path["v_angular_max"] == pytest.approx(0.8)
-    assert follow_path["v_angular_min_in_place"] == pytest.approx(0.4)
-
-
-def test_rotation_shim_defaults_are_unchanged_without_overrides(tmp_path: Path) -> None:
-    follow_path = _resolve_controller("rotation_shim", tmp_path, {})
-    assert follow_path["rotate_to_heading_angular_vel"] == 1.8
-    assert follow_path["max_angular_accel"] == 3.2
-
-
-def test_rotation_shim_accepts_controller_specific_overrides(tmp_path: Path) -> None:
-    follow_path = _resolve_controller(
-        "rotation_shim",
-        tmp_path,
-        {
-            "rotate_to_heading_angular_vel": "0.9",
-            "max_angular_accel": "1.1",
-        },
-    )
-    assert follow_path["rotate_to_heading_angular_vel"] == pytest.approx(0.9)
-    assert follow_path["max_angular_accel"] == pytest.approx(1.1)
+@pytest.mark.parametrize(
+    ("controller", "overrides"),
+    [
+        ("graceful", {"v_linear_min": "0.05", "v_linear_max": "0.35", "v_angular_max": "0.8", "v_angular_min_in_place": "0.4"}),
+        ("rotation_shim", {"rotate_to_heading_angular_vel": "0.9", "max_angular_accel": "1.1"}),
+    ],
+)
+def test_controller_specific_overrides_are_applied(controller: str, overrides: dict[str, str], tmp_path: Path) -> None:
+    follow_path = _resolve_controller(controller, tmp_path, overrides)
+    for key, expected in overrides.items():
+        assert follow_path[key] == pytest.approx(float(expected))
 
 
 def test_generic_caps_do_not_override_controller_tuning(tmp_path: Path) -> None:

@@ -121,9 +121,14 @@ nav2:                      # optional, nav2-only wiring
 `velocity_limits` and `acceleration_limits` flow into nav2 controller configs
 via `Nav2KinematicsDerivedYAML` substitution; controller YAMLs reference them
 as `${max_linear_vel:-default}` etc., and `nav2.launch.py` accepts runtime
-overrides under the same keys (`robot.mobile.max_linear_vel:=0.4`, etc.). To
-override a specific controller without touching `mobile.yaml`, replace the
-substitution with a literal value in that controller YAML.
+overrides under the same keys (`robot.mobile.max_linear_vel:=0.4`, etc.).
+Controller-specific tuning keys (`v_linear_min`, `rotate_to_heading_angular_vel`,
+`max_angular_accel`, ...) are overridable the same way when the active
+controller uses them; the full set is `KINEMATIC_KEYS` in
+`arena_robots/nav2.py`. Overrides bind the nav2 stack only: `caps/mobile.yaml`
+and non-nav2 adapters keep the authored limits. To change a controller's
+committed default, replace its substitution with a literal value in that
+controller YAML.
 
 `planar` is the body response `sim:=flatsim` drives the robot with, the same keys
 for every robot: per-axis velocity bounds, acceleration and gain, a first-order

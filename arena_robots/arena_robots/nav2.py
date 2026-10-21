@@ -4,13 +4,13 @@ import json
 import math
 import tempfile
 import typing
+from collections.abc import Iterable
 from pathlib import Path
 
 import launch
 import launch.utilities
 import yaml
-from arena_bringup.substitutions import YAMLFileSubstitution
-from launch.substitutions import SubstitutionFailure
+from arena_bringup.substitutions import OptionalLaunchArgument, YAMLFileSubstitution
 
 from arena_robots.caps import MobileSpec, stringify_float_matrix
 from arena_robots.Robot import ModelParams, RobotIdentifier
@@ -29,27 +29,6 @@ _CLEARING_SUFFIX = "_clearing"
 _STVL_X_FORWARD_FRUSTUM = 1
 _STVL_FULL_TURN = 6.29
 
-KINEMATIC_KEYS = (
-    "max_linear_vel",
-    "min_linear_vel",
-    "linear_acc",
-    "linear_decel",
-    "max_angular_vel",
-    "min_angular_vel",
-    "angular_acc",
-    "angular_decel",
-    "max_lateral_vel",
-    "min_lateral_vel",
-    "lateral_acc",
-    "lateral_decel",
-    "v_linear_min",
-    "v_linear_max",
-    "v_angular_max",
-    "v_angular_min_in_place",
-    "rotate_to_heading_angular_vel",
-    "max_angular_accel",
-)
-
 _SYMMETRIC_LIMIT_PAIRS = (
     ("max_linear_vel", "min_linear_vel"),
     ("max_angular_vel", "min_angular_vel"),
@@ -58,6 +37,17 @@ _SYMMETRIC_LIMIT_PAIRS = (
     ("angular_acc", "angular_decel"),
     ("lateral_acc", "lateral_decel"),
 )
+
+_CONTROLLER_KINEMATIC_KEYS = (
+    "v_linear_min",
+    "v_linear_max",
+    "v_angular_max",
+    "v_angular_min_in_place",
+    "rotate_to_heading_angular_vel",
+    "max_angular_accel",
+)
+
+KINEMATIC_KEYS = tuple(key for pair in _SYMMETRIC_LIMIT_PAIRS for key in pair) + _CONTROLLER_KINEMATIC_KEYS
 
 
 def compile_sensors_to_nav2(
@@ -345,11 +335,15 @@ class Nav2KinematicsDerivedYAML(YAMLFileSubstitution):
     def __init__(
         self,
         mobile_path: launch.SomeSubstitutionsType,
-        overrides: dict[str, launch.SomeSubstitutionsType] | None = None,
+        overrides: Iterable[str] = (),
     ):
         super().__init__(path=[], default={}, substitute=False)
         self._path = launch.utilities.normalize_to_list_of_substitutions(mobile_path)
-        self._overrides = {k: launch.utilities.normalize_to_list_of_substitutions(v) for k, v in overrides.items()} if overrides is not None else {}
+        names = tuple(overrides)
+        unknown = set(names) - set(KINEMATIC_KEYS)
+        if unknown:
+            raise ValueError(f"unknown kinematic override keys: {sorted(unknown)}")
+        self._overrides = tuple(OptionalLaunchArgument(name) for name in names)
 
     def perform(self, context: launch.LaunchContext) -> str:
         path_str = launch.utilities.perform_substitutions(context, self._path)
@@ -376,22 +370,19 @@ class Nav2KinematicsDerivedYAML(YAMLFileSubstitution):
                 out['lateral_acc'] = acc.lateral
                 out['lateral_decel'] = -acc.lateral
 
-        applied: set[str] = set()
-        for k, v_subs in self._overrides.items():
-            try:
-                val_str = launch.utilities.perform_substitutions(context, v_subs).strip()
-            except SubstitutionFailure:
-                continue
+        parsed: dict[str, float] = {}
+        for override in self._overrides:
+            val_str = (override.value_if_given(context) or "").strip()
             if not val_str:
                 continue
             val = float(val_str)
             if not math.isfinite(val):
-                raise ValueError(f"{k} must be finite, got {val_str!r}")
-            out[k] = val
-            applied.add(k)
+                raise ValueError(f"{override.name} must be finite, got {val_str!r}")
+            parsed[override.name] = val
 
+        out.update(parsed)
         for pos_key, neg_key in _SYMMETRIC_LIMIT_PAIRS:
-            if pos_key in applied and neg_key not in applied:
+            if pos_key in parsed and neg_key not in parsed:
                 out[neg_key] = -abs(out[pos_key])
 
         tmp = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.yaml')
