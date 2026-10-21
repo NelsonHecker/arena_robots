@@ -86,7 +86,7 @@ class Nav2Bringup(Bringup):
         }
         for key in KINEMATIC_KEYS:
             value = extra.get(key)
-            if value is not None and str(value).strip() != "":
+            if value is not None:
                 launch_arguments[key] = str(value)
         if sensors is not None:
             geometry = sensor_geometry(self.robot, self.parts)

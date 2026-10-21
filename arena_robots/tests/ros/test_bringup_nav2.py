@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
+from arena_robots.nav2 import KINEMATIC_KEYS
 
 if TYPE_CHECKING:
     from arena_robots.bringup.mobile.nav2 import Nav2Bringup
@@ -22,6 +23,15 @@ def _make_mock_robot(name: str = "test_robot") -> object:
     mock_robot = MagicMock()
     mock_robot.name = name
     return mock_robot
+
+
+def _load_launch(path: Path, module_name: str) -> LaunchDescription:
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.generate_launch_description()
 
 
 class TestNav2BringupAttributes:
@@ -110,8 +120,6 @@ class TestNav2LaunchActions:
         assert isinstance(actions, list)
 
     def test_kinematics_overrides_forwarded(self) -> None:
-        from arena_robots.nav2 import KINEMATIC_KEYS
-
         overrides = {key: f"{i * 0.1:.2f}" for i, key in enumerate(KINEMATIC_KEYS, start=1)}
         b = self._make_bringup()
         actions = b._launch_actions(**overrides)
@@ -119,11 +127,10 @@ class TestNav2LaunchActions:
         for key, expected in overrides.items():
             assert args[key] == expected
 
-    def test_blank_kinematics_overrides_not_forwarded(self) -> None:
+    def test_none_kinematics_overrides_not_forwarded(self) -> None:
         b = self._make_bringup()
-        actions = b._launch_actions(max_linear_vel="", linear_acc=None)
+        actions = b._launch_actions(linear_acc=None)
         args = dict(actions[0].launch_arguments)
-        assert "max_linear_vel" not in args
         assert "linear_acc" not in args
 
     def test_robot_name_forwarded(self):
@@ -175,12 +182,7 @@ class TestNav2RosnavRlAgent:
 
 class TestRosnavRlControllerSidecar:
     def _load(self) -> LaunchDescription:
-        spec = importlib.util.spec_from_file_location("rosnav_rl_controller_launch", ROSNAV_RL_SIDECAR)
-        assert spec is not None
-        assert spec.loader is not None
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module.generate_launch_description()
+        return _load_launch(ROSNAV_RL_SIDECAR, "rosnav_rl_controller_launch")
 
     def test_declares_nav2_sidecar_args(self) -> None:
         ld = self._load()
@@ -201,15 +203,8 @@ class TestRosnavRlControllerSidecar:
 
 class TestNav2AdapterLaunch:
     def _load(self) -> LaunchDescription:
-        spec = importlib.util.spec_from_file_location("nav2_adapter_launch", NAV2_ADAPTER_LAUNCH)
-        assert spec is not None
-        assert spec.loader is not None
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module.generate_launch_description()
+        return _load_launch(NAV2_ADAPTER_LAUNCH, "nav2_adapter_launch")
 
     def test_declares_kinematic_launch_arguments(self) -> None:
-        from arena_robots.nav2 import KINEMATIC_KEYS
-
         ld = self._load()
         assert set(KINEMATIC_KEYS) <= {a.name for a in ld.get_launch_arguments()}
